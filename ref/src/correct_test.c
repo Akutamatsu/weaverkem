@@ -149,6 +149,8 @@ main()
             //return KAT_CRYPTO_FAILURE;
             continue;
         }
+
+// #define FIND_FAILURE 1
 #if (FIND_FAILURE == 1)  
         if ( memcmp(ss, ss1, CRYPTO_BYTES) ) {
             fail++;

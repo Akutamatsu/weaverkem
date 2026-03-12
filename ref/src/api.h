@@ -8,24 +8,34 @@
 #define CRYPTO_CIPHERTEXTBYTES KYBER_CIPHERTEXTBYTES
 #define CRYPTO_BYTES           KYBER_SSBYTES
 
-#if   (KYBER_K == 2)
-#ifdef KYBER_90S
-#define CRYPTO_ALGNAME "Kyber512-90s"
+// #if   (KYBER_K == 2)
+// #ifdef KYBER_90S
+// #define CRYPTO_ALGNAME "Kyber512-90s"
+// #else
+// #define CRYPTO_ALGNAME "Kyber512"
+// #endif
+// #elif (KYBER_K == 3)
+// #ifdef KYBER_90S
+// #define CRYPTO_ALGNAME "Kyber768-90s"
+// #else
+// #define CRYPTO_ALGNAME "Kyber768"
+// #endif
+// #elif (KYBER_K == 4)
+// #ifdef KYBER_90S
+// #define CRYPTO_ALGNAME "Kyber1024-90s"
+// #else
+// #define CRYPTO_ALGNAME "Kyber1024"
+// #endif
+// #endif
+
+#if   (WEAVER_MODE == 1)
+  #define CRYPTO_ALGNAME "WEAVER-512"
+#elif (WEAVER_MODE == 3)
+  #define CRYPTO_ALGNAME "WEAVER-1024"
+#elif (WEAVER_MODE == 5)
+  #define CRYPTO_ALGNAME "WEAVER-2048"
 #else
-#define CRYPTO_ALGNAME "Kyber512"
-#endif
-#elif (KYBER_K == 3)
-#ifdef KYBER_90S
-#define CRYPTO_ALGNAME "Kyber768-90s"
-#else
-#define CRYPTO_ALGNAME "Kyber768"
-#endif
-#elif (KYBER_K == 4)
-#ifdef KYBER_90S
-#define CRYPTO_ALGNAME "Kyber1024-90s"
-#else
-#define CRYPTO_ALGNAME "Kyber1024"
-#endif
+  #define CRYPTO_ALGNAME "WEAVER-UNKNOWN"
 #endif
 
 #define crypto_kem_keypair KYBER_NAMESPACE(_keypair)

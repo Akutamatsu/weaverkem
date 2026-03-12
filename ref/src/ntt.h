@@ -11,10 +11,10 @@ extern const int16_t zetas[128];
 extern const int16_t zetas_inv[128];
 
 #define ntt KYBER_NAMESPACE(_ntt)
-void ntt(int16_t poly[256]);
+void ntt(int16_t poly[KYBER_N]);
 
 #define invntt KYBER_NAMESPACE(_invntt)
-void invntt(int16_t poly[256]);
+void invntt(int16_t poly[KYBER_N]);
 
 #define basemul KYBER_NAMESPACE(_basemul)
 void basemul(int16_t r[2],
@@ -22,4 +22,7 @@ void basemul(int16_t r[2],
              const int16_t b[2],
              int16_t zeta);
 
+void basemul_degree4(int16_t r[4], const int16_t a[4], const int16_t b[4], int16_t zeta);
+
 #endif
+

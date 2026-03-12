@@ -88,13 +88,43 @@ static int16_t fqmul(int16_t a, int16_t b) {
 * Arguments:   - int16_t r[256]: pointer to input/output vector of elements
 *                                of Zq
 **************************************************/
-void ntt(int16_t r[256]) {
+// void ntt(int16_t r[256]) {
+//   unsigned int len, start, j, k;
+//   int16_t t, zeta;
+
+//   k = 1;
+//   for(len = 128; len >= 2; len >>= 1) {
+//     for(start = 0; start < 256; start = j + len) {
+//       zeta = zetas[k++];
+//       for(j = start; j < start + len; ++j) {
+//         t = fqmul(zeta, r[j + len]);
+//         r[j + len] = r[j] - t;
+//         r[j] = r[j] + t;
+//       }
+//     }
+//   }
+// }
+
+void ntt(int16_t r[KYBER_N]) {
   unsigned int len, start, j, k;
   int16_t t, zeta;
 
   k = 1;
+  
+#if KYBER_N == 128
+  // 128 维：7层，底度为 1 (len 从 64 到 1)
+  for(len = 64; len >= 1; len >>= 1) {
+#elif KYBER_N == 256
+  // 256 维：7层，底度为 2 (len 从 128 到 2)
   for(len = 128; len >= 2; len >>= 1) {
-    for(start = 0; start < 256; start = j + len) {
+#elif KYBER_N == 512
+  // 512 维：7层，底度为 4 (len 从 256 到 4)
+  for(len = 256; len >= 4; len >>= 1) {
+#else
+  #error "Unsupported KYBER_N"
+#endif
+
+    for(start = 0; start < KYBER_N; start = j + len) {
       zeta = zetas[k++];
       for(j = start; j < start + len; ++j) {
         t = fqmul(zeta, r[j + len]);
@@ -115,13 +145,42 @@ void ntt(int16_t r[256]) {
 * Arguments:   - int16_t r[256]: pointer to input/output vector of elements
 *                                of Zq
 **************************************************/
-void invntt(int16_t r[256]) {
+// void invntt(int16_t r[256]) {
+//   unsigned int start, len, j, k;
+//   int16_t t, zeta;
+
+//   k = 0;
+//   for(len = 2; len <= 128; len <<= 1) {
+//     for(start = 0; start < 256; start = j + len) {
+//       zeta = zetas_inv[k++];
+//       for(j = start; j < start + len; ++j) {
+//         t = r[j];
+//         r[j] = barrett_reduce(t + r[j + len]);
+//         r[j + len] = t - r[j + len];
+//         r[j + len] = fqmul(zeta, r[j + len]);
+//       }
+//     }
+//   }
+
+//   for(j = 0; j < 256; ++j)
+//     r[j] = fqmul(r[j], zetas_inv[127]);
+// }
+
+void invntt(int16_t r[KYBER_N]) {
   unsigned int start, len, j, k;
   int16_t t, zeta;
 
   k = 0;
+
+#if KYBER_N == 128
+  for(len = 1; len <= 64; len <<= 1) {
+#elif KYBER_N == 256
   for(len = 2; len <= 128; len <<= 1) {
-    for(start = 0; start < 256; start = j + len) {
+#elif KYBER_N == 512
+  for(len = 4; len <= 256; len <<= 1) {
+#endif
+
+    for(start = 0; start < KYBER_N; start = j + len) {
       zeta = zetas_inv[k++];
       for(j = start; j < start + len; ++j) {
         t = r[j];
@@ -132,9 +191,11 @@ void invntt(int16_t r[256]) {
     }
   }
 
-  for(j = 0; j < 256; ++j)
+  // 无论 N 是多少，只要是 7 层 NTT，归一化因子都是一样的 (128的逆元)
+  for(j = 0; j < KYBER_N; ++j)
     r[j] = fqmul(r[j], zetas_inv[127]);
 }
+
 
 /*************************************************
 * Name:        basemul
@@ -158,4 +219,58 @@ void basemul(int16_t r[2],
 
   r[1]  = fqmul(a[0], b[1]);
   r[1] += fqmul(a[1], b[0]);
+}
+
+/*************************************************
+* Name:        basemul_degree4
+*
+* Description: Multiplication of polynomials in Zq[X]/(X^4-zeta)
+* used for Level 3 (N=512) where NTT leaves are degree-4 polynomials.
+*
+* Arguments:   - int16_t r[4]:       pointer to the output polynomial
+* - const int16_t a[4]: pointer to the first factor
+* - const int16_t b[4]: pointer to the second factor
+* - int16_t zeta:       integer defining the reduction polynomial
+**************************************************/
+void basemul_degree4(int16_t r[4], 
+                     const int16_t a[4], 
+                     const int16_t b[4], 
+                     int16_t zeta) 
+{
+  int16_t t0, t1, t2;
+
+  // 1. 计算原本超出 3 次的高次项部分 (将被乘以 zeta)
+  // X^4 对应的系数和
+  t0  = fqmul(a[1], b[3]);
+  t0 += fqmul(a[2], b[2]);
+  t0 += fqmul(a[3], b[1]);
+
+  // X^5 对应的系数和
+  t1  = fqmul(a[2], b[3]);
+  t1 += fqmul(a[3], b[2]);
+
+  // X^6 对应的系数
+  t2  = fqmul(a[3], b[3]);
+
+  // 2. 结合低次项与折叠下来的高次项
+  // r[0]
+  r[0]  = fqmul(t0, zeta);
+  r[0] += fqmul(a[0], b[0]);
+
+  // r[1]
+  r[1]  = fqmul(t1, zeta);
+  r[1] += fqmul(a[0], b[1]);
+  r[1] += fqmul(a[1], b[0]);
+
+  // r[2]
+  r[2]  = fqmul(t2, zeta);
+  r[2] += fqmul(a[0], b[2]);
+  r[2] += fqmul(a[1], b[1]);
+  r[2] += fqmul(a[2], b[0]);
+
+  // r[3] (最高次项，没有从上方折叠下来的部分)
+  r[3]  = fqmul(a[0], b[3]);
+  r[3] += fqmul(a[1], b[2]);
+  r[3] += fqmul(a[2], b[1]);
+  r[3] += fqmul(a[3], b[0]);
 }

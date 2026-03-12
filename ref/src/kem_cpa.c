@@ -39,15 +39,15 @@ int crypto_kem_keypair(unsigned char *pk, unsigned char *sk)
 **************************************************/
 int crypto_kem_enc(unsigned char *ct, unsigned char *ss, const unsigned char *pk)
 {
-  unsigned char buf[2*KYBER_SYMBYTES];
+  unsigned char buf[KYBER_INDCPA_MSGBYTES + KYBER_SYMBYTES];
 
   randombytes(buf,KYBER_SYMBYTES);
 
-  shake256(buf,2*KYBER_SYMBYTES,buf,KYBER_SYMBYTES);                         /* Don't release system RNG output */
+  shake256(buf,KYBER_INDCPA_MSGBYTES + KYBER_SYMBYTES,buf,KYBER_SYMBYTES);                         /* Don't release system RNG output */
 
-  indcpa_enc(ct, buf, pk, buf+KYBER_SYMBYTES);                                 /* coins are in buf+KYBER_SYMBYTES */
+  indcpa_enc(ct, buf, pk, buf+KYBER_INDCPA_MSGBYTES);                                 /* coins are in buf+KYBER_SYMBYTES */
 
-  memcpy(ss, buf, KYBER_SYMBYTES);
+  memcpy(ss, buf, KYBER_INDCPA_MSGBYTES);
   //shake256(ss, KYBER_SYMBYTES, buf, KYBER_SYMBYTES);                         /* hash pre-k to ss */
   return 0;
 }

@@ -107,22 +107,87 @@ static void cbd3(poly *r, const uint8_t buf[3*KYBER_N/4])
 }
 #endif
 
+/*************************************************
+* Name:        cbd4
+*
+* Description: Given an array of uniformly random bytes, compute
+*              polynomial with coefficients distributed according to
+*              a centered binomial distribution with parameter eta=4
+*              This function is needed for WEAVER-512
+*
+* Arguments:   - poly *r:            pointer to output polynomial
+*              - const uint8_t *buf: pointer to input byte array
+**************************************************/
+#if KYBER_ETA1 == 4
+static void cbd4(poly *r, const uint8_t buf[4*KYBER_N/4])
+{
+  unsigned int i,j;
+  uint32_t t,d;
+  int16_t a,b;
+
+  for(i=0;i<KYBER_N/4;i++) {
+    t  = load32_littleendian(buf+4*i);
+    d  = t & 0x11111111;
+    d += (t>>1) & 0x11111111;
+    d += (t>>2) & 0x11111111;
+    d += (t>>3) & 0x11111111;
+
+    for(j=0;j<4;j++) {
+      a = (d >> (8*j+0)) & 0xf;
+      b = (d >> (8*j+4)) & 0xf;
+      r->coeffs[4*i+j] = a - b;
+    }
+  }
+}
+#endif
+
+/* cbd1: eta=1, 1 bit per sample, 2 bits per coefficient */
+#if KYBER_ETA1 == 1 || KYBER_ETA2 == 1
+static void cbd1(poly *r, const uint8_t buf[1*KYBER_N/4])
+{
+  unsigned int i,j;
+  uint32_t t,d;
+  int16_t a,b;
+
+  for(i=0;i<KYBER_N/8;i++) {
+    t  = load32_littleendian(buf+4*i);
+    d  = t & 0xAAAAAAAA;
+    d += (t>>1) & 0xAAAAAAAA;
+    /* Actually for eta=1: each coeff = bit_a - bit_b
+       packed as 2 bits per coeff in the buffer */
+    for(j=0;j<8;j++) {
+      a = (t >> (2*j+0)) & 0x1;
+      b = (t >> (2*j+1)) & 0x1;
+      r->coeffs[8*i+j] = a - b;
+    }
+  }
+}
+#endif
+
 void cbd_eta1(poly *r, const uint8_t buf[KYBER_ETA1*KYBER_N/4])
 {
-#if KYBER_ETA1 == 2
+#if KYBER_ETA1 == 1
+  cbd1(r, buf);
+#elif KYBER_ETA1 == 2
   cbd2(r, buf);
 #elif KYBER_ETA1 == 3
   cbd3(r, buf);
+#elif KYBER_ETA1 == 4
+  cbd4(r, buf);
 #else
-#error "This implementation requires eta1 in {2,3}"
+#error "This implementation requires eta1 in {1,2,3,4}"
 #endif
 }
 
-void cbd_eta2(poly *r, const uint8_t buf[KYBER_ETA1*KYBER_N/4])
+void cbd_eta2(poly *r, const uint8_t buf[KYBER_ETA2*KYBER_N/4])
 {
-#if KYBER_ETA2 != 2
-#error "This implementation requires eta2 = 2"
-#else
+#if KYBER_ETA2 == 1
+  cbd1(r, buf);
+#elif KYBER_ETA2 == 2
   cbd2(r, buf);
+#elif KYBER_ETA2 == 4
+  cbd4(r, buf);
+#else
+#error "This implementation requires eta2 in {1,2,4}"
 #endif
 }

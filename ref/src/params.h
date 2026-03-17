@@ -13,7 +13,7 @@
   #define KYBER_ETA1 4
   #define KYBER_ETA2 4
   #define KYBER_POLYCOMPRESSEDBYTES    ((KYBER_N * 4) / 8)
-  #define KYBER_POLYVECCOMPRESSEDBYTES (KYBER_K * ((KYBER_N * 10) / 8))
+  #define KYBER_POLYVECCOMPRESSEDBYTES (KYBER_K * ((KYBER_N * 9) / 8))
 
 #elif (WEAVER_MODE == 3)
   #define KYBER_N 256

@@ -18,7 +18,7 @@
   /* dt = 9, du = 9, dv = 4 */
   // #define KYBER_POLYBYTES              ((KYBER_N * 9) / 8)
   #define KYBER_POLYCOMPRESSEDBYTES    ((KYBER_N * 4) / 8)
-  #define KYBER_POLYVECCOMPRESSEDBYTES (KYBER_K * ((KYBER_N * 10) / 8))
+  #define KYBER_POLYVECCOMPRESSEDBYTES (KYBER_K * ((KYBER_N * 9) / 8))
 
 #elif (WEAVER_MODE == 3)
   #define KYBER_N 256

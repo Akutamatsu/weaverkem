@@ -15,6 +15,7 @@ void print_hex(const char *label, const uint8_t *data, size_t len) {
 
 int main() {
     printf("=== 极简底层 Codec 闭环测试 ===\n");
+    printf("%d\n",WEAVER_MODE);
     printf("N = %d, MSG_BYTES = %d\n\n", KYBER_N, KYBER_INDCPA_MSGBYTES);
 
     uint8_t original_msg[KYBER_INDCPA_MSGBYTES];

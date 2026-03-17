@@ -7,7 +7,7 @@
 
 #if KYBER_N == 128
     // bch(127, 106, 3) - 实际承载 104 bits
-    #include "bch127.h"
+    #include "bch255.h"
 #elif KYBER_N == 256
     // bch(255, 231, 3) - 实际承载 224 bits (之后需要生成此文件)
     #include "bch255.h"
@@ -38,7 +38,7 @@ static void store_ecc8(uint8_t *dst, const uint32_t *src)
 }
 
 // bch encode
-void encode_bch(const unsigned char *data, unsigned int len, uint8_t *ecc)
+void encode_bch_high(const unsigned char *data, unsigned int len, uint8_t *ecc)
 {
     int i;
     const uint32_t *p;
@@ -275,7 +275,7 @@ static int chien_search(unsigned int len, struct gf_poly *p, unsigned int *roots
  * The number of errors found, or -22 if decoding failed, or -1 if
  * invalid parameters were provided
  */
-int decode_bch(uint8_t *data, unsigned int len, const uint8_t *recv_ecc)
+int decode_bch_high(uint8_t *data, unsigned int len, const uint8_t *recv_ecc)
 {
     unsigned int nbits;
     int i, err;
@@ -293,7 +293,7 @@ int decode_bch(uint8_t *data, unsigned int len, const uint8_t *recv_ecc)
         return -1;
         
     // compute received data ecc into an internal buffer 
-    encode_bch(data, len, ecc_buf);
+    encode_bch_high(data, len, ecc_buf);
     // XOR received and calculated ecc 
     for (i = 0; i < bch.ecc_bytes; i++) 
     {

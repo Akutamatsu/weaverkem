@@ -19,15 +19,6 @@ static inline void set_bit(uint8_t *out, int bit_pos, uint8_t val) {
     else    out[bit_pos / 8] &= ~(1 << (bit_pos % 8));
 }
 
-// // --- 辅助函数：正中心取模 (对应伪代码的 mod+ ) ---
-// // 将 x 映射到 [-mod/2, mod/2) 区间
-// static inline int16_t center_mod(int16_t x, int16_t mod) {
-//     int16_t r = x % mod;
-//     if (r > mod / 2) {
-//         r -= mod;
-//     }
-//     return r;
-// }
 
 /*************************************************
 * Name:        poly_compress
@@ -68,8 +59,18 @@ void poly_compress(uint8_t r[KYBER_POLYCOMPRESSEDBYTES], poly *a)
     r[4] = (t[6] >> 2) | (t[7] << 3);
     r += 5;
   }
+  #elif (KYBER_POLYCOMPRESSEDBYTES == (KYBER_N * 6 / 8))
+  for(i=0;i<KYBER_N/4;i++) {
+    for(j=0;j<4;j++)
+      t[j] = ((((uint32_t)a->coeffs[4*i+j] << 6) + KYBER_Q/2)/KYBER_Q) & 63;
+
+    r[0] = (t[0] >> 0) | (t[1] << 6);
+    r[1] = (t[1] >> 2) | (t[2] << 4);
+    r[2] = (t[2] >> 4) | (t[3] << 2);
+    r += 3;
+  }
 #else
-#error "KYBER_POLYCOMPRESSEDBYTES needs to be N*4/8 or N*5/8"
+#error "KYBER_POLYCOMPRESSEDBYTES needs to be N*4/8, N*5/8, or N*6/8"
 #endif
 }
 
@@ -110,8 +111,21 @@ void poly_decompress(poly *r, const uint8_t a[KYBER_POLYCOMPRESSEDBYTES])
     for(j=0;j<8;j++)
       r->coeffs[8*i+j] = ((uint32_t)(t[j] & 31)*KYBER_Q + 16) >> 5;
   }
+#elif (KYBER_POLYCOMPRESSEDBYTES == (KYBER_N * 6 / 8))
+  unsigned int j;
+  uint8_t t[4];
+  for(i=0;i<KYBER_N/4;i++) {
+    t[0] = (a[0] >> 0);
+    t[1] = (a[0] >> 6) | (a[1] << 2);
+    t[2] = (a[1] >> 4) | (a[2] << 4);
+    t[3] = (a[2] >> 2);
+    a += 3;
+
+    for(j=0;j<4;j++)
+      r->coeffs[4*i+j] = ((uint32_t)(t[j] & 63)*KYBER_Q + 32) >> 6;
+  }
 #else
-#error "KYBER_POLYCOMPRESSEDBYTES needs to be N*4/8 or N*5/8"
+#error "KYBER_POLYCOMPRESSEDBYTES needs to be N*4/8, N*5/8, or N*6/8"
 #endif
 }
 
@@ -217,6 +231,10 @@ void poly_frombytes(poly *r, const uint8_t a[KYBER_POLYBYTES])
 // }
 
 // Algorithm 3: MsgEncode
+/*************************************************
+* Name:        poly_frommsg
+* Description: Convert message to polynomial using WEAVER multi-level coding
+**************************************************/
 void poly_frommsg(poly *r, const uint8_t msg[KYBER_INDCPA_MSGBYTES])
 {
   int i;
@@ -224,50 +242,59 @@ void poly_frommsg(poly *r, const uint8_t msg[KYBER_INDCPA_MSGBYTES])
   const int16_t half_q = (q + 1) / 2;  // 1665
   const int16_t quarter_q = q / 4;     // 832
 
-#if KYBER_N == 128
-  const int l_bar = 104;
-#elif KYBER_N == 256
+#if (WEAVER_MODE == 1)
+  const int l_bar = 128;  // 高位承载 bit 数
+  const int l_ddot = 0;   // 次高位承载 bit 数
+  const int h = 0;        // 次高位码字总长度 (N/4)
+#elif (WEAVER_MODE == 3)
   const int l_bar = 224;
-#elif KYBER_N == 512
-  const int l_bar = 472;
+  const int l_ddot = 32;  // BCH(63, 32) 明文长度
+  const int h = 64;       // 256 / 4 = 64
+#elif (WEAVER_MODE == 5)
+  const int l_bar = 480;  // 根据你实际参数，也可能是 480
+  const int l_ddot = 32;
+  const int h = 64;       // 保证跟 BCH63 匹配
 #endif
 
-  int h = KYBER_N - l_bar;
-
-  // ==========================================================
-  // Step 3: ECCEncode 获取 BCH 码字 (融合 LAC API 的拼接逻辑)
-  // ==========================================================
-  uint8_t mu_tilde[(KYBER_N + 7) / 8] = {0}; // 完整的 BCH 码字空间
-  
-  // 1. 先把高位明文数据拷贝进 mu_tilde 的前半段
-  memcpy(mu_tilde, msg, l_bar / 8);
-  
-  // 2. 调用 LAC 的 encode_bch 计算校验位，存入 mu_tilde 偏移后的后半段
-  encode_bch(msg, l_bar / 8, mu_tilde + (l_bar / 8)); 
-
-  // ==========================================================
-  // 编码过程
-  // ==========================================================
-  // Step 4: 初始化 w = 0
   for(i = 0; i < KYBER_N; i++) {
     r->coeffs[i] = 0;
   }
 
-  // Step 5-7: Encode to Higher bits (叠加 BCH 码字)
-  for(i = 0; i < KYBER_N; i++) { // BCH 编码长度比 N 少 1
+  // ==========================================================
+  // Step 1: 高位 BCH 编码 (Encode to Higher bits)
+  // ==========================================================
+  uint8_t mu_tilde[(KYBER_N + 7) / 8] = {0}; 
+  
+  // 拼装高位码字：拷贝明文 -> 追加校验位
+  memcpy(mu_tilde, msg, l_bar / 8);
+  encode_bch_high(msg, l_bar / 8, mu_tilde + (l_bar / 8)); 
+
+  // 调制高位
+  for(i = 0; i < KYBER_N; i++) { 
     uint8_t bit = get_bit(mu_tilde, i);
     r->coeffs[i] = (r->coeffs[i] + half_q * bit) % q;
   }
 
-  // Step 8-14: Encode to Lower bits (叠加低位数据的重复码)
-  const uint8_t *mu_ddot_ptr = msg + (l_bar / 8); // 定位到低位数据的起始点
+#if WEAVER_MODE == 3 || WEAVER_MODE == 5
+  // ==========================================================
+  // Step 2: 次高位 BCH 编码 (Encode to Lower bits)
+  // ==========================================================
+  uint8_t mu_ddot_buf[8] = {0}; // 最多容纳 64 bits = 8 bytes
+  const uint8_t *msg_low = msg + (l_bar / 8); // 定位到 msg 的次高位数据区
+  
+  // 拼装次高位码字：拷贝明文 -> 追加校验位
+  memcpy(mu_ddot_buf, msg_low, l_ddot / 8);
+  encode_bch_low(msg_low, l_ddot / 8, mu_ddot_buf + (l_ddot / 8));
+
+  // 调制次高位 (带 4 倍重复码)
   for(i = 0; i < h; i++) {
-    uint8_t bit = get_bit(mu_ddot_ptr, i);
-    r->coeffs[4*i + 0] = (r->coeffs[4*i + 0] + quarter_q * bit) % q;
-    r->coeffs[4*i + 1] = (r->coeffs[4*i + 1] + quarter_q * bit) % q;
-    r->coeffs[4*i + 2] = (r->coeffs[4*i + 2] + quarter_q * bit) % q;
-    r->coeffs[4*i + 3] = (r->coeffs[4*i + 3] + quarter_q * bit) % q;
+    uint8_t bit = get_bit(mu_ddot_buf, i);
+    r->coeffs[4*i + 0] = (r->coeffs[4*i + 0] + quarter_q * bit);
+    r->coeffs[4*i + 1] = (r->coeffs[4*i + 1] + quarter_q * bit);
+    r->coeffs[4*i + 2] = (r->coeffs[4*i + 2] + quarter_q * bit);
+    r->coeffs[4*i + 3] = (r->coeffs[4*i + 3] + quarter_q * bit);
   }
+#endif
 }
 
 /*************************************************
@@ -329,90 +356,92 @@ void poly_frommsg(poly *r, const uint8_t msg[KYBER_INDCPA_MSGBYTES])
 void poly_tomsg(uint8_t msg[KYBER_INDCPA_MSGBYTES], poly *a)
 {
   int i, j;
-  const int16_t q = KYBER_Q;           // 3329
-  const int16_t half_q = (q + 1) / 2;  // 1665
-  const int16_t quarter_q = q / 4;     // 832
+  const int16_t q = KYBER_Q;           
+  const int16_t half_q = (q + 1) / 2;  
+  const int16_t quarter_q = q / 4;     
+  memset(msg, 0, KYBER_INDCPA_MSGBYTES);
 
-#if KYBER_N == 128
-  const int l_bar = 104;
-#elif KYBER_N == 256
+#if WEAVER_MODE == 1
+  const int l_bar = 128;
+  const int l_ddot = 0;
+  const int h = 0;
+#elif WEAVER_MODE == 3
   const int l_bar = 224;
-#elif KYBER_N == 512
-  const int l_bar = 472;
+  const int l_ddot = 32;
+  const int h = 64;
+#elif WEAVER_MODE == 5
+  const int l_bar = 480;
+  const int l_ddot = 32;
+  const int h = 64;
 #endif
-
-  // Step 1: h = n - l_bar 
-  int h = KYBER_N - l_bar;
 
   poly_csubq(a); // 保证系数在 [0, q-1]
 
-  // Step 2-8: Decode from Lower bits
-  uint8_t mu_ddot[KYBER_N] = {0}; 
-  for(i = 0; i < h; i++) {
-    int32_t ee = 0;
-    for(j = 0; j < 4; j++) {
-      int16_t w_j = a->coeffs[4*i + j];
-      
-      // w_{4i+j} mod^+ (q+1)/2 (Step 3-6 里的 mod+ 操作)
-      if (w_j < 0) w_j += q;
-      if (w_j >= q) w_j -= q;
-      int16_t mod_val = w_j % half_q;
-      
-      // | w_{4i+j} mod^+ (q+1)/2 - floor(q/4) |
-      int32_t diff = abs(mod_val - quarter_q);
-      ee += diff; // 累加 ee
-    }
-    // Step 7: mu_ddot_i = (ee >= (q+1)/2) ? 0 : 1
-    mu_ddot[i] = (ee >= half_q) ? 0 : 1;
-  }
-
-  // Step 9: w_bar = w
   int16_t w_bar[KYBER_N];
   for(i = 0; i < KYBER_N; i++) {
     w_bar[i] = a->coeffs[i];
   }
-  
-  // Step 10-15: Remove Lower bits
+
+#if WEAVER_MODE == 3 || WEAVER_MODE == 5
+  // ==========================================================
+  // Phase 1: 解码次高位 (Decode Lower bits)
+  // ==========================================================
+  uint8_t mu_ddot_noisy[8] = {0}; 
   for(i = 0; i < h; i++) {
+    int32_t ee = 0;
     for(j = 0; j < 4; j++) {
-      w_bar[4*i + j] = w_bar[4*i + j] - quarter_q * mu_ddot[i];
-      // 保证减去后，依然落在正确的正整数模环内
+      int16_t w_j = a->coeffs[4*i + j];
+      if (w_j < 0) w_j += q;
+      if (w_j >= q) w_j -= q;
+      int16_t mod_val = w_j % half_q;
+      int32_t diff = abs(mod_val - quarter_q);
+      ee += diff; 
+    }
+    // 判决得到带噪的码字位
+    uint8_t bit = (ee >= half_q) ? 0 : 1;
+    set_bit(mu_ddot_noisy, i, bit);
+  }
+
+  // 关键步骤：纠错并提取出完美的纯数据
+  decode_bch_low(mu_ddot_noisy, l_ddot / 8, mu_ddot_noisy + (l_ddot / 8));
+  
+  uint8_t *msg_low = msg + (l_bar / 8);
+  memcpy(msg_low, mu_ddot_noisy, l_ddot / 8); // 将纯数据保存到输出区
+  
+  // ==========================================================
+  // Phase 2: SIC 串行干扰消除 (Re-encode and Cancel)
+  // ==========================================================
+  // 利用纯净的数据，重新编码出没有任何噪声的完美码字！
+  uint8_t mu_ddot_clean[8] = {0};
+  memcpy(mu_ddot_clean, msg_low, l_ddot / 8);
+  encode_bch_low(msg_low, l_ddot / 8, mu_ddot_clean + (l_ddot / 8));
+
+  // 用完美的码字，把低位造成的干扰从多项式系数中彻底减掉
+  for(i = 0; i < h; i++) {
+    uint8_t clean_bit = get_bit(mu_ddot_clean, i);
+    for(j = 0; j < 4; j++) {
+      w_bar[4*i + j] = w_bar[4*i + j] - quarter_q * clean_bit;
       if (w_bar[4*i + j] < 0) {
-          w_bar[4*i + j] += q;
+          w_bar[4*i + j] += q; // 保证始终为正
       }
     }
   }
+#endif
 
-  // Step 16-18: Decode from Higher bits
+  // ==========================================================
+  // Phase 3: 解码高位 (Decode Higher bits)
+  // ==========================================================
   uint8_t mu_tilde[(KYBER_N + 7) / 8] = {0};
+  
+  // 此时的 w_bar，底层干扰已经被 SIC 清除了！
   for(i = 0; i < KYBER_N; i++) { 
-    // mu_tilde_i = round( (2/q) * w_bar_i )
-    // 在整数域中等效于: (((w_bar_i * 2) + q/2) / q) & 1
     uint8_t bit = ((((uint32_t)w_bar[i] << 1) + q/2) / q) & 1;
     set_bit(mu_tilde, i, bit);
   }
 
-  // Step 19: ECCDecode
-  // 初始化输出空间
-  memset(msg, 0, KYBER_INDCPA_MSGBYTES);
-  uint8_t bch_data[(KYBER_N + 7) / 8] = {0};
-  
-  // 提取高位数据 (0 到 l_bar/8 - 1)
-  memcpy(bch_data, mu_tilde, l_bar / 8);
-  
-  // 提取校验位并进行 BCH 解码纠错
-  // 注意：LAC 的 decode_bch 函数会把纠正后的结果直接写回 bch_data 里
-  decode_bch(bch_data, l_bar / 8, mu_tilde + (l_bar / 8));
-
-  // Step 20: mu := mu_bar || mu_ddot
-  // 把纠错后的高位数据复制给 msg
-  memcpy(msg, bch_data, l_bar / 8);
-  
-  // 把低位数据通过指针偏移拼接到 msg 后面
-  uint8_t *mu_ddot_ptr = msg + (l_bar / 8);
-  for(i = 0; i < h; i++) {
-    set_bit(mu_ddot_ptr, i, mu_ddot[i]);
-  }
+  // BCH 纠错高位，并存入输出区
+  decode_bch_high(mu_tilde, l_bar / 8, mu_tilde + (l_bar / 8));
+  memcpy(msg, mu_tilde, l_bar / 8);
 }
 
 /*************************************************

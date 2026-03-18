@@ -5,8 +5,6 @@
 #define WEAVER_MODE 1  /* 1: 512, 3: 1024, 5: 2048 */
 #endif
 
-/* 论文 Table 1 规定：所有实例的 MLWE 分块数 k 全部固定为 4！ */
-
 
 #if   (WEAVER_MODE == 1)
   #define KYBER_N 256
@@ -52,6 +50,7 @@
 
 #define KYBER_POLYBYTES             ((KYBER_N * 12) / 8)
 
+
 /* ====================================================================
  * 全局共享参数区：以下参数根据上面决定的 N 自动计算，不需要修改
  * ==================================================================== */
@@ -81,5 +80,6 @@
                                + KYBER_INDCPA_PUBLICKEYBYTES \
                                + 2*KYBER_SYMBYTES)
 #define KYBER_CIPHERTEXTBYTES  KYBER_INDCPA_BYTES
+
 
 #endif

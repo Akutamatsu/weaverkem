@@ -27,9 +27,9 @@ static inline void set_bit(uint8_t *out, int bit_pos, uint8_t val) {
 *
 * Arguments:   - uint8_t *r: pointer to output byte array
 *                            (of length KYBER_POLYCOMPRESSEDBYTES)
-*              - poly *a:    pointer to input polynomial
+*              - const poly *a: pointer to input polynomial
 **************************************************/
-void poly_compress(uint8_t r[KYBER_POLYCOMPRESSEDBYTES], poly *a)
+void poly_compress(uint8_t r[KYBER_POLYCOMPRESSEDBYTES], const poly *a)
 {
   unsigned int i,j;
   uint8_t t[8];
@@ -136,9 +136,9 @@ void poly_decompress(poly *r, const uint8_t a[KYBER_POLYCOMPRESSEDBYTES])
 *
 * Arguments:   - uint8_t *r: pointer to output byte array
 *                            (needs space for KYBER_POLYBYTES bytes)
-*              - poly *a:    pointer to input polynomial
+*              - const poly *a: pointer to input polynomial
 **************************************************/
-void poly_tobytes(uint8_t r[KYBER_POLYBYTES], poly *a)
+void poly_tobytes(uint8_t r[KYBER_POLYBYTES], const poly *a)
 {
   unsigned int i;
   uint16_t t0, t1;
@@ -303,7 +303,7 @@ void poly_frommsg(poly *r, const uint8_t msg[KYBER_INDCPA_MSGBYTES])
 * Description: Convert polynomial to 32-byte message
 *
 * Arguments:   - uint8_t *msg: pointer to output message
-*              - poly *a:      pointer to input polynomial
+*              - const poly *a: pointer to input polynomial
 **************************************************/
 // kyber原代码
 // void poly_tomsg(uint8_t msg[KYBER_INDCPA_MSGBYTES], poly *a)
@@ -353,7 +353,7 @@ void poly_frommsg(poly *r, const uint8_t msg[KYBER_INDCPA_MSGBYTES])
 // }
 
 // Algorithm 5: MsgDecode
-void poly_tomsg(uint8_t msg[KYBER_INDCPA_MSGBYTES], poly *a)
+void poly_tomsg(uint8_t msg[KYBER_INDCPA_MSGBYTES], const poly *a)
 {
   int i, j;
   const int16_t q = KYBER_Q;           

@@ -16,14 +16,17 @@
 void polyvec_compress_pk(uint8_t r[KYBER_PK_POLYVECBYTES], const polyvec *a)
 {
     unsigned int i, j, k;
-    uint64_t d0;
+    int16_t u;
+
 #if (KYBER_PK_POLYVECBYTES == (KYBER_K * KYBER_N * 10 / 8))
   uint16_t t[4];
   for(i=0;i<KYBER_K;i++) {
     for(j=0;j<KYBER_N/4;j++) {
-      for(k=0;k<4;k++)
-        t[k] = ((((uint32_t)a->vec[i].coeffs[4*j+k] << 10) + KYBER_Q/2)
-                / KYBER_Q) & 0x3ff;
+      for(k=0;k<4;k++){
+        u = a->vec[i].coeffs[4*j+k];
+        u += ((int16_t)u >> 15) & KYBER_Q;
+        t[k] = ((((uint32_t)u << 10) + KYBER_Q/2)/ KYBER_Q) & 0x3ff;
+      }
 
       r[0] = (t[0] >> 0);
       r[1] = (t[0] >> 8) | (t[1] << 2);
@@ -37,9 +40,11 @@ void polyvec_compress_pk(uint8_t r[KYBER_PK_POLYVECBYTES], const polyvec *a)
   uint16_t t[8];
   for(i=0;i<KYBER_K;i++) {
     for(j=0;j<KYBER_N/8;j++) {
-      for(k=0;k<8;k++)
-        t[k] = ((((uint32_t)a->vec[i].coeffs[8*j+k] << 9) + KYBER_Q/2)
-                /KYBER_Q) & 0x1ff;
+      for(k=0;k<8;k++) {
+        u = a->vec[i].coeffs[8*j+k];
+        u += ((int16_t)u >> 15) & KYBER_Q;
+        t[k] = ((((uint32_t)u << 9) + KYBER_Q/2)/KYBER_Q) & 0x1ff;
+      }
 
       r[0] = (t[0] >> 0);
       r[1] = (t[0] >> 8) | (t[1] << 1);
@@ -105,7 +110,7 @@ void polyvec_decompress_pk(polyvec *r, const uint8_t a[KYBER_PK_POLYVECBYTES])
     }
   }
 #else
-#error "KYBER_PK_POLYVECBYTES needs to be in {256*KYBER_K}"
+#error "KYBER_PK_POLYVECBYTES needs to be K*N*9/8, or K*N*10/8"
 #endif
 }
 #endif // PK_COMPRESS
@@ -122,15 +127,17 @@ void polyvec_decompress_pk(polyvec *r, const uint8_t a[KYBER_PK_POLYVECBYTES])
 void polyvec_compress(uint8_t r[KYBER_POLYVECCOMPRESSEDBYTES], const polyvec *a)
 {
   unsigned int i,j,k;
-  uint64_t d0;
+  int16_t u;
 
 #if (KYBER_POLYVECCOMPRESSEDBYTES == (KYBER_K * KYBER_N * 11 / 8))
   uint16_t t[8];
   for(i=0;i<KYBER_K;i++) {
     for(j=0;j<KYBER_N/8;j++) {
-      for(k=0;k<8;k++)
-        t[k] = ((((uint32_t)a->vec[i].coeffs[8*j+k] << 11) + KYBER_Q/2)
-                /KYBER_Q) & 0x7ff;
+      for(k=0;k<8;k++) {
+        u = a->vec[i].coeffs[8*j+k];
+        u += ((int16_t)u >> 15) & KYBER_Q;
+        t[k] = ((((uint32_t) << 11) + KYBER_Q/2)/KYBER_Q) & 0x7ff;
+      }
 
       r[ 0] = (t[0] >>  0);
       r[ 1] = (t[0] >>  8) | (t[1] << 3);
@@ -150,9 +157,11 @@ void polyvec_compress(uint8_t r[KYBER_POLYVECCOMPRESSEDBYTES], const polyvec *a)
   uint16_t t[4];
   for(i=0;i<KYBER_K;i++) {
     for(j=0;j<KYBER_N/4;j++) {
-      for(k=0;k<4;k++)
-        t[k] = ((((uint32_t)a->vec[i].coeffs[4*j+k] << 10) + KYBER_Q/2)
-                / KYBER_Q) & 0x3ff;
+      for(k=0;k<4;k++) {
+        u = a->vec[i].coeffs[4*j+k];
+        u += ((int16_t)u >> 15) & KYBER_Q;
+        t[k] = ((((uint32_t)u << 10) + KYBER_Q/2)/ KYBER_Q) & 0x3ff;
+      }
 
       r[0] = (t[0] >> 0);
       r[1] = (t[0] >> 8) | (t[1] << 2);
@@ -166,9 +175,11 @@ void polyvec_compress(uint8_t r[KYBER_POLYVECCOMPRESSEDBYTES], const polyvec *a)
   uint16_t t[8];
   for(i=0;i<KYBER_K;i++) {
     for(j=0;j<KYBER_N/8;j++) {
-      for(k=0;k<8;k++)
-        t[k] = ((((uint32_t)a->vec[i].coeffs[8*j+k] << 9) + KYBER_Q/2)
-                /KYBER_Q) & 0x1ff;
+      for(k=0;k<8;k++) {
+        u = a->vec[i].coeffs[8*j+k];
+        u += ((int16_t)u >> 15) & KYBER_Q;
+        t[k] = ((((uint32_t)u << 9) + KYBER_Q/2) /KYBER_Q) & 0x1ff;
+      }
 
       r[0] = (t[0] >> 0);
       r[1] = (t[0] >> 8) | (t[1] << 1);
@@ -356,23 +367,6 @@ void polyvec_reduce(polyvec *r)
   unsigned int i;
   for(i=0;i<KYBER_K;i++)
     poly_reduce(&r->vec[i]);
-}
-
-/*************************************************
-* Name:        polyvec_csubq
-*
-* Description: Applies conditional subtraction of q to each coefficient
-*              of each element of a vector of polynomials
-*              for details of conditional subtraction of q see comments in
-*              reduce.c
-*
-* Arguments:   - poly *r: pointer to input/output polynomial
-**************************************************/
-void polyvec_csubq(polyvec *r)
-{
-  unsigned int i;
-  for(i=0;i<KYBER_K;i++)
-    poly_csubq(&r->vec[i]);
 }
 
 /*************************************************

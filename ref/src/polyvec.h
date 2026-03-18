@@ -36,8 +36,6 @@ void polyvec_basemul_acc_montgomery(poly *r, const polyvec *a, const polyvec *b)
 
 #define polyvec_reduce KYBER_NAMESPACE(_polyvec_reduce)
 void polyvec_reduce(polyvec *r);
-#define polyvec_csubq KYBER_NAMESPACE(_polyvec_csubq)
-void polyvec_csubq(polyvec *r);
 
 #define polyvec_add KYBER_NAMESPACE(_polyvec_add)
 void polyvec_add(polyvec *r, const polyvec *a, const polyvec *b);

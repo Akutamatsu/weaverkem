@@ -23,24 +23,44 @@ static inline void set_bit(uint8_t *out, int bit_pos, uint8_t val) {
 * Arguments:   - poly *r:            pointer to output polynomial
 *              - const uint8_t *msg: pointer to input message
 **************************************************/
-// kyber原代码
-// void poly_frommsg(poly *r, const uint8_t msg[KYBER_INDCPA_MSGBYTES])
-// {
-//   unsigned int i,j;
-//   int16_t mask;
+#if 1
+/* kyber原代码: 不使用纠错, 直接编一层高位 */
+void poly_frommsg(poly *r, const uint8_t msg[KYBER_INDCPA_MSGBYTES])
+{
+  unsigned int i,j;
+  int16_t mask;
 
-// #if (KYBER_INDCPA_MSGBYTES != KYBER_N/8)
-// #error "KYBER_INDCPA_MSGBYTES must be equal to KYBER_N/8 bytes!"
-// #endif
+#if (KYBER_INDCPA_MSGBYTES > KYBER_N/8)
+#error "KYBER_INDCPA_MSGBYTES must be less than KYBER_N/8 bytes!"
+#endif
 
-//   for(i=0;i<KYBER_N/8;i++) {
-//     for(j=0;j<8;j++) {
-//       mask = -(int16_t)((msg[i] >> j)&1);
-//       r->coeffs[8*i+j] = mask & ((KYBER_Q+1)/2);
-//     }
-//   }
-// }
+  for(i=0;i<KYBER_N/8;i++) {
+    for(j=0;j<8;j++) {
+      mask = -(int16_t)((msg[i] >> j)&1);
+      r->coeffs[8*i+j] = mask & ((KYBER_Q+1)/2);
+    }
+  }
+}
+/* kyber原代码: 不使用纠错, 直接编一层高位 */
+void poly_tomsg(uint8_t msg[KYBER_INDCPA_MSGBYTES], const poly *a)
+{
+  unsigned int i,j;
+  uint16_t t;
 
+  //poly_csubq(a); /* modified barret_reduce */
+
+  for(i=0;i<KYBER_N/8;i++) {
+    msg[i] = 0;
+    for(j=0;j<8;j++) {
+      t  = a->coeffs[8*i+j];
+      // map to positive standard representatives
+      t += ((int16_t)t >> 15) & KYBER_Q;
+      t  = (((t << 1) + KYBER_Q/2)/KYBER_Q) & 1;
+      msg[i] |= t << j;
+    }
+  }
+}
+#else
 // 只更改ntt算法的代码
 // void poly_frommsg(poly *r, const uint8_t msg[KYBER_INDCPA_MSGBYTES])
 // {
@@ -147,22 +167,6 @@ void poly_frommsg(poly *r, const uint8_t msg[KYBER_INDCPA_MSGBYTES])
 * Arguments:   - uint8_t *msg: pointer to output message
 *              - const poly *a: pointer to input polynomial
 **************************************************/
-// kyber原代码
-// void poly_tomsg(uint8_t msg[KYBER_INDCPA_MSGBYTES], poly *a)
-// {
-//   unsigned int i,j;
-//   uint16_t t;
-
-//   poly_csubq(a);
-
-//   for(i=0;i<KYBER_N/8;i++) {
-//     msg[i] = 0;
-//     for(j=0;j<8;j++) {
-//       t = ((((uint16_t)a->coeffs[8*i+j] << 1) + KYBER_Q/2)/KYBER_Q) & 1;
-//       msg[i] |= t << j;
-//     }
-//   }
-// }
 
 // 只修改ntt 代码
 // void poly_tomsg(uint8_t msg[KYBER_INDCPA_MSGBYTES], poly *a)
@@ -285,3 +289,4 @@ void poly_tomsg(uint8_t msg[KYBER_INDCPA_MSGBYTES], poly *a)
   decode_bch_high(mu_tilde, l_bar / 8, mu_tilde + (l_bar / 8));
   memcpy(msg, mu_tilde, l_bar / 8);
 }
+#endif

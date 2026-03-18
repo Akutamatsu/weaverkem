@@ -20,14 +20,18 @@
 void poly_compress(uint8_t r[KYBER_POLYCOMPRESSEDBYTES], const poly *a)
 {
   unsigned int i,j;
+  int16_t u;
   uint8_t t[8];
 
-  poly_csubq(a);
 
 #if (KYBER_POLYCOMPRESSEDBYTES == (KYBER_N * 4 / 8))
   for(i=0;i<KYBER_N/8;i++) {
-    for(j=0;j<8;j++)
-      t[j] = ((((uint16_t)a->coeffs[8*i+j] << 4) + KYBER_Q/2)/KYBER_Q) & 15;
+    for(j=0;j<8;j++) {
+      // map to positive standard representatives
+      u  = a->coeffs[8*i+j];
+      u += (u >> 15) & KYBER_Q;
+      t[j] = ((((uint16_t)u << 4) + KYBER_Q/2)/KYBER_Q) & 15;
+    }
 
     r[0] = t[0] | (t[1] << 4);
     r[1] = t[2] | (t[3] << 4);
@@ -37,8 +41,12 @@ void poly_compress(uint8_t r[KYBER_POLYCOMPRESSEDBYTES], const poly *a)
   }
 #elif (KYBER_POLYCOMPRESSEDBYTES == (KYBER_N * 5 / 8))
   for(i=0;i<KYBER_N/8;i++) {
-    for(j=0;j<8;j++)
-      t[j] = ((((uint32_t)a->coeffs[8*i+j] << 5) + KYBER_Q/2)/KYBER_Q) & 31;
+    for(j=0;j<8;j++) {
+      // map to positive standard representatives
+      u  = a->coeffs[8*i+j];
+      u += (u >> 15) & KYBER_Q;
+      t[j] = ((((uint32_t)u << 5) + KYBER_Q/2)/KYBER_Q) & 31;
+    }
 
     r[0] = (t[0] >> 0) | (t[1] << 5);
     r[1] = (t[1] >> 3) | (t[2] << 2) | (t[3] << 7);
@@ -49,9 +57,12 @@ void poly_compress(uint8_t r[KYBER_POLYCOMPRESSEDBYTES], const poly *a)
   }
   #elif (KYBER_POLYCOMPRESSEDBYTES == (KYBER_N * 6 / 8))
   for(i=0;i<KYBER_N/4;i++) {
-    for(j=0;j<4;j++)
-      t[j] = ((((uint32_t)a->coeffs[4*i+j] << 6) + KYBER_Q/2)/KYBER_Q) & 63;
-
+    for(j=0;j<4;j++) {
+      // map to positive standard representatives
+      u  = a->coeffs[4*i+j];
+      u += (u >> 15) & KYBER_Q;
+      t[j] = ((((uint32_t)u << 6) + KYBER_Q/2)/KYBER_Q) & 63;
+    }
     r[0] = (t[0] >> 0) | (t[1] << 6);
     r[1] = (t[1] >> 2) | (t[2] << 4);
     r[2] = (t[2] >> 4) | (t[3] << 2);
@@ -131,11 +142,12 @@ void poly_tobytes(uint8_t r[KYBER_POLYBYTES], const poly *a)
   unsigned int i;
   uint16_t t0, t1;
 
-  poly_csubq(a);
-
   for(i=0;i<KYBER_N/2;i++) {
-    t0 = a->coeffs[2*i];
+    // map to positive standard representatives
+    t0  = a->coeffs[2*i];
+    t0 += ((int16_t)t0 >> 15) & KYBER_Q;
     t1 = a->coeffs[2*i+1];
+    t1 += ((int16_t)t1 >> 15) & KYBER_Q;
     r[3*i+0] = (t0 >> 0);
     r[3*i+1] = (t0 >> 8) | (t1 << 4);
     r[3*i+2] = (t1 >> 4);
@@ -306,22 +318,6 @@ void poly_reduce(poly *r)
   unsigned int i;
   for(i=0;i<KYBER_N;i++)
     r->coeffs[i] = barrett_reduce(r->coeffs[i]);
-}
-
-/*************************************************
-* Name:        poly_csubq
-*
-* Description: Applies conditional subtraction of q to each coefficient
-*              of a polynomial. For details of conditional subtraction
-*              of q see comments in reduce.c
-*
-* Arguments:   - poly *r: pointer to input/output polynomial
-**************************************************/
-void poly_csubq(poly *r)
-{
-  unsigned int i;
-  for(i=0;i<KYBER_N;i++)
-    r->coeffs[i] = csubq(r->coeffs[i]);
 }
 
 /*************************************************

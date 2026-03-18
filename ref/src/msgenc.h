@@ -7,6 +7,6 @@
 #define poly_frommsg KYBER_NAMESPACE(_poly_frommsg)
 void poly_frommsg(poly *r, const uint8_t msg[KYBER_INDCPA_MSGBYTES]);
 #define poly_tomsg KYBER_NAMESPACE(_poly_tomsg)
-void poly_tomsg(uint8_t msg[KYBER_INDCPA_MSGBYTES], poly *r);
+void poly_tomsg(uint8_t msg[KYBER_INDCPA_MSGBYTES], const poly *a);
 
 #endif

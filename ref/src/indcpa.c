@@ -5,6 +5,7 @@
 #include "indcpa.h"
 #include "polyvec.h"
 #include "poly.h"
+#include "msgenc.h"
 #include "ntt.h"
 #include "symmetric.h"
 

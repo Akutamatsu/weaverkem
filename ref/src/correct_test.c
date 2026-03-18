@@ -25,11 +25,10 @@ int		FindMarker(FILE *infile, const char *marker);
 int		ReadHex(FILE *infile, unsigned char *A, int Length, char *str);
 void	fprintBstr(FILE *fp, char *S, unsigned char *A, unsigned long long L);
 
-#ifdef CPA_TEST
-#define TEST_SK_BYTES KYBER_INDCPA_SECRETKEYBYTES
-#else
-#define TEST_SK_BYTES KYBER_SECRETKEYBYTES
-#endif
+#define MAX_TEST_ROUND   100000
+//#define MAX_FAILURE_STOP 10
+
+//#define LOG_FOR_DEBUG
 
 static int str_to_hex(uint8_t *dst_buf, uint32_t len, const char *src_str, uint32_t len_str)
 {
@@ -90,30 +89,32 @@ main()
     unsigned char       ct[CRYPTO_CIPHERTEXTBYTES], ss[CRYPTO_BYTES], ss1[CRYPTO_BYTES];
     uint64_t            fail, success;
     uint64_t            ctr;
-    unsigned char       pk[CRYPTO_PUBLICKEYBYTES], sk[TEST_SK_BYTES];
+    unsigned char       pk[CRYPTO_PUBLICKEYBYTES], sk[CRYPTO_SECRETKEYBYTES];
     int                 ret_val;
     
     // Create the REQUEST file
-    sprintf(fn_rsp, "PQCkemKAT_%d.rsp", TEST_SK_BYTES);
+#ifdef LOG_FOR_DEBUG
+    sprintf(fn_rsp, "PQCkemKAT_%d.rsp", KYBER_SECRETKEYBYTES);
     if ( (fp_rsp = fopen(fn_rsp, "w")) == NULL ) {
         printf("Couldn't open <%s> for write\n", fn_rsp);
         return KAT_FILE_OPEN_ERROR;
     }
-    
+    fprintf(fp_rsp, "# %s\n\n", CRYPTO_ALGNAME);
+#endif 
     for (int i=0; i<48; i++)
         entropy_input[i] = i;
 
     randombytes_init(entropy_input, NULL, 256);
     
-    fprintf(fp_rsp, "# %s\n\n", CRYPTO_ALGNAME);
     success = fail = 0;
     ctr = 0;
 	
     printf("%s start..\n", CRYPTO_ALGNAME);
-    printf("sk length: %d\n", TEST_SK_BYTES);
+    printf("sk length: %d\n", CRYPTO_SECRETKEYBYTES);
     printf("pk length: %d\n", CRYPTO_PUBLICKEYBYTES);
     printf("ct length: %d\n", CRYPTO_CIPHERTEXTBYTES);
-    while(ctr < 1048576) { // 6
+    
+    while(ctr < MAX_TEST_ROUND) {
 
 #if 1
         randombytes(seed, 48);
@@ -132,67 +133,42 @@ main()
             printf("crypto_kem_keypair returned <%d>\n", ret_val);
             return KAT_CRYPTO_FAILURE;
         }
-#ifndef MY_DEBUG
         if ( (ret_val = crypto_kem_enc(ct, ss, pk)) != 0) {
             printf("crypto_kem_enc returned <%d>\n", ret_val);
             return KAT_CRYPTO_FAILURE;
         }
-#else
-        if ((ret_val = crypto_kem_enc(ct, ss, pk, sk)) != 0) {
-            printf("crypto_kem_enc returned <%d>\n", ret_val);
-            return KAT_CRYPTO_FAILURE;
-        }
-#endif
         if ( (ret_val = crypto_kem_dec(ss1, ct, sk)) != 0) {
             fail++;
             printf("crypto_kem_dec returned <%d> at %ld-th round.\n", ret_val, ctr);
             //return KAT_CRYPTO_FAILURE;
             continue;
         }
-
-// #define FIND_FAILURE 1
-#if (FIND_FAILURE == 1)  
         if ( memcmp(ss, ss1, CRYPTO_BYTES) ) {
             fail++;
-#if 1
+#ifdef LOG_FOR_DEBUG
 			//fprintf(fp_rsp, "crypto_kem_dec returned bad 'ss' value\n");
             fprintf(fp_rsp, "count = %lu\n", ctr);
             fprintBstr(fp_rsp, "seed = ", seed, 48);
             fprintBstr(fp_rsp, "pk = ", pk, CRYPTO_PUBLICKEYBYTES);
-            fprintBstr(fp_rsp, "sk = ", sk, TEST_SK_BYTES);
+            fprintBstr(fp_rsp, "sk = ", sk, KYBER_SECRETKEYBYTES);
             fprintBstr(fp_rsp, "ct = ", ct, CRYPTO_CIPHERTEXTBYTES);
             fprintBstr(fp_rsp, "ss = ", ss, CRYPTO_BYTES);
             fprintBstr(fp_rsp, "ss1 = ", ss1, CRYPTO_BYTES);
             printf("crypto_kem_dec returned bad 'ss' value at %lu-th round.\n", ctr);
-            if (fail > 9) {
+#endif
+#ifdef MAX_FAILURE_STOP
+            if (fail >= MAX_FAILURE_STOP) {
+                ctr++;
                 break;
             }
 #endif
-            //return KAT_CRYPTO_FAILURE; // 这都没关文件...
         }
-#else
-        if (memcmp(ss, ss1, CRYPTO_BYTES) == 0) {
-            success++;
-            //fprintf(fp_rsp, "crypto_kem_dec returned bad 'ss' value\n");
-            fprintf(fp_rsp, "count = %lu\n", ctr);
-            fprintBstr(fp_rsp, "seed = ", seed, 48);
-            fprintBstr(fp_rsp, "pk = ", pk, CRYPTO_PUBLICKEYBYTES);
-            fprintBstr(fp_rsp, "sk = ", sk, TEST_SK_BYTES);
-            fprintBstr(fp_rsp, "ct = ", ct, CRYPTO_CIPHERTEXTBYTES);
-            fprintBstr(fp_rsp, "ss = ", ss, CRYPTO_BYTES);
-            fprintBstr(fp_rsp, "ss1 = ", ss1, CRYPTO_BYTES);
-            printf("crypto_kem_dec returned correct 'ss' value at %lu-th round.\n", ctr);
-            if (success > 3) {
-                break;
-            }
-            //return KAT_CRYPTO_FAILURE; // 这都没关文件...
-    }
-#endif
         ctr++;
     }
-    printf("Falure times: %ld / in total %ld rounds of Test\n", fail, ctr);
+    printf("Failure times: %ld / in total %ld rounds of Test\n", fail, ctr);
+#ifdef LOG_FOR_DEBUG
     fclose(fp_rsp);
-
+#endif
     return KAT_SUCCESS;
 }
 

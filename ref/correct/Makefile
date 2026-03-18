@@ -31,4 +31,4 @@ $(SRC):$(INC)
 .PHONY: clean
 
 clean:
-	-rm $(BIN)
+	-rm $(BIN) *.rsp

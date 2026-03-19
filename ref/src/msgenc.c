@@ -7,15 +7,6 @@
 #include "reduce.h"
 #include "bch.h"
 
-// --- 辅助函数：按位提取与写入 ---
-static inline uint8_t get_bit(const uint8_t *in, int bit_pos) {
-    return (in[bit_pos / 8] >> (bit_pos % 8)) & 1;
-}
-static inline void set_bit(uint8_t *out, int bit_pos, uint8_t val) {
-    if(val) out[bit_pos / 8] |=  (1 << (bit_pos % 8));
-    else    out[bit_pos / 8] &= ~(1 << (bit_pos % 8));
-}
-
 /*************************************************
 * Name:        poly_frommsg
 *
@@ -100,9 +91,8 @@ void poly_tomsg(uint8_t msg[KYBER_INDCPA_MSGBYTES], const poly *a)
 **************************************************/
 void poly_frommsg(poly *r, const uint8_t msg[KYBER_INDCPA_MSGBYTES])
 {
-  unsigned int i;
-  const int16_t half_q = (KYBER_Q + 1) / 2;  // 1665
-  const int16_t quarter_q = KYBER_Q / 4;     // 832
+  unsigned int i, j;
+  int16_t mask;
 
 #if (WEAVER_MODE == 1)
   const int l_bar = 128;  // 高位承载 bit 数
@@ -132,9 +122,11 @@ void poly_frommsg(poly *r, const uint8_t msg[KYBER_INDCPA_MSGBYTES])
   encode_bch_high(msg, l_bar / 8, mu_tilde + (l_bar / 8)); 
 
   // 调制高位
-  for(i = 0; i < KYBER_N; i++) { 
-    uint8_t bit = get_bit(mu_tilde, i);
-    r->coeffs[i] = (r->coeffs[i] + half_q * bit) % KYBER_Q;
+  for(i = 0; i < KYBER_N/8; i++) {
+    for(j=0;j<8;j++) {
+      mask = -(int16_t)((mu_tilde[i] >> j)&1);
+      r->coeffs[8*i+j] = mask & KYBER_HALFQ;
+    }
   }
 
 #if WEAVER_MODE == 3 || WEAVER_MODE == 5
@@ -149,12 +141,14 @@ void poly_frommsg(poly *r, const uint8_t msg[KYBER_INDCPA_MSGBYTES])
   encode_bch_low(msg_low, l_ddot / 8, mu_ddot_buf + (l_ddot / 8));
 
   // 调制次高位 (带 4 倍重复码)
-  for(i = 0; i < h; i++) {
-    uint8_t bit = get_bit(mu_ddot_buf, i);
-    r->coeffs[i + 0  ] = (r->coeffs[i + 0  ] + quarter_q * bit);
-    r->coeffs[i + 64 ] = (r->coeffs[i + 64 ] + quarter_q * bit);
-    r->coeffs[i + 128] = (r->coeffs[i + 128] + quarter_q * bit);
-    r->coeffs[i + 192] = (r->coeffs[i + 192] + quarter_q * bit);
+  for(i = 0; i < h/8; i++) {
+    for(j=0;j<8;j++) {
+      mask = -(int16_t)((mu_ddot_buf[i] >> j)&1);
+      r->coeffs[8*i + j + + 0  ] = r->coeffs[8*i + j + + 0  ] + (mask & (KYBER_Q/4));
+      r->coeffs[8*i + j + + 64 ] = r->coeffs[8*i + j + + 64 ] + (mask & (KYBER_Q/4));
+      r->coeffs[8*i + j + + 128] = r->coeffs[8*i + j + + 128] + (mask & (KYBER_Q/4));
+      r->coeffs[8*i + j + + 192] = r->coeffs[8*i + j + + 192] + (mask & (KYBER_Q/4));
+    }
   }
 #endif
 }
@@ -198,12 +192,29 @@ void poly_frommsg(poly *r, const uint8_t msg[KYBER_INDCPA_MSGBYTES])
 // #endif
 // }
 
+/*************************************************
+* Name:        flipabs
+*
+* Description: Computes |(x mod+ q/2) - q/4|
+*
+* Arguments:   uint16_t x: input coefficient
+*
+* Returns |(x mod+ q/2) - q/4|
+**************************************************/
+static uint16_t flipabs_ex(int16_t x)
+{
+  int16_t r,m;
+  r = barrett_reduce_ex(x);
+
+  r = r - KYBER_Q/4;
+  m = r >> 15;
+  return (r + m)^m; // turn to positive
+}
+
 // Algorithm 5: MsgDecode
 void poly_tomsg(uint8_t msg[KYBER_INDCPA_MSGBYTES], const poly *a)
 {
   unsigned int i, j;
-  const int16_t half_q = (KYBER_Q + 1) / 2;
-  const int16_t quarter_q = KYBER_Q / 4;
   memset(msg, 0, KYBER_INDCPA_MSGBYTES);
 
 #if WEAVER_MODE == 1
@@ -233,14 +244,15 @@ void poly_tomsg(uint8_t msg[KYBER_INDCPA_MSGBYTES], const poly *a)
   // ==========================================================
   uint8_t mu_ddot_noisy[8] = {0}; 
   for(i = 0; i < h; i++) {
-    int32_t ee = 0;
-    ee =  abs(barrett_reduce_ex(w_bar[i + 0  ]) - quarter_q);
-    ee += abs(barrett_reduce_ex(w_bar[i + 64 ]) - quarter_q);
-    ee += abs(barrett_reduce_ex(w_bar[i + 128]) - quarter_q);
-    ee += abs(barrett_reduce_ex(w_bar[i + 192]) - quarter_q);
+    uint16_t ee = 0;
+    ee =  flipabs_ex(w_bar[i + 0  ]);
+    ee += flipabs_ex(w_bar[i + 64 ]);
+    ee += flipabs_ex(w_bar[i + 128]);
+    ee += flipabs_ex(w_bar[i + 192]);
     // 判决得到带噪的码字位
-    uint8_t bit = (ee >= half_q) ? 0 : 1;
-    set_bit(mu_ddot_noisy, i, bit);
+    ee = (ee - KYBER_HALFQ);
+    ee >>= 15;
+    mu_ddot_noisy[i>>3] |= ee<<(i&7);
   }
 
   // 关键步骤：纠错并提取出完美的纯数据
@@ -258,12 +270,14 @@ void poly_tomsg(uint8_t msg[KYBER_INDCPA_MSGBYTES], const poly *a)
   encode_bch_low(msg_low, l_ddot / 8, mu_ddot_clean + (l_ddot / 8));
 
   // 用完美的码字，把低位造成的干扰从多项式系数中彻底减掉
-  for(i = 0; i < h; i++) { // 不保证为正
-    uint8_t clean_bit = get_bit(mu_ddot_clean, i);
-    w_bar[i + 0  ] = w_bar[i + 0  ] - quarter_q * clean_bit;
-    w_bar[i + 64 ] = w_bar[i + 64 ] - quarter_q * clean_bit;
-    w_bar[i + 128] = w_bar[i + 128] - quarter_q * clean_bit;
-    w_bar[i + 192] = w_bar[i + 192] - quarter_q * clean_bit;
+  for(i = 0; i < h/8; i++) { // 不保证为正
+    for(j = 0; j < 8; j++) {
+        int16_t mask = -((mu_ddot_clean[i] >> j)&1);
+        w_bar[8*i + j + 0  ] = w_bar[8*i + j + 0  ] - (mask & (KYBER_Q/4));
+        w_bar[8*i + j + 64 ] = w_bar[8*i + j + 64 ] - (mask & (KYBER_Q/4));
+        w_bar[8*i + j + 128] = w_bar[8*i + j + 128] - (mask & (KYBER_Q/4));
+        w_bar[8*i + j + 192] = w_bar[8*i + j + 192] - (mask & (KYBER_Q/4));
+    }
   }
 #endif
 

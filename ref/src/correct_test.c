@@ -26,7 +26,7 @@ int		ReadHex(FILE *infile, unsigned char *A, int Length, char *str);
 void	fprintBstr(FILE *fp, char *S, unsigned char *A, unsigned long long L);
 
 #define MAX_TEST_ROUND   100000
-//#define MAX_FAILURE_STOP 10
+#define MAX_FAILURE_STOP 10
 
 //#define LOG_FOR_DEBUG
 

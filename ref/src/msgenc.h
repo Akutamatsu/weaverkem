@@ -12,12 +12,14 @@
 #elif (WEAVER_MODE == 3)
   #define ELL_BAR_BYTES      28 // 224 bits = 28 bytes
   #define ELL_DDOT_BYTES     4  // 32 bits = 4 bytes
-  #define LOW_CODEWORD_BYTES 8  // 64 bits = 8 bytes
+  #define LOW_ECC_BYTES      3  // (63,45,3) BCH code; ceil(18 bits) = 3 bytes
+  #define LOW_CODEWORD_BYTES 7  // (ELL_DDOT_BYTES + LOW_ECC_BYTES) <= 8 bytes = 64 bits
 
 #elif (WEAVER_MODE == 5)
   #define ELL_BAR_BYTES      60 // 480 bits = 60 bytes
   #define ELL_DDOT_BYTES     4  // 32 bits = 4 bytes
-  #define LOW_CODEWORD_BYTES 8  // 64 bits = 8 bytes
+  #define LOW_ECC_BYTES      3  // (63,45,3) BCH code; ceil(18 bits) = 3 bytes
+  #define LOW_CODEWORD_BYTES 7  // (ELL_DDOT_BYTES + LOW_ECC_BYTES) <= 8 bytes = 64 bits
 
 #else
   #error "WEAVER_MODE must be in {1,3,5}"

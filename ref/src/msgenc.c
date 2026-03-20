@@ -7,6 +7,7 @@
 #include "reduce.h"
 #include "bch.h"
 
+#if 0
 /*************************************************
 * Name:        poly_frommsg
 *
@@ -15,7 +16,6 @@
 * Arguments:   - poly *r:            pointer to output polynomial
 *              - const uint8_t *msg: pointer to input message
 **************************************************/
-#if 0
 /* kyber原代码: 不使用纠错, 直接编一层高位 */
 void poly_frommsg(poly *r, const uint8_t msg[KYBER_INDCPA_MSGBYTES])
 {
@@ -53,36 +53,6 @@ void poly_tomsg(uint8_t msg[KYBER_INDCPA_MSGBYTES], const poly *a)
   }
 }
 #else
-// 只更改ntt算法的代码
-// void poly_frommsg(poly *r, const uint8_t msg[KYBER_INDCPA_MSGBYTES])
-// {
-//   unsigned int i,j;
-//   int16_t mask;
-
-// #if KYBER_N == 128
-//   // Level 1: 128个系数装32字节，每个系数承载2个bit
-//   for(i=0;i<KYBER_INDCPA_MSGBYTES;i++) {
-//     for(j=0;j<4;j++) {
-//       int16_t val = (msg[i] >> (2*j)) & 3;
-//       r->coeffs[4*i+j] = (val * KYBER_Q + 2) / 4;
-//     }
-//   }
-
-// #elif KYBER_N == 256 || KYBER_N == 512
-//   // 先将所有系数清零 (这是为了应对 N=512 时，后 256 个系数没有被用到的情况)
-//   for(i=0; i<KYBER_N; i++) {
-//     r->coeffs[i] = 0;
-//   }
-
-//   // Level 2 & 3: 前256个系数，每个系数装1个bit
-//   for(i=0;i<KYBER_INDCPA_MSGBYTES;i++) {
-//     for(j=0;j<8;j++) {
-//       mask = -(int16_t)((msg[i] >> j)&1);
-//       r->coeffs[8*i+j] = mask & ((KYBER_Q+1)/2);
-//     }
-//   }
-// #endif
-// }
 
 // Algorithm 3: MsgEncode
 /*************************************************
@@ -93,19 +63,10 @@ void poly_frommsg(poly *r, const uint8_t msg[KYBER_INDCPA_MSGBYTES])
 {
   unsigned int i, j;
   int16_t mask;
-
-#if (WEAVER_MODE == 1)
-  const int l_bar = 128;  // 高位承载 bit 数
-  const int l_ddot = 0;   // 次高位承载 bit 数
-  const int h = 0;        // 次高位码字总长度 (N/4)
-#elif (WEAVER_MODE == 3)
-  const int l_bar = 224;
-  const int l_ddot = 32;  // BCH(63, 32) 明文长度
-  const int h = 64;       // 256 / 4 = 64
-#elif (WEAVER_MODE == 5)
-  const int l_bar = 480;  // 根据你实际参数，也可能是 480
-  const int l_ddot = 32;
-  const int h = 64;       // 保证跟 BCH63 匹配
+  uint8_t mu_tilde[KYBER_N/8] = {0};
+#if WEAVER_MODE == 3 || WEAVER_MODE == 5
+  uint8_t mu_ddot_buf[LOW_CODEWORD_BYTES] = {0};
+  const uint8_t *msg_low = msg + ELL_BAR_BYTES; // msg lowbits part
 #endif
 
   for(i = 0; i < KYBER_N; i++) {
@@ -113,13 +74,11 @@ void poly_frommsg(poly *r, const uint8_t msg[KYBER_INDCPA_MSGBYTES])
   }
 
   // ==========================================================
-  // Step 1: 高位 BCH 编码 (Encode to Higher bits)
+  // Step 1: Encode to Higher bits
   // ==========================================================
-  uint8_t mu_tilde[(KYBER_N + 7) / 8] = {0}; 
-  
   // 拼装高位码字：拷贝明文 -> 追加校验位
-  memcpy(mu_tilde, msg, l_bar / 8);
-  encode_bch_high(msg, l_bar / 8, mu_tilde + (l_bar / 8)); 
+  memcpy(mu_tilde, msg, ELL_BAR_BYTES);
+  encode_bch_high(msg, ELL_BAR_BYTES, mu_tilde + ELL_BAR_BYTES);
 
   // 调制高位
   for(i = 0; i < KYBER_N/8; i++) {
@@ -131,17 +90,15 @@ void poly_frommsg(poly *r, const uint8_t msg[KYBER_INDCPA_MSGBYTES])
 
 #if WEAVER_MODE == 3 || WEAVER_MODE == 5
   // ==========================================================
-  // Step 2: 次高位 BCH 编码 (Encode to Lower bits)
+  // Step 2: Encode to Lower bits
   // ==========================================================
-  uint8_t mu_ddot_buf[8] = {0}; // 最多容纳 64 bits = 8 bytes
-  const uint8_t *msg_low = msg + (l_bar / 8); // 定位到 msg 的次高位数据区
   
   // 拼装次高位码字：拷贝明文 -> 追加校验位
-  memcpy(mu_ddot_buf, msg_low, l_ddot / 8);
-  encode_bch_low(msg_low, l_ddot / 8, mu_ddot_buf + (l_ddot / 8));
+  memcpy(mu_ddot_buf, msg_low, ELL_DDOT_BYTES);
+  encode_bch_low(msg_low, ELL_DDOT_BYTES, mu_ddot_buf + ELL_DDOT_BYTES);
 
   // 调制次高位 (带 4 倍重复码)
-  for(i = 0; i < h/8; i++) {
+  for(i = 0; i < LOW_CODEWORD_BYTES; i++) {
     for(j=0;j<8;j++) {
       mask = -(int16_t)((mu_ddot_buf[i] >> j)&1);
       r->coeffs[8*i + j + + 0  ] = r->coeffs[8*i + j + + 0  ] + (mask & (KYBER_Q/4));
@@ -152,45 +109,6 @@ void poly_frommsg(poly *r, const uint8_t msg[KYBER_INDCPA_MSGBYTES])
   }
 #endif
 }
-
-/*************************************************
-* Name:        poly_tomsg
-*
-* Description: Convert polynomial to 32-byte message
-*
-* Arguments:   - uint8_t *msg: pointer to output message
-*              - const poly *a: pointer to input polynomial
-**************************************************/
-
-// 只修改ntt 代码
-// void poly_tomsg(uint8_t msg[KYBER_INDCPA_MSGBYTES], poly *a)
-// {
-//   unsigned int i,j;
-//   uint16_t t;
-
-//   poly_csubq(a);
-
-// #if KYBER_N == 128
-//   // Level 1: 从128个系数中恢复出256个bit(32字节)
-//   for(i=0;i<KYBER_INDCPA_MSGBYTES;i++) {
-//     msg[i] = 0;
-//     for(j=0;j<4;j++) {
-//       t = ((((uint32_t)a->coeffs[4*i+j] << 2) + KYBER_Q/2) / KYBER_Q) & 3;
-//       msg[i] |= t << (2*j);
-//     }
-//   }
-
-// #elif KYBER_N == 256 || KYBER_N == 512
-//   // Level 2 & 3: 只要前256个系数被还原即可，后面补的0不需要解包
-//   for(i=0;i<KYBER_INDCPA_MSGBYTES;i++) {
-//     msg[i] = 0;
-//     for(j=0;j<8;j++) {
-//       t = ((((uint16_t)a->coeffs[8*i+j] << 1) + KYBER_Q/2)/KYBER_Q) & 1;
-//       msg[i] |= t << j;
-//     }
-//   }
-// #endif
-// }
 
 /*************************************************
 * Name:        flipabs
@@ -215,23 +133,15 @@ static uint16_t flipabs_ex(int16_t x)
 void poly_tomsg(uint8_t msg[KYBER_INDCPA_MSGBYTES], const poly *a)
 {
   unsigned int i, j;
-  memset(msg, 0, KYBER_INDCPA_MSGBYTES);
-
-#if WEAVER_MODE == 1
-  const int l_bar = 128;
-  const int l_ddot = 0;
-  const int h = 0;
-#elif WEAVER_MODE == 3
-  const int l_bar = 224;
-  const int l_ddot = 32;
-  const int h = 64;
-#elif WEAVER_MODE == 5
-  const int l_bar = 480;
-  const int l_ddot = 32;
-  const int h = 64;
+  int16_t w_bar[KYBER_N];
+  uint8_t mu_tilde[KYBER_N/8] = {0};
+#if WEAVER_MODE == 3 || WEAVER_MODE == 5
+  uint8_t mu_ddot_noisy[LOW_CODEWORD_BYTES] = {0};
+  uint8_t *msg_low = msg + ELL_BAR_BYTES;
 #endif
 
-  int16_t w_bar[KYBER_N];
+  memset(msg, 0, KYBER_INDCPA_MSGBYTES);
+
   for(i = 0; i < KYBER_N; i++) { // COPY coeffs into w_bar
     int16_t t = a->coeffs[i];
     // map to positive standard representatives: [0, q-1]
@@ -240,10 +150,9 @@ void poly_tomsg(uint8_t msg[KYBER_INDCPA_MSGBYTES], const poly *a)
 
 #if WEAVER_MODE == 3 || WEAVER_MODE == 5
   // ==========================================================
-  // Phase 1: 解码次高位 (Decode Lower bits)
+  // Phase 1: Decode Lower bits
   // ==========================================================
-  uint8_t mu_ddot_noisy[8] = {0}; 
-  for(i = 0; i < h; i++) {
+  for(i = 0; i < 8 * LOW_CODEWORD_BYTES; i++) {
     uint16_t ee = 0;
     ee =  flipabs_ex(w_bar[i + 0  ]);
     ee += flipabs_ex(w_bar[i + 64 ]);
@@ -256,21 +165,19 @@ void poly_tomsg(uint8_t msg[KYBER_INDCPA_MSGBYTES], const poly *a)
   }
 
   // 关键步骤：纠错并提取出完美的纯数据
-  decode_bch_low(mu_ddot_noisy, l_ddot / 8, mu_ddot_noisy + (l_ddot / 8));
-  
-  uint8_t *msg_low = msg + (l_bar / 8);
-  memcpy(msg_low, mu_ddot_noisy, l_ddot / 8); // 将纯数据保存到输出区
+  decode_bch_low(mu_ddot_noisy, ELL_DDOT_BYTES, mu_ddot_noisy + ELL_DDOT_BYTES);
+  memcpy(msg_low, mu_ddot_noisy, ELL_DDOT_BYTES); // 将纯数据保存到输出区
   
   // ==========================================================
-  // Phase 2: SIC 串行干扰消除 (Re-encode and Cancel)
+  // Phase 2: Cancel Interference from Lower bits
   // ==========================================================
   // 利用纯净的数据，重新编码出没有任何噪声的完美码字！
   uint8_t mu_ddot_clean[8] = {0};
-  memcpy(mu_ddot_clean, msg_low, l_ddot / 8);
-  encode_bch_low(msg_low, l_ddot / 8, mu_ddot_clean + (l_ddot / 8));
+  memcpy(mu_ddot_clean, msg_low, ELL_DDOT_BYTES);
+  encode_bch_low(msg_low, ELL_DDOT_BYTES, mu_ddot_clean + ELL_DDOT_BYTES);
 
   // 用完美的码字，把低位造成的干扰从多项式系数中彻底减掉
-  for(i = 0; i < h/8; i++) { // 不保证为正
+  for(i = 0; i < LOW_CODEWORD_BYTES; i++) { // 不保证为正
     for(j = 0; j < 8; j++) {
         int16_t mask = -((mu_ddot_clean[i] >> j)&1);
         w_bar[8*i + j + 0  ] = w_bar[8*i + j + 0  ] - (mask & (KYBER_Q/4));
@@ -282,11 +189,8 @@ void poly_tomsg(uint8_t msg[KYBER_INDCPA_MSGBYTES], const poly *a)
 #endif
 
   // ==========================================================
-  // Phase 3: 解码高位 (Decode Higher bits)
+  // Phase 3: Decode Higher bits
   // ==========================================================
-  uint8_t mu_tilde[(KYBER_N + 7) / 8] = {0};
-  
-  // 此时的 w_bar，底层干扰已经被 SIC 清除了！
   for(i = 0; i < KYBER_N/8; i++) {
     for(j=0;j<8;j++) {
       int16_t t = w_bar[8*i+j];
@@ -297,7 +201,7 @@ void poly_tomsg(uint8_t msg[KYBER_INDCPA_MSGBYTES], const poly *a)
   }
 
   // BCH 纠错高位，并存入输出区
-  decode_bch_high(mu_tilde, l_bar / 8, mu_tilde + (l_bar / 8));
-  memcpy(msg, mu_tilde, l_bar / 8);
+  decode_bch_high(mu_tilde, ELL_BAR_BYTES, mu_tilde + ELL_BAR_BYTES);
+  memcpy(msg, mu_tilde, ELL_BAR_BYTES);
 }
 #endif

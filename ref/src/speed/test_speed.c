@@ -3,14 +3,16 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "api.h"
-//#include "kex.h"
 #include "params.h"
 #include "indcpa.h"
 #include "poly.h"
 #include "polyvec.h"
 #include "cpucycles.h"
 #include "speed_print.h"
+#include "symmetric.h"
+#include "rng.h"
 
+#define ALL_TESTS
 #define NTESTS 10000
 
 uint64_t t[NTESTS];
@@ -23,14 +25,16 @@ int main()
   unsigned char sk[CRYPTO_SECRETKEYBYTES] = {0};
   unsigned char ct[CRYPTO_CIPHERTEXTBYTES] = {0};
   unsigned char key[CRYPTO_BYTES] = {0};
-  //unsigned char kexsenda[KEX_AKE_SENDABYTES] = {0};
-  //unsigned char kexsendb[KEX_AKE_SENDBBYTES] = {0};
-  //unsigned char kexkey[KEX_SSBYTES] = {0};
   polyvec matrix[KYBER_K];
+  polyvec sp, pkpv;
   poly ap;
+  unsigned int nonce = 0;
+  uint8_t buf[2*KYBER_SYMBYTES];
+  uint8_t kr[2*KYBER_SYMBYTES];
 
   printf("%s start..\n", CRYPTO_ALGNAME);
   
+#ifdef ALL_TESTS
   for(i=0;i<NTESTS;i++) {
     t[i] = cpucycles();
     gen_matrix(matrix, seed, 0);
@@ -61,11 +65,59 @@ int main()
   }
   print_results("INVNTT: ", t, NTESTS);
 
+  for(i=0;i<KYBER_K;i++)
+    poly_getnoise_eta2(sp.vec+i, seed, nonce++);
+
+  for(i=0;i<NTESTS;i++) {
+    t[i] = cpucycles();
+    polyvec_basemul_acc_montgomery(&ap, &matrix[0], &sp);
+  }
+  print_results("polyvec_basemul_acc_montgomery: ", t, NTESTS);
+
+  for(i=0;i<NTESTS;i++) {
+    t[i] = cpucycles();
+    poly_reduce(&ap);
+  }
+  print_results("poly_reduce: ", t, NTESTS);
+#endif
+
   for(i=0;i<NTESTS;i++) {
     t[i] = cpucycles();
     crypto_kem_keypair(pk, sk);
   }
   print_results("keypair: ", t, NTESTS);
+
+#ifdef ALL_TESTS
+  for(i=0;i<NTESTS;i++) {
+    t[i] = cpucycles();
+    randombytes(buf, KYBER_SYMBYTES);
+  }
+  print_results("randombytes: ", t, NTESTS);
+  
+  for(i=0;i<NTESTS;i++) {
+    t[i] = cpucycles();
+    hash_h(buf, pk, KYBER_PUBLICKEYBYTES);
+  }
+  print_results("hash_h: ", t, NTESTS);
+
+   for(i=0;i<NTESTS;i++) {
+    t[i] = cpucycles();
+    hash_g(kr, buf, 2*KYBER_SYMBYTES);
+  }
+  print_results("hash_g: ", t, NTESTS);
+
+   for(i=0;i<NTESTS;i++) {
+    t[i] = cpucycles();
+    unpack_pk(&pkpv, seed, pk);
+  }
+  print_results("unpack_pk: ", t, NTESTS);
+
+  for(i=0;i<NTESTS;i++) {
+    t[i] = cpucycles();
+    pack_ciphertext(ct, &sp, &ap);
+  }
+  print_results("pack_ciphertext: ", t, NTESTS);
+#endif
 
   for(i=0;i<NTESTS;i++) {
     t[i] = cpucycles();
@@ -77,44 +129,7 @@ int main()
     t[i] = cpucycles();
     crypto_kem_dec(key, ct, sk);
   }
-  
   print_results("decaps: ", t, NTESTS);
-  /*
-  for(i=0;i<NTESTS;i++) {
-    t[i] = cpucycles();
-    kex_uake_initA(kexsenda, key, sk, pk);
-  }
-  print_results("kex_uake_initA: ", t, NTESTS);
 
-  for(i=0;i<NTESTS;i++) {
-    t[i] = cpucycles();
-    kex_uake_sharedB(kexsendb, kexkey, kexsenda, sk);
-  }
-  print_results("kex_uake_sharedB: ", t, NTESTS);
-
-  for(i=0;i<NTESTS;i++) {
-    t[i] = cpucycles();
-    kex_uake_sharedA(kexkey, kexsendb, key, sk);
-  }
-  print_results("kex_uake_sharedA: ", t, NTESTS);
-
-  for(i=0;i<NTESTS;i++) {
-    t[i] = cpucycles();
-    kex_ake_initA(kexsenda, key, sk, pk);
-  }
-  print_results("kex_ake_initA: ", t, NTESTS);
-
-  for(i=0;i<NTESTS;i++) {
-    t[i] = cpucycles();
-    kex_ake_sharedB(kexsendb, kexkey, kexsenda, sk, pk);
-  }
-  print_results("kex_ake_sharedB: ", t, NTESTS);
-
-  for(i=0;i<NTESTS;i++) {
-    t[i] = cpucycles();
-    kex_ake_sharedA(kexkey, kexsendb, key, sk, sk);
-  }
-  print_results("kex_ake_sharedA: ", t, NTESTS);
-  */
   return 0;
 }

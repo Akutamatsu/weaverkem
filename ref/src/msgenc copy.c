@@ -7,18 +7,6 @@
 #include "reduce.h"
 #include "bch.h"
 
-
-
-/*************************************************
-* Name:        cmov_int16
-* Description: Constant-time conditional move. 
-* If b=1, *r = v; If b=0, *r remains unchanged.
-**************************************************/
-static inline void cmov_int16(int16_t *r, int16_t v, uint16_t b) {
-  b = -b; // If b=1, b becomes 0xFFFF; If b=0, b becomes 0x0000
-  *r ^= b & (*r ^ v);
-}
-
 #if 0
 /*************************************************
 * Name:        poly_frommsg
@@ -74,11 +62,11 @@ void poly_tomsg(uint8_t msg[KYBER_INDCPA_MSGBYTES], const poly *a)
 void poly_frommsg(poly *r, const uint8_t msg[KYBER_INDCPA_MSGBYTES])
 {
   unsigned int i, j;
+  int16_t mask;
   uint8_t mu_tilde[KYBER_N/8] = {0};
 #if WEAVER_MODE == 3 || WEAVER_MODE == 5
   uint8_t mu_ddot_buf[LOW_CODEWORD_BYTES] = {0};
   const uint8_t *msg_low = msg + ELL_BAR_BYTES; // msg lowbits part
-  int16_t val_low;
 #endif
 
   for(i = 0; i < KYBER_N; i++) {
@@ -95,7 +83,8 @@ void poly_frommsg(poly *r, const uint8_t msg[KYBER_INDCPA_MSGBYTES])
   // 调制高位
   for(i = 0; i < KYBER_N/8; i++) {
     for(j=0;j<8;j++) {
-      cmov_int16(&r->coeffs[8*i+j], KYBER_HALFQ, (mu_tilde[i] >> j) & 1);
+      mask = -(int16_t)((mu_tilde[i] >> j)&1);
+      r->coeffs[8*i+j] = mask & KYBER_HALFQ;
     }
   }
 
@@ -111,12 +100,11 @@ void poly_frommsg(poly *r, const uint8_t msg[KYBER_INDCPA_MSGBYTES])
   // 调制次高位 (带 4 倍重复码)
   for(i = 0; i < LOW_CODEWORD_BYTES; i++) {
     for(j=0;j<8;j++) {
-      val_low = 0;
-      cmov_int16(&val_low, (KYBER_Q/4), (mu_ddot_buf[i] >> j) & 1);
-      r->coeffs[8*i + j + 0  ] += val_low;
-      r->coeffs[8*i + j + 64 ] += val_low;
-      r->coeffs[8*i + j + 128] += val_low;
-      r->coeffs[8*i + j + 192] += val_low;
+      mask = -(int16_t)((mu_ddot_buf[i] >> j)&1);
+      r->coeffs[8*i + j + + 0  ] = r->coeffs[8*i + j + + 0  ] + (mask & (KYBER_Q/4));
+      r->coeffs[8*i + j + + 64 ] = r->coeffs[8*i + j + + 64 ] + (mask & (KYBER_Q/4));
+      r->coeffs[8*i + j + + 128] = r->coeffs[8*i + j + + 128] + (mask & (KYBER_Q/4));
+      r->coeffs[8*i + j + + 192] = r->coeffs[8*i + j + + 192] + (mask & (KYBER_Q/4));
     }
   }
 #endif
@@ -189,15 +177,13 @@ void poly_tomsg(uint8_t msg[KYBER_INDCPA_MSGBYTES], const poly *a)
   encode_bch_low(msg_low, ELL_DDOT_BYTES, mu_ddot_clean + ELL_DDOT_BYTES);
 
   // 用完美的码字，把低位造成的干扰从多项式系数中彻底减掉
-  int16_t sub_val;
   for(i = 0; i < LOW_CODEWORD_BYTES; i++) { // 不保证为正
     for(j = 0; j < 8; j++) {
-      sub_val = 0;
-      cmov_int16(&sub_val, (KYBER_Q/4), (mu_ddot_clean[i] >> j) & 1); 
-      w_bar[8*i + j + 0  ] -= sub_val;
-      w_bar[8*i + j + 64 ] -= sub_val;
-      w_bar[8*i + j + 128] -= sub_val;
-      w_bar[8*i + j + 192] -= sub_val;
+        int16_t mask = -((mu_ddot_clean[i] >> j)&1);
+        w_bar[8*i + j + 0  ] = w_bar[8*i + j + 0  ] - (mask & (KYBER_Q/4));
+        w_bar[8*i + j + 64 ] = w_bar[8*i + j + 64 ] - (mask & (KYBER_Q/4));
+        w_bar[8*i + j + 128] = w_bar[8*i + j + 128] - (mask & (KYBER_Q/4));
+        w_bar[8*i + j + 192] = w_bar[8*i + j + 192] - (mask & (KYBER_Q/4));
     }
   }
 #endif

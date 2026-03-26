@@ -3,6 +3,7 @@
 #include <string.h>
 #include "params.h"
 #include "poly.h"
+#include "msgenc.h"
 
 // 打印字节的辅助函数
 void print_hex(const char *label, const uint8_t *data, size_t len) {
@@ -50,3 +51,6 @@ int main() {
 
     return 0;
 }
+
+// gcc -g -march=native -fomit-frame-pointer -DWEAVER_MODE=5 -I. -o test_codec test_coding.c cbd.c fips202.c indcpa.c kem_cpa.c ntt.c pol
+// y.c polyvec.c reduce.c rng.c verify.c symmetric-shake.c bch_high.c bch_low.c msgenc.c -lcrypto

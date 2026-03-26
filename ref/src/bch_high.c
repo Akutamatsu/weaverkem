@@ -286,6 +286,7 @@ int decode_bch_high(uint8_t *data, unsigned int len, const uint8_t *recv_ecc)
 
     // sanity check: make sure data length can be handled 
     if (8*len > (bch.n-bch.ecc_bits))
+        // printf("len:%d,n:%d,ecc_bits:%d",len,bch.n,bch.ecc_bits);
         return -1;
         
     //check data and ecc pointer

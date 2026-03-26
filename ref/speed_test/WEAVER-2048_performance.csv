@@ -1,0 +1,18 @@
+Operation,Median (Cycles),Average (Cycles)
+gen_a: ,56881,58611
+gen_s: ,1235,1258
+gen_e: ,2198,2338
+NTT: ,6928,7159
+INVNTT: ,8600,8725
+vec_mult: ,26256,25881
+poly_compress: ,359,369
+poly_decompress: ,377,384
+polyvec_compress: ,5408,5820
+polyvec_decompress: ,2695,2800
+BCH_encode: ,606,647
+BCH_decode: ,472,562
+msg_encode: ,823,846
+msg_decode: ,6781,7472
+keypair: ,299294,309293
+encaps: ,350716,363422
+decaps: ,425309,440442

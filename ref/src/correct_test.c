@@ -140,7 +140,7 @@ main()
         if ( (ret_val = crypto_kem_dec(ss1, ct, sk)) != 0) {
             fail++;
             printf("crypto_kem_dec returned <%d> at %ld-th round.\n", ret_val, ctr);
-            //return KAT_CRYPTO_FAILURE;
+            // return KAT_CRYPTO_FAILURE;
             continue;
         }
         if ( memcmp(ss, ss1, CRYPTO_BYTES) ) {

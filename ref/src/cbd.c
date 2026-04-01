@@ -146,19 +146,15 @@ static void cbd4(poly *r, const uint8_t buf[4*KYBER_N/4])
 static void cbd1(poly *r, const uint8_t buf[1*KYBER_N/4])
 {
   unsigned int i,j;
-  uint32_t t,d;
+  uint32_t t;
   int16_t a,b;
 
-  for(i=0;i<KYBER_N/8;i++) {
-    t  = load32_littleendian(buf+4*i);
-    d  = t & 0xAAAAAAAA;
-    d += (t>>1) & 0xAAAAAAAA;
-    /* Actually for eta=1: each coeff = bit_a - bit_b
-       packed as 2 bits per coeff in the buffer */
-    for(j=0;j<8;j++) {
+  for(i=0;i<KYBER_N/16;i++) {
+    t = load32_littleendian(buf + 4*i);
+    for(j=0;j<16;j++) {
       a = (t >> (2*j+0)) & 0x1;
       b = (t >> (2*j+1)) & 0x1;
-      r->coeffs[8*i+j] = a - b;
+      r->coeffs[16*i+j] = a - b;
     }
   }
 }

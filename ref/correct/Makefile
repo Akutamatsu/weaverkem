@@ -3,7 +3,7 @@ VPATH = ../src/:../src/speed
 CFLAGS += -g -march=native -fomit-frame-pointer
 LDFLAGS=-lcrypto
 # NOTE: 'kem_cpa.c' used for debug. Change to 'kem_cca.c' for complete FO. 
-SRC= correct_test.c cbd.c fips202.c indcpa.c kem_cpa.c ntt.c poly.c polyvec.c reduce.c rng.c verify.c symmetric-shake.c bch_high.c bch_low.c msgenc.c
+SRC= correct_test.c cbd.c fips202.c indcpa.c kem_cca.c ntt.c poly.c polyvec.c reduce.c rng.c verify.c symmetric-shake.c bch_high.c bch_low.c msgenc.c
 INC= api.h cbd.h fips202.h indcpa.h ntt.h params.h poly.h polyvec.h reduce.h rng.h verify.h symmetric.h bch.h
 
 # 输出文件名改为适配 WEAVER 论文的三个实例 (512, 1024, 2048)

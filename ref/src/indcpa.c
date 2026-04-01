@@ -231,7 +231,7 @@ void indcpa_keypair_derand(uint8_t pk[KYBER_INDCPA_PUBLICKEYBYTES],
   const uint8_t *publicseed = buf;
   const uint8_t *noiseseed = buf+KYBER_SYMBYTES;
   uint8_t nonce = 0;
-  polyvec a[KYBER_K], e, pkpv, skpv;
+  polyvec a[KYBER_K] = {0}, e = {0}, pkpv = {0}, skpv = {0};
 
   memcpy(buf, coins, KYBER_SYMBYTES);
   buf[KYBER_SYMBYTES] = KYBER_K;
@@ -297,8 +297,8 @@ void indcpa_enc(uint8_t c[KYBER_INDCPA_BYTES],
   unsigned int i;
   uint8_t seed[KYBER_SYMBYTES];
   uint8_t nonce = 0;
-  polyvec sp, pkpv, ep, at[KYBER_K], b;
-  poly v, k, epp;
+  polyvec sp = {0}, pkpv = {0}, ep = {0}, at[KYBER_K] = {0}, b = {0};
+  poly v = {0}, k = {0}, epp = {0};
 
   unpack_pk(&pkpv, seed, pk);
 #ifdef PK_COMPRESS
@@ -350,8 +350,8 @@ void indcpa_dec(uint8_t m[KYBER_INDCPA_MSGBYTES],
                 const uint8_t c[KYBER_INDCPA_BYTES],
                 const uint8_t sk[KYBER_INDCPA_SECRETKEYBYTES])
 {
-  polyvec b, skpv;
-  poly v, mp;
+  polyvec b = {0}, skpv = {0};
+  poly v = {0}, mp = {0};
 
   unpack_ciphertext(&b, &v, c);
   unpack_sk(&skpv, sk);

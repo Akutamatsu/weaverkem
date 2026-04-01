@@ -1,6 +1,7 @@
 #ifndef KEM_H
 #define KEM_H
 
+#include <stdint.h>
 #include "params.h"
 
 #define crypto_kem_keypair_derand KYBER_NAMESPACE(_keypair_derand)

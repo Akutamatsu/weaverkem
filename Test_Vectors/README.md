@@ -32,16 +32,9 @@ SS = <hex>                 # Shared secret (from encapsulation)
 
 ## Generation
 
-To regenerate the test vectors:
+To regenerate the test vectors by compiling & running KAT program:  
 
-```bash
-# For each instance (example: WeaverKEM-128)
-cd ../Implementations/Reference_Implementation/WeaverKEM-128
-mkdir -p build && cd build
-cmake .. && cmake --build .
-./KAT_KEM_WeaverKEM-128
-cp output/KAT_KEM_WeaverKEM-128.txt ../../../../Test_Vectors/
-```
+Please check `/Implementations/Reference_Implementation/TESTING.md`.
 
 ## Verification
 

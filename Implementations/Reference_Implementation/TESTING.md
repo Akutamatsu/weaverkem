@@ -99,25 +99,11 @@ WeaverKEM-256 : PASS (output == Test_Vectors)
 WeaverKEM-512 : PASS (output == Test_Vectors)
 ```
 
-### 当 output 与 Test_Vectors 不一致时
-
-若实现修复后生成了新的正确 KAT，应同步更新 `Test_Vectors/`：
-
-```bash
-cp Implementations/Reference_Implementation/WeaverKEM-128/output/KAT_KEM_WeaverKEM-128.txt Test_Vectors/KAT_KEM_WeaverKEM-128.txt
-cp Implementations/Reference_Implementation/WeaverKEM-256/output/KAT_KEM_WeaverKEM-256.txt Test_Vectors/KAT_KEM_WeaverKEM-256.txt
-cp Implementations/Reference_Implementation/WeaverKEM-512/output/KAT_KEM_WeaverKEM-512.txt Test_Vectors/KAT_KEM_WeaverKEM-512.txt
-```
-
 ## 方法二：Windows MSYS2 MINGW64 测试
 
 > **重要**：必须使用 **MSYS2 MINGW64 终端**（从开始菜单打开，标题栏显示 `MINGW64`），
 > 不能使用 PowerShell 或 cmd.exe。
 >
-> 若项目路径**不含**中文或空格，可直接在各实例目录下使用 `make kat`，也可使用与上文 Unix/Linux 一致的 CMake 命令。
->
-> 若项目路径**含有**中文或空格字符，请使用下方的绝对路径 gcc 命令（将 `<PROJECT_ROOT>`
-> 替换为实际路径，格式为 MSYS2 风格，例如 `/c/Users/username/Desktop/weaverkem-main`）。
 
 ### 前置条件
 

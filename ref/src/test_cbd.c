@@ -248,7 +248,7 @@ int main(void)
 
   /* Table 1: all three parameter sets */
   cbd_param sets[3] = {
-    { "WEAVER-512",  128, 4, 4 },
+    { "WEAVER-512",  256, 2, 4 },
     { "WEAVER-1024", 256, 2, 4 },
     { "WEAVER-2048", 512, 1, 4 }
   };

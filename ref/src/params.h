@@ -11,12 +11,12 @@
   #define KYBER_N 256
   #define KYBER_INDCPA_MSGBYTES 16
   #define KYBER_NAMESPACE(s) pqcrystals_weaver512_ref##s
-  #define KYBER_ETA1 4
+  #define KYBER_ETA1 2
   #define KYBER_ETA2 4
   #define KYBER_K 2
-  /* dt = 9, du = 9, dv = 4 */
-  #define KYBER_PK_POLYVECBYTES        (KYBER_K *((KYBER_N * 9) / 8))
-  #define KYBER_POLYVECCOMPRESSEDBYTES (KYBER_K * ((KYBER_N * 9) / 8))
+  /* dt = 8, du = 8, dv = 4 */
+  #define KYBER_PK_POLYVECBYTES        (KYBER_K * ((KYBER_N * 8) / 8))
+  #define KYBER_POLYVECCOMPRESSEDBYTES (KYBER_K * ((KYBER_N * 8) / 8))
   #define KYBER_POLYCOMPRESSEDBYTES    ((KYBER_N * 4) / 8)
 
 #elif (WEAVER_MODE == 3)
@@ -27,9 +27,9 @@
   #define KYBER_ETA2 4
   #define KYBER_K 4
   
-  /* dt = 10, du = 10, dv = 4 */
-  #define KYBER_PK_POLYVECBYTES        (KYBER_K * ((KYBER_N * 10) / 8))
-  #define KYBER_POLYVECCOMPRESSEDBYTES (KYBER_K * ((KYBER_N * 10) / 8))
+  /* dt = 9, du = 9, dv = 4 */
+  #define KYBER_PK_POLYVECBYTES        (KYBER_K * ((KYBER_N * 9) / 8))
+  #define KYBER_POLYVECCOMPRESSEDBYTES (KYBER_K * ((KYBER_N * 9) / 8))
   #define KYBER_POLYCOMPRESSEDBYTES    ((KYBER_N * 4) / 8)
 
 #elif (WEAVER_MODE == 5)
@@ -40,9 +40,9 @@
   #define KYBER_ETA2 4
   #define KYBER_K 4
   
-  /* dt = 10, du = 10, dv = 6 */
-  #define KYBER_PK_POLYVECBYTES        (KYBER_K * ((KYBER_N * 10) / 8))
-  #define KYBER_POLYVECCOMPRESSEDBYTES (KYBER_K * ((KYBER_N * 10) / 8))
+  /* dt = 9, du = 9, dv = 6 */
+  #define KYBER_PK_POLYVECBYTES        (KYBER_K * ((KYBER_N * 9) / 8))
+  #define KYBER_POLYVECCOMPRESSEDBYTES (KYBER_K * ((KYBER_N * 9) / 8))
   #define KYBER_POLYCOMPRESSEDBYTES    ((KYBER_N * 6) / 8)
 
 #else

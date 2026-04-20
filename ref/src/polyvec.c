@@ -58,8 +58,16 @@ void polyvec_compress_pk(uint8_t r[KYBER_PK_POLYVECBYTES], const polyvec *a)
       r += 9;
     }
   }
+#elif (KYBER_PK_POLYVECBYTES == (KYBER_K * KYBER_N * 8 / 8))
+  for(i=0;i<KYBER_K;i++) {
+    for(j=0;j<KYBER_N;j++) {
+      u = a->vec[i].coeffs[j];
+      u += ((int16_t)u >> 15) & KYBER_Q;
+      *r++ = ((((uint32_t)u << 8) + KYBER_Q/2) / KYBER_Q) & 0xff;
+    }
+  }
 #else
-#error "KYBER_PK_POLYVECBYTES needs to be K*N*9/8, or K*N*10/8"
+#error "KYBER_PK_POLYVECBYTES needs to be K*N*8/8, K*N*9/8, or K*N*10/8"
 #endif
 }
 
@@ -109,8 +117,14 @@ void polyvec_decompress_pk(polyvec *r, const uint8_t a[KYBER_PK_POLYVECBYTES])
         r->vec[i].coeffs[8*j+k] = ((uint32_t)(t[k] & 0x1FF)*KYBER_Q + 256) >> 9;
     }
   }
+#elif (KYBER_PK_POLYVECBYTES == (KYBER_K * KYBER_N * 8 / 8))
+  for(i=0;i<KYBER_K;i++) {
+    for(j=0;j<KYBER_N;j++) {
+      r->vec[i].coeffs[j] = ((uint32_t)(*a++)*KYBER_Q + 128) >> 8;
+    }
+  }
 #else
-#error "KYBER_PK_POLYVECBYTES needs to be K*N*9/8, or K*N*10/8"
+#error "KYBER_PK_POLYVECBYTES needs to be K*N*8/8, K*N*9/8, or K*N*10/8"
 #endif
 }
 #endif // PK_COMPRESS
@@ -136,7 +150,7 @@ void polyvec_compress(uint8_t r[KYBER_POLYVECCOMPRESSEDBYTES], const polyvec *a)
       for(k=0;k<8;k++) {
         u = a->vec[i].coeffs[8*j+k];
         u += ((int16_t)u >> 15) & KYBER_Q;
-        t[k] = ((((uint32_t) << 11) + KYBER_Q/2)/KYBER_Q) & 0x7ff;
+        t[k] = ((((uint32_t)u << 11) + KYBER_Q/2)/KYBER_Q) & 0x7ff;
       }
 
       r[ 0] = (t[0] >>  0);
@@ -193,8 +207,16 @@ void polyvec_compress(uint8_t r[KYBER_POLYVECCOMPRESSEDBYTES], const polyvec *a)
       r += 9;
     }
   }
+#elif (KYBER_POLYVECCOMPRESSEDBYTES == (KYBER_K * KYBER_N * 8 / 8))
+  for(i=0;i<KYBER_K;i++) {
+    for(j=0;j<KYBER_N;j++) {
+      u = a->vec[i].coeffs[j];
+      u += ((int16_t)u >> 15) & KYBER_Q;
+      *r++ = ((((uint32_t)u << 8) + KYBER_Q/2) / KYBER_Q) & 0xff;
+    }
+  }
 #else
-#error "KYBER_POLYVECCOMPRESSEDBYTES needs to be K*N*9/8, K*N*10/8, or K*N*11/8"
+#error "KYBER_POLYVECCOMPRESSEDBYTES needs to be K*N*8/8, K*N*9/8, K*N*10/8, or K*N*11/8"
 #endif
 }
 
@@ -262,8 +284,14 @@ void polyvec_decompress(polyvec *r, const uint8_t a[KYBER_POLYVECCOMPRESSEDBYTES
         r->vec[i].coeffs[8*j+k] = ((uint32_t)(t[k] & 0x1FF)*KYBER_Q + 256) >> 9;
     }
   }
+#elif (KYBER_POLYVECCOMPRESSEDBYTES == (KYBER_K * KYBER_N * 8 / 8))
+  for(i=0;i<KYBER_K;i++) {
+    for(j=0;j<KYBER_N;j++) {
+      r->vec[i].coeffs[j] = ((uint32_t)(*a++)*KYBER_Q + 128) >> 8;
+    }
+  }
 #else
-#error "KYBER_POLYVECCOMPRESSEDBYTES needs to be K*N*9/8, K*N*10/8, or K*N*11/8"
+#error "KYBER_POLYVECCOMPRESSEDBYTES needs to be K*N*8/8, K*N*9/8, K*N*10/8, or K*N*11/8"
 #endif
 }
 

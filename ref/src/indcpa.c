@@ -231,7 +231,7 @@ void indcpa_keypair_derand(uint8_t pk[KYBER_INDCPA_PUBLICKEYBYTES],
   const uint8_t *publicseed = buf;
   const uint8_t *noiseseed = buf+KYBER_SYMBYTES;
   uint8_t nonce = 0;
-  polyvec a[KYBER_K] = {0}, e = {0}, pkpv = {0}, skpv = {0};
+  polyvec a[KYBER_K] = {0}, pkpv = {0}, skpv = {0};
 
   memcpy(buf, coins, KYBER_SYMBYTES);
   buf[KYBER_SYMBYTES] = KYBER_K;
@@ -241,13 +241,10 @@ void indcpa_keypair_derand(uint8_t pk[KYBER_INDCPA_PUBLICKEYBYTES],
 
   for(i=0;i<KYBER_K;i++)
     poly_getnoise_eta1(&skpv.vec[i], noiseseed, nonce++);
-  for(i=0;i<KYBER_K;i++)
-    poly_getnoise_eta1(&e.vec[i], noiseseed, nonce++);
 
   polyvec_ntt(&skpv);
   
 #ifndef PK_COMPRESS
-  polyvec_ntt(&e);
 
   // matrix-vector multiplication
   for(i=0;i<KYBER_K;i++) {
@@ -255,7 +252,6 @@ void indcpa_keypair_derand(uint8_t pk[KYBER_INDCPA_PUBLICKEYBYTES],
     poly_tomont(&pkpv.vec[i]);
   }
 
-  polyvec_add(&pkpv, &pkpv, &e);
   polyvec_reduce(&pkpv); // save in NTT domain.
 
 #else
@@ -264,7 +260,6 @@ void indcpa_keypair_derand(uint8_t pk[KYBER_INDCPA_PUBLICKEYBYTES],
       //poly_tomont(&pkpv.vec[i]);
   }
   polyvec_invntt_tomont(&pkpv);  // from NTT to plain.
-  polyvec_add(&pkpv, &pkpv, &e);
   polyvec_reduce(&pkpv);
 
 #endif
@@ -297,8 +292,8 @@ void indcpa_enc(uint8_t c[KYBER_INDCPA_BYTES],
   unsigned int i;
   uint8_t seed[KYBER_SYMBYTES];
   uint8_t nonce = 0;
-  polyvec sp = {0}, pkpv = {0}, ep = {0}, at[KYBER_K] = {0}, b = {0};
-  poly v = {0}, k = {0}, epp = {0};
+  polyvec sp = {0}, pkpv = {0}, at[KYBER_K] = {0}, b = {0};
+  poly v = {0}, k = {0};
 
   unpack_pk(&pkpv, seed, pk);
 #ifdef PK_COMPRESS
@@ -309,9 +304,6 @@ void indcpa_enc(uint8_t c[KYBER_INDCPA_BYTES],
 
   for(i=0;i<KYBER_K;i++)
     poly_getnoise_eta1(sp.vec+i, coins, nonce++);
-  for(i=0;i<KYBER_K;i++)
-    poly_getnoise_eta2(ep.vec+i, coins, nonce++);
-  poly_getnoise_eta2(&epp, coins, nonce++);
 
   polyvec_ntt(&sp);
 
@@ -324,8 +316,6 @@ void indcpa_enc(uint8_t c[KYBER_INDCPA_BYTES],
   polyvec_invntt_tomont(&b);
   poly_invntt_tomont(&v);
 
-  polyvec_add(&b, &b, &ep);
-  poly_add(&v, &v, &epp);
   poly_add(&v, &v, &k);
   polyvec_reduce(&b);
   poly_reduce(&v);

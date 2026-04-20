@@ -1,0 +1,246 @@
+=== REF 512 ===
+WEAVER-512 Performance Test Start..
+randombytes: 
+median: 5440 cycles/ticks
+average: 6354 cycles/ticks
+
+hash_h (PK): 
+median: 3050 cycles/ticks
+average: 3139 cycles/ticks
+
+hash_g: 
+median: 648 cycles/ticks
+average: 776 cycles/ticks
+
+gen_a: 
+median: 8718 cycles/ticks
+average: 9113 cycles/ticks
+
+gen_s: 
+median: 1528 cycles/ticks
+average: 1575 cycles/ticks
+
+gen_e: 
+median: 1520 cycles/ticks
+average: 1544 cycles/ticks
+
+NTT: 
+median: 4488 cycles/ticks
+average: 4998 cycles/ticks
+
+INVNTT: 
+median: 5874 cycles/ticks
+average: 6025 cycles/ticks
+
+vec_mult: 
+median: 4706 cycles/ticks
+average: 4850 cycles/ticks
+
+poly_compress: 
+median: 186 cycles/ticks
+average: 189 cycles/ticks
+
+poly_decompress: 
+median: 44 cycles/ticks
+average: 47 cycles/ticks
+
+polyvec_compress: 
+median: 1624 cycles/ticks
+average: 1629 cycles/ticks
+
+polyvec_decompress: 
+median: 654 cycles/ticks
+average: 661 cycles/ticks
+
+msg_encode: 
+median: 306 cycles/ticks
+average: 312 cycles/ticks
+
+msg_decode: 
+median: 1574 cycles/ticks
+average: 2072 cycles/ticks
+
+indcpa_enc: 
+median: 70400 cycles/ticks
+average: 75104 cycles/ticks
+
+kem_enc_derand: 
+median: 74666 cycles/ticks
+average: 79561 cycles/ticks
+
+keypair: 
+median: 64082 cycles/ticks
+average: 67232 cycles/ticks
+
+encaps: 
+median: 80510 cycles/ticks
+average: 85088 cycles/ticks
+
+decaps: 
+median: 98770 cycles/ticks
+average: 104159 cycles/ticks
+
+=== REF 1024 ===
+WEAVER-1024 Performance Test Start..
+randombytes: 
+median: 5460 cycles/ticks
+average: 6125 cycles/ticks
+
+hash_h (PK): 
+median: 5998 cycles/ticks
+average: 6604 cycles/ticks
+
+hash_g: 
+median: 648 cycles/ticks
+average: 653 cycles/ticks
+
+gen_a: 
+median: 36470 cycles/ticks
+average: 38479 cycles/ticks
+
+gen_s: 
+median: 922 cycles/ticks
+average: 945 cycles/ticks
+
+gen_e: 
+median: 1548 cycles/ticks
+average: 1569 cycles/ticks
+
+NTT: 
+median: 4540 cycles/ticks
+average: 5059 cycles/ticks
+
+INVNTT: 
+median: 5788 cycles/ticks
+average: 6097 cycles/ticks
+
+vec_mult: 
+median: 7324 cycles/ticks
+average: 7920 cycles/ticks
+
+poly_compress: 
+median: 188 cycles/ticks
+average: 188 cycles/ticks
+
+poly_decompress: 
+median: 48 cycles/ticks
+average: 79 cycles/ticks
+
+polyvec_compress: 
+median: 3276 cycles/ticks
+average: 3296 cycles/ticks
+
+polyvec_decompress: 
+median: 1258 cycles/ticks
+average: 1254 cycles/ticks
+
+msg_encode: 
+median: 556 cycles/ticks
+average: 573 cycles/ticks
+
+msg_decode: 
+median: 3738 cycles/ticks
+average: 3936 cycles/ticks
+
+indcpa_enc: 
+median: 158144 cycles/ticks
+average: 170804 cycles/ticks
+
+kem_enc_derand: 
+median: 165574 cycles/ticks
+average: 179289 cycles/ticks
+
+keypair: 
+median: 155226 cycles/ticks
+average: 163369 cycles/ticks
+
+encaps: 
+median: 172280 cycles/ticks
+average: 183181 cycles/ticks
+
+decaps: 
+median: 206330 cycles/ticks
+average: 223318 cycles/ticks
+
+=== REF 2048 ===
+WEAVER-2048 Performance Test Start..
+randombytes: 
+median: 5450 cycles/ticks
+average: 5995 cycles/ticks
+
+hash_h (PK): 
+median: 11684 cycles/ticks
+average: 12288 cycles/ticks
+
+hash_g: 
+median: 646 cycles/ticks
+average: 667 cycles/ticks
+
+gen_a: 
+median: 68690 cycles/ticks
+average: 71541 cycles/ticks
+
+gen_s: 
+median: 1044 cycles/ticks
+average: 1372 cycles/ticks
+
+gen_e: 
+median: 2804 cycles/ticks
+average: 2860 cycles/ticks
+
+NTT: 
+median: 8724 cycles/ticks
+average: 8870 cycles/ticks
+
+INVNTT: 
+median: 11272 cycles/ticks
+average: 11842 cycles/ticks
+
+vec_mult: 
+median: 30708 cycles/ticks
+average: 30998 cycles/ticks
+
+poly_compress: 
+median: 472 cycles/ticks
+average: 475 cycles/ticks
+
+poly_decompress: 
+median: 298 cycles/ticks
+average: 300 cycles/ticks
+
+polyvec_compress: 
+median: 6498 cycles/ticks
+average: 6910 cycles/ticks
+
+polyvec_decompress: 
+median: 2424 cycles/ticks
+average: 2610 cycles/ticks
+
+msg_encode: 
+median: 942 cycles/ticks
+average: 954 cycles/ticks
+
+msg_decode: 
+median: 6226 cycles/ticks
+average: 6378 cycles/ticks
+
+indcpa_enc: 
+median: 366848 cycles/ticks
+average: 390141 cycles/ticks
+
+kem_enc_derand: 
+median: 382810 cycles/ticks
+average: 404373 cycles/ticks
+
+keypair: 
+median: 345192 cycles/ticks
+average: 364743 cycles/ticks
+
+encaps: 
+median: 401648 cycles/ticks
+average: 427628 cycles/ticks
+
+decaps: 
+median: 475650 cycles/ticks
+average: 504293 cycles/ticks
+

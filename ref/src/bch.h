@@ -1,4 +1,5 @@
-
+#ifndef WEAVER_BCH_H
+#define WEAVER_BCH_H
 #include <stdint.h>
 
 //BCH parameter struct
@@ -21,3 +22,4 @@ int  decode_bch_high(uint8_t *data, unsigned int len, const uint8_t *recv_ecc);
 // ==========================================
 void encode_bch_low(const uint8_t *data, unsigned int len, uint8_t *ecc);
 int  decode_bch_low(uint8_t *data, unsigned int len, const uint8_t *recv_ecc);
+#endif

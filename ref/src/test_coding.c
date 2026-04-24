@@ -3,7 +3,8 @@
 #include <string.h>
 #include "params.h"
 #include "poly.h"
-
+#include "msgenc.h"
+#include "bch.h"
 // 打印字节的辅助函数
 void print_hex(const char *label, const uint8_t *data, size_t len) {
     printf("%s: ", label);
@@ -50,3 +51,5 @@ int main() {
 
     return 0;
 }
+
+// gcc -O3 -march=native   -DWEAVER_MODE=1   -I./src   ./src/test_coding.c   ./src/indcpa.c   ./src/poly.c   ./src/ntt.c   ./src/cbd.c   ./src/reduce.c   ./src/polyvec.c   ./src/bch_high.c   ./src/bch_low.c   ./src/msgenc.c   ./src/fips202.c   ./src/symmetric-shake.c   -o test_coding

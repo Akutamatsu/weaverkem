@@ -2,9 +2,21 @@
 # include <stdlib.h>
 # include <string.h>
 # include <stdint.h>
-# include "params.h"  // <--- 引入我们自己架构的参数
+# include "params.h"  
 # include "bch.h"
-#include "bch63.h"
+
+#if WEAVER_MODE == 3 || WEAVER_MODE == 5
+     
+    #if WEAVER_MODE == 3
+        // bch(255, 224, 3) 
+        #include "bch63_33_4.h"
+    #elif WEAVER_MODE == 5
+        // bch(511, 474, 4) 
+        #include "bch127_92_5.h"
+    #else
+        #error "Invalid WEAVER_MODE for BCH configuration"
+    #endif
+
 
 
 // convert 32-bit ecc words to ecc bytes
@@ -311,3 +323,5 @@ int decode_bch_low(uint8_t *data, unsigned int len, const uint8_t *recv_ecc)
     
     return err;
 }
+
+#endif

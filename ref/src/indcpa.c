@@ -9,6 +9,11 @@
 #include "ntt.h"
 #include "symmetric.h"
 
+#ifdef PK_COMPRESS
+#include "invq.h"
+#define INV_Q_LIFTING
+#endif
+
 /*************************************************
 * Name:        pack_pk
 *
@@ -295,15 +300,35 @@ void indcpa_enc(uint8_t c[KYBER_INDCPA_BYTES],
   polyvec sp = {0}, pkpv = {0}, at[KYBER_K] = {0}, b = {0};
   poly v = {0}, k = {0};
 
+#ifdef INV_Q_LIFTING
+  /*
+   * WEAVER-Inv (Algorithm 2):
+   *   1. 从 pk 中提取压缩后的桶编号（不做 Decompress）
+   *   2. 用 Inv_q 随机提升到 Z_q（消耗 nonce=0 的 PRF 输出）
+   *   3. NTT 变换
+   */
+  polyvec_fromcompressed_pk(&pkpv, pk);
+  memcpy(seed, pk + KYBER_PK_POLYVECBYTES, KYBER_SYMBYTES);
+
+  polyvec_invq(&pkpv, coins, nonce++, &invq_pk_table);
+  polyvec_ntt(&pkpv);
+#else
   unpack_pk(&pkpv, seed, pk);
 #ifdef PK_COMPRESS
   polyvec_ntt(&pkpv);
 #endif
+#endif
+
   poly_frommsg(&k, m);
   gen_at(at, seed);
 
+#ifdef INV_Q_LIFTING
+  for(i=0;i<KYBER_K;i++)
+    poly_getnoise_eta2(sp.vec+i, coins, nonce++);
+#else
   for(i=0;i<KYBER_K;i++)
     poly_getnoise_eta1(sp.vec+i, coins, nonce++);
+#endif
 
   polyvec_ntt(&sp);
 

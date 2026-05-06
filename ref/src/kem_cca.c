@@ -10,6 +10,21 @@
 //#include "randombytes.h"
 #include "rng.h"
 
+#ifdef PK_COMPRESS
+#include "invq.h"
+#endif
+
+static void ensure_invq_init(void)
+{
+#ifdef PK_COMPRESS
+  static int invq_initialized = 0;
+  if(!invq_initialized) {
+    invq_global_init();
+    invq_initialized = 1;
+  }
+#endif
+}
+
 /*************************************************
 * Name:        crypto_kem_keypair_derand
 *
@@ -53,6 +68,7 @@ int crypto_kem_keypair_derand(uint8_t *pk,
 int crypto_kem_keypair(uint8_t *pk,
                        uint8_t *sk)
 {
+  ensure_invq_init();
   uint8_t coins[2*KYBER_SYMBYTES];
   randombytes(coins, 2*KYBER_SYMBYTES);
   crypto_kem_keypair_derand(pk, sk, coins);
@@ -118,6 +134,7 @@ int crypto_kem_enc(uint8_t *ct,
                    uint8_t *ss,
                    const uint8_t *pk)
 {
+  ensure_invq_init();
   uint8_t coins[KYBER_INDCPA_MSGBYTES]; /* coins --> used as encrypted m for PKE */
   randombytes(coins, KYBER_INDCPA_MSGBYTES);
   crypto_kem_enc_derand(ct, ss, pk, coins);

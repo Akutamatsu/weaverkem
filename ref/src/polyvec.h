@@ -19,6 +19,8 @@ void polyvec_decompress(polyvec *r, const uint8_t a[KYBER_POLYVECCOMPRESSEDBYTES
 void polyvec_compress_pk(uint8_t r[KYBER_PK_POLYVECBYTES], const polyvec *a);
 #define polyvec_decompress_pk KYBER_NAMESPACE(_polyvec_decompress_pk)
 void polyvec_decompress_pk(polyvec *r, const uint8_t a[KYBER_PK_POLYVECBYTES]);
+#define polyvec_fromcompressed_pk KYBER_NAMESPACE(_polyvec_fromcompressed_pk)
+void polyvec_fromcompressed_pk(polyvec *r, const uint8_t a[KYBER_PK_POLYVECBYTES]);
 #endif
 
 #define polyvec_tobytes KYBER_NAMESPACE(_polyvec_tobytes)

@@ -11,7 +11,9 @@
 
 #ifdef PK_COMPRESS
 #include "invq.h"
+#if !defined(NO_INV_Q_LIFTING)
 #define INV_Q_LIFTING
+#endif
 #endif
 
 /*************************************************

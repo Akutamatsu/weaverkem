@@ -5,17 +5,14 @@
 # include "params.h"  // <--- 引入我们自己架构的参数
 # include "bch.h"
 
-#if KYBER_N == 128
-    // bch(127, 106, 3) - 实际承载 104 bits
-    #include "bch255.h"
-#elif KYBER_N == 256
-    // bch(255, 231, 3) - 实际承载 224 bits (之后需要生成此文件)
-    #include "bch255.h"
-#elif KYBER_N == 512
-    // bch(511, 484, 3) - 实际承载 472 bits (之后需要生成此文件)
-    #include "bch511.h"
+#if WEAVER_MODE == 1
+    #include "bch255_128_5.h"
+#elif WEAVER_MODE == 3
+    #include "bch255_223_4.h"
+#elif WEAVER_MODE == 5
+    #include "bch511_464_5.h"
 #else
-    #error "Invalid KYBER_N for BCH configuration"
+    #error "Invalid WEAVER_MODE for BCH configuration"
 #endif
 
 // convert 32-bit ecc words to ecc bytes

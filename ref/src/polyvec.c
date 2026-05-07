@@ -127,6 +127,64 @@ void polyvec_decompress_pk(polyvec *r, const uint8_t a[KYBER_PK_POLYVECBYTES])
 #error "KYBER_PK_POLYVECBYTES needs to be K*N*8/8, K*N*9/8, or K*N*10/8"
 #endif
 }
+
+/*************************************************
+* Name:        polyvec_fromcompressed_pk
+*
+* Description: Load compressed public key bytes
+*              into polyvec coefficients WITHOUT
+*              decompression (no multiply-by-Q).
+*              Output range is [0, 2^d_t - 1],
+*              suitable as Inv_q bucket indices.
+*
+* Arguments:   - polyvec *r:       pointer to output polyvec
+*              - const uint8_t *a: pointer to input compressed PK bytes
+**************************************************/
+void polyvec_fromcompressed_pk(polyvec *r,
+                               const uint8_t a[KYBER_PK_POLYVECBYTES])
+{
+    unsigned int i, j, k;
+
+#if (KYBER_PK_POLYVECBYTES == (KYBER_K * KYBER_N * 10 / 8))
+  uint16_t t[4];
+  for(i=0;i<KYBER_K;i++) {
+    for(j=0;j<KYBER_N/4;j++) {
+      t[0] = (a[0] >> 0) | ((uint16_t)a[1] << 8);
+      t[1] = (a[1] >> 2) | ((uint16_t)a[2] << 6);
+      t[2] = (a[2] >> 4) | ((uint16_t)a[3] << 4);
+      t[3] = (a[3] >> 6) | ((uint16_t)a[4] << 2);
+      a += 5;
+      for(k=0;k<4;k++)
+        r->vec[i].coeffs[4*j+k] = (int16_t)(t[k] & 0x3FF);   /* 不乘Q！ */
+    }
+  }
+#elif (KYBER_PK_POLYVECBYTES == (KYBER_K * KYBER_N * 9 / 8))
+  uint16_t t[8];
+  for(i=0;i<KYBER_K;i++) {
+    for(j=0;j<KYBER_N/8;j++) {
+      t[0] = (a[0] >> 0) | ((uint16_t)a[1] << 8);
+      t[1] = (a[1] >> 1) | ((uint16_t)a[2] << 7);
+      t[2] = (a[2] >> 2) | ((uint16_t)a[3] << 6);
+      t[3] = (a[3] >> 3) | ((uint16_t)a[4] << 5);
+      t[4] = (a[4] >> 4) | ((uint16_t)a[5] << 4);
+      t[5] = (a[5] >> 5) | ((uint16_t)a[6] << 3);
+      t[6] = (a[6] >> 6) | ((uint16_t)a[7] << 2);
+      t[7] = (a[7] >> 7) | ((uint16_t)a[8] << 1);
+      a += 9;
+      for(k=0;k<8;k++)
+        r->vec[i].coeffs[8*j+k] = (int16_t)(t[k] & 0x1FF);   /* 不乘Q！ */
+    }
+  }
+#elif (KYBER_PK_POLYVECBYTES == (KYBER_K * KYBER_N * 8 / 8))
+  for(i=0;i<KYBER_K;i++) {
+    for(j=0;j<KYBER_N;j++) {
+      r->vec[i].coeffs[j] = (int16_t)(*a++);                  /* 纯加载，零运算 */
+    }
+  }
+#else
+#error "KYBER_PK_POLYVECBYTES needs to be K*N*8/8, K*N*9/8, or K*N*10/8"
+#endif
+}
 #endif // PK_COMPRESS
 
 /*************************************************

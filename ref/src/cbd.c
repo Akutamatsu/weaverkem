@@ -161,21 +161,29 @@ static void cbd1(poly *r, const uint8_t buf[1*KYBER_N/4])
 #endif
 
 #if KYBER_ETA1 == 5
+static unsigned int popcount5(uint16_t x)
+{
+  x &= 0x1F;
+  return (x & 1u) + ((x >> 1) & 1u) + ((x >> 2) & 1u) + ((x >> 3) & 1u) + ((x >> 4) & 1u);
+}
+
 static void cbd5(poly *r, const uint8_t buf[5*KYBER_N/4])
 {
   unsigned int i;
 
-  for(i = 0; i < KYBER_N; i++) {
-    unsigned int bitpos = 10 * i;
-    unsigned int bytepos = bitpos >> 3;
-    unsigned int shift = bitpos & 7;
-    uint32_t t = (uint32_t)buf[bytepos]
-               | ((uint32_t)buf[bytepos + 1] << 8)
-               | ((uint32_t)buf[bytepos + 2] << 16);
-    uint16_t v = (t >> shift) & 0x3FF;
-    int16_t a = v & 0x1F;
-    int16_t b = (v >> 5) & 0x1F;
-    r->coeffs[i] = a - b;
+  for(i = 0; i < KYBER_N/4; i++) {
+    uint64_t t = (uint64_t)buf[5*i + 0]
+               | ((uint64_t)buf[5*i + 1] << 8)
+               | ((uint64_t)buf[5*i + 2] << 16)
+               | ((uint64_t)buf[5*i + 3] << 24)
+               | ((uint64_t)buf[5*i + 4] << 32);
+
+    for(unsigned int j = 0; j < 4; j++) {
+      uint16_t v = (t >> (10*j)) & 0x3FF;
+      int16_t a = (int16_t)popcount5(v);
+      int16_t b = (int16_t)popcount5(v >> 5);
+      r->coeffs[4*i + j] = a - b;
+    }
   }
 }
 #endif

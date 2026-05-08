@@ -17,78 +17,86 @@
 #include "invq.h"
 #include "symmetric.h"
 
+#include "invq_table_data.h"
+
 #ifdef INVQ_STATS
 static uint64_t g_invq_reject_count = 0;
 static uint64_t g_invq_fallback_count = 0;
 #endif
 
-invq_table_t invq_pk_table;
 
-static uint32_t compress_q(uint32_t x, int d)
-{
-  uint32_t num_buckets = 1u << d;
-  return (uint32_t)(((uint64_t)x * num_buckets + KYBER_Q / 2) / KYBER_Q)
-         & (num_buckets - 1);
-}
 
-static void invq_init(invq_table_t *tbl, int d)
-{
-  uint32_t x, y;
-  uint32_t num_buckets = 1u << d;
-  uint16_t count[KYBER_Q];
-  uint32_t first[KYBER_Q];
-  uint32_t lo0 = 0;
+// static uint32_t compress_q(uint32_t x, int d)
+// {
+//   uint32_t num_buckets = 1u << d;
+//   return (uint32_t)(((uint64_t)x * num_buckets + KYBER_Q / 2) / KYBER_Q)
+//          & (num_buckets - 1);
+// }
 
-  tbl->d = d;
+// static void invq_init(invq_table_t *tbl, int d)
+// {
+//   uint32_t x, y;
+//   uint32_t num_buckets = 1u << d;
+//   uint16_t count[KYBER_Q];
+//   uint32_t first[KYBER_Q];
+//   uint32_t lo0 = 0;
 
-  for(y = 0; y < num_buckets; y++) {
-    count[y] = 0;
-    first[y] = KYBER_Q;
-  }
+//   tbl->d = d;
 
-  for(x = 0; x < (uint32_t)KYBER_Q; x++) {
-    y = compress_q(x, d);
-    if(first[y] == (uint32_t)KYBER_Q)
-      first[y] = x;
-    count[y]++;
-  }
+//   for(y = 0; y < num_buckets; y++) {
+//     count[y] = 0;
+//     first[y] = KYBER_Q;
+//   }
 
-  /* y=0: 找到 q-1 向下连续映射到 0 的尾段起点 */
-  for(x = (uint32_t)KYBER_Q; x > 0; x--) {
-    if(compress_q(x - 1, d) == 0)
-      lo0 = x - 1;
-    else
-      break;
-  }
+//   for(x = 0; x < (uint32_t)KYBER_Q; x++) {
+//     y = compress_q(x, d);
+//     if(first[y] == (uint32_t)KYBER_Q)
+//       first[y] = x;
+//     count[y]++;
+//   }
+
+//   /* y=0: 找到 q-1 向下连续映射到 0 的尾段起点 */
+//   for(x = (uint32_t)KYBER_Q; x > 0; x--) {
+//     if(compress_q(x - 1, d) == 0)
+//       lo0 = x - 1;
+//     else
+//       break;
+//   }
   
-  first[0] = lo0;
-  tbl->small_size = 0;
-  tbl->large_size = 0;
-  tbl->large_bucket_count = 0;
+//   first[0] = lo0;
+//   tbl->small_size = 0;
+//   tbl->large_size = 0;
+//   tbl->large_bucket_count = 0;
 
-  for(y = 0; y < num_buckets; y++) {
-    tbl->bucket_lo[y] = first[y];
-    tbl->bucket_size[y] = (uint8_t)count[y];
+//   for(y = 0; y < num_buckets; y++) {
+//     tbl->bucket_lo[y] = first[y];
+//     tbl->bucket_size[y] = (uint8_t)count[y];
 
-    if(tbl->large_size < count[y])
-      tbl->large_size = count[y];
-    if(tbl->small_size == 0 || tbl->small_size > count[y])
-      tbl->small_size = count[y];
-  }
-}
+//     if(tbl->large_size < count[y])
+//       tbl->large_size = count[y];
+//     if(tbl->small_size == 0 || tbl->small_size > count[y])
+//       tbl->small_size = count[y];
+//   }
+// }
+
+// void invq_global_init(void)
+// {
+// #if (KYBER_PK_POLYVECBYTES == (KYBER_K * KYBER_N * 8 / 8))
+//   invq_init(&invq_pk_table, 8);
+// #elif (KYBER_PK_POLYVECBYTES == (KYBER_K * KYBER_N * 9 / 8))
+//   invq_init(&invq_pk_table, 9);
+// #elif (KYBER_PK_POLYVECBYTES == (KYBER_K * KYBER_N * 10 / 8))
+//   invq_init(&invq_pk_table, 10);
+// #else
+// #error "Unsupported PK_COMPRESS precision for Inv_q"
+// #endif
+// }
 
 void invq_global_init(void)
 {
-#if (KYBER_PK_POLYVECBYTES == (KYBER_K * KYBER_N * 8 / 8))
-  invq_init(&invq_pk_table, 8);
-#elif (KYBER_PK_POLYVECBYTES == (KYBER_K * KYBER_N * 9 / 8))
-  invq_init(&invq_pk_table, 9);
-#elif (KYBER_PK_POLYVECBYTES == (KYBER_K * KYBER_N * 10 / 8))
-  invq_init(&invq_pk_table, 10);
-#else
-#error "Unsupported PK_COMPRESS precision for Inv_q"
-#endif
+
 }
+
 
 /* 精确均匀映射到 [0, size-1] 的 8 位极限版本 */
 static inline int sample_offset_exact_8(uint8_t rand8, uint32_t size, uint32_t *offset)
@@ -159,7 +167,7 @@ static int poly_invq_with_cursor(poly *r,
 void poly_invq(poly *r, const uint8_t *randbuf, const invq_table_t *tbl)
 {
   unsigned int i;
-
+  
   for(i = 0; i < KYBER_N; i++) {
     uint16_t y = (uint16_t)r->coeffs[i];
     uint32_t lo = tbl->bucket_lo[y];

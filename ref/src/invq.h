@@ -15,16 +15,11 @@
 /* Inv_q 桶查找表类型 */
 typedef struct {
   uint32_t bucket_lo[KYBER_Q];       /* 桶 i 的左边界 */
-  uint8_t  bucket_size[KYBER_Q];      /* 桶 i 的大小   */
-  uint16_t large_bucket_count;        /* 大桶的个数    */
-  uint16_t small_size;               /* 小桶大小      */
-  uint16_t large_size;               /* 大桶大小      */
-  int      d;                         /* 压缩精度      */
+  uint8_t  bucket_size[KYBER_Q];      /* 桶 i 的大小   */                      /* 压缩精度      */
 } invq_table_t;
 
 /* 全局公钥提升表（定义在 poly_invq.c，此处 extern 声明） */
-extern invq_table_t invq_pk_table;
-
+extern const invq_table_t invq_pk_table;
 #define invq_global_init KYBER_NAMESPACE(_invq_global_init)
 void invq_global_init(void);
 

@@ -1,6 +1,6 @@
 CC=/usr/bin/gcc
 VPATH = ../src/:../src/speed
-CFLAGS += -g -march=native -fomit-frame-pointer
+CFLAGS += -O3 -march=native -fomit-frame-pointer
 LDFLAGS=-lcrypto
 # NOTE: 'kem_cpa.c' used for debug. Change to 'kem_cca.c' for complete FO. 
 SRC= correct_test.c cbd.c fips202.c indcpa.c kem_cca.c ntt.c poly.c polyvec.c reduce.c rng.c verify.c symmetric-shake.c bch_high.c bch_low.c msgenc.c poly_invq.c

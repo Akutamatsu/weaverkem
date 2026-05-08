@@ -312,7 +312,7 @@ void indcpa_enc(uint8_t c[KYBER_INDCPA_BYTES],
   polyvec_fromcompressed_pk(&pkpv, pk);
   memcpy(seed, pk + KYBER_PK_POLYVECBYTES, KYBER_SYMBYTES);
 
-  polyvec_invq(&pkpv, coins, nonce++, &invq_pk_table);
+  polyvec_invq(&pkpv, coins, nonce++);
   polyvec_ntt(&pkpv);
 #else
   unpack_pk(&pkpv, seed, pk);

@@ -1,5 +1,5 @@
 '''
-# 版本: v2.0.0
+# 版本: v2.1.0
 # 修改日期: 2026-04-23
 # 作者: zzd
 # 描述: 该模块提供了一个工厂函数 get_preset(name) 来获取预定义的 scheme 实例，
@@ -20,18 +20,18 @@ from binomial import est_after_correcting_k_bits
 # from schemes.sch_lac import LAC128, LAC192, LAC256
 
 ### 【当前在用参数】
-''' 注: 当前输出公钥尺寸有误; 由于此前设置参数同时参与了失败概率计算和尺寸计算，而 sch_weaver_inv 版本为了计算错误率方便, 移除了公钥压缩参数并直接定义误差分布, 导致公钥按无压缩尺寸输出; 后续将修正; 目前可按原版(sch_weaver)查看尺寸'''
-from schemes.sch_weaver_inv import Weaver128, Weaver256, Weaver512, Weaver256L1, Weaver512L1
+
+from schemes.sch_weaver_inv import Weaver128L1, Weaver256L2, Weaver512L2, Weaver256L1, Weaver512L1
 ## for size:
 # from schemes.sch_weaver import Weaver128, Weaver256, Weaver512, Weaver256L1, Weaver512L1
 
 # 工厂字典便于 lookup
 _PRESETS = {
-    "Weaver128": Weaver128,
+    "Weaver128L1": Weaver128L1,
     "Weaver256L1": Weaver256L1,
-    "Weaver256": Weaver256,
+    "Weaver256L2": Weaver256L2,
     "Weaver512L1": Weaver512L1,
-    "Weaver512": Weaver512,
+    "Weaver512L2": Weaver512L2,
     # "LAC128": LAC128,
     # "LAC192": LAC192,
     # "LAC256": LAC256,
@@ -73,10 +73,22 @@ if __name__ == "__main__":
     for name, scheme in testSchemes.items():
         f = scheme.compute_failure()
         print(f"{name} failure: %.3e = 2^%.2f"%(f, log(f + 2.**(-300))/log(2)))
-        est_after_correcting_k_bits(scheme.default_codebits, f, scheme.default_errtolerance) # print failure probability after error correction
+        if hasattr(scheme, "default_bch_n"):
+            print(
+                f"  BCH: ({scheme.default_bch_n}, {scheme.default_bch_k}, {scheme.default_bch_t}), "
+                f"encoded_bits={scheme.default_codebits}, payload_bits={scheme.default_payload_bits}"
+            )
+        # if hasattr(scheme, "capacity_summary"):
+        #     print(f"  Capacity check: {scheme.capacity_summary}")
+        if hasattr(scheme, "validation_issues") and scheme.validation_issues:
+            for issue in scheme.validation_issues:
+                print(f"  Warning: {issue}")
+        if scheme.default_unibd == 1:
+            est_after_correcting_k_bits(scheme.default_codebits, f, scheme.default_errtolerance) # print failure probability after error correction
         pkBytes, ctBytes = scheme.calc_size() # for Ring/MLWE-based scheme
         print(f"  Public key size: {pkBytes}")
         print(f"  Ciphertext size: {ctBytes + taglen}")
+        
 
     '''for LWE-based scheme:''' 
     # mnbars = [[10,8], [13,10]]

@@ -36,9 +36,25 @@ def get_distr(meth, param = 0):
 
 class DistributionSet:
     # Ds, Dr, De, Dep, Depp
-    def __init__(self, meths, params, q, du=None, dv=None, dt=None):
+    def __init__(self, meths, params, q, du=None, dv=None, dt=None, c2_mode="ring_embed", skip_pk_rounding=False):
         self.q = q
         self.logq = ceil(log2(q))
+        # c2_mode 用来区分“第二个密文分量”的消息嵌入语义：
+        # - ring_embed:
+        #     旧版 Weaver / 传统建模方式。先在环上把消息加到 v0 中，再整体做压缩。
+        #     这时 failure_common 里沿用旧逻辑：先在 2^dt 的消息模数下建模，再缩放回 q。
+        # - compressed_embed:
+        #     新版 Weaver。先计算 v0 的压缩值 Compress_q(v0, dv)，然后在压缩域 Z_{2^dv}
+        #     中直接把消息编码 w 加进去，最后解密时再用 Decompress_q 提升回 R_q。
+        #     对应论文 NGCC_KEM (9).pdf 的 Algorithm 2 / Lemma 3.1 / Lemma 3.2。
+        #     在这种语义下，c_v 的噪声应直接建模为 q -> 2^dv -> q 的 canonical
+        #     decompress 失真，不能再走旧的“先在 t=2^dt 下建模再缩放”的近似路径。
+        self.c2_mode = c2_mode
+        # skip_pk_rounding 用来处理 Weaver-Inv 这种“公钥误差已经被显式给出”的情况。
+        # 当 De 已经直接表示公钥随机 lifting / representative-selection 的完整误差时，
+        # 若再根据 dt 叠加一层 canonical rounding law，就会把公钥误差重复计算。
+        # 因此对于这类方案应设置为 True；其它普通方案保持 False 即可。
+        self.skip_pk_rounding = skip_pk_rounding
         if du is None:
             self.du = self.logq
         else:
@@ -108,7 +124,7 @@ def _normalize_meths_params(meths, params):
 
     return meths_list, params_list
 
-def build_ds_from_spec(q, meths, params, du=None, dv=None, dt=None):
+def build_ds_from_spec(q, meths, params, du=None, dv=None, dt=None, c2_mode="ring_embed", skip_pk_rounding=False):
     """
     根据高层 spec 构造 DistributionSet 并进行组合约束校验。
 
@@ -148,7 +164,16 @@ def build_ds_from_spec(q, meths, params, du=None, dv=None, dt=None):
                 raise ValueError(f"cbits for index {idx} must be < log2(q) to represent LWR when distribution is 'na'. Got cbits={cbits}, log2(q)={logq}.")
 
     # 构造并返回 DistributionSet
-    ds = DistributionSet(meths_list, params_list, q, du=du, dv=dv, dt=dt)
+    ds = DistributionSet(
+        meths_list,
+        params_list,
+        q,
+        du=du,
+        dv=dv,
+        dt=dt,
+        c2_mode=c2_mode,
+        skip_pk_rounding=skip_pk_rounding,
+    )
     return ds
 
 def cond_combine_modswitch(q, logq, cbits, noise):
@@ -179,21 +204,45 @@ def accumulate_errdistr(ds, n, m):
         print ("Error: e' and cu both None.")
         return None
 
-    B = cond_combine_modswitch(ds.q, ds.logq, ds.dt, ds.De) # LWE + Rounding pk: (e + ct)
+    # 对普通方案，B 对应公钥项的 canonical decompress 误差；
+    # 对 Weaver-Inv 这类方案，De 已经是随机 lifting 的完整误差分布，因此不能再按 dt
+    # 额外叠加一层 canonical rounding，否则会重复计数。
+    if ds.skip_pk_rounding:
+        B = ds.De
+    else:
+        B = cond_combine_modswitch(ds.q, ds.logq, ds.dt, ds.De) # LWE + Rounding pk: (e + ct)
     if B is None:
         print ("Error: e and ct both None.")
         return None
 
-    # This step need to be careful:
-    C0 = cond_combine_modswitch(ds.t, ds.dt, ds.dv, ds.Depp) # LWE + Rounding c2: (e'' + cv)
-    if C0 is None:
+    # c2 / v 分量的建模需要区分旧版和新版 Weaver：
+    #
+    # 1) 旧版 ring_embed：
+    #    消息先在环 R_q 中加到 v0 上，再整体做压缩。原脚本采用的是“先在消息模数 t
+    #    下建模，再缩放回 q”的近似路径，因此这里保持兼容。
+    #
+    # 2) 新版 compressed_embed：
+    #    先得到 Compress_q(v0, dv)，再把消息编码 w 直接加到压缩域 Z_{2^dv} 中。
+    #    解密时 v = Decompress_q(c2, dv)。
+    #    按论文 Lemma 3.1 / 3.2，此时 c_v 应直接服从标准的 q -> 2^dv -> q
+    #    canonical decompress 失真分布，因此应直接在模 q 下构造 rounding law。
+    if ds.c2_mode == "compressed_embed":
+        # C = cond_combine_modswitch(ds.q, ds.logq, ds.dv, ds.Depp)  # (e'' + c_v) over R_q
+        C = build_asymmetric_error_law(ds.q, ds.dv) # directly build the canonical decompress error law for c_v, which is independent of Depp
+
+    else:
+        C0 = cond_combine_modswitch(ds.t, ds.dt, ds.dv, ds.Depp)  # legacy path
+        if C0 is None:
+            print ("Error: e'' and cv both None.")
+            return None
+
+        C = {}
+        for v, p in C0.items():
+            C[v*ds.q//ds.t] = p
+
+    if C is None:
         print ("Error: e'' and cv both None.")
         return None
-
-    # C = C0    
-    C = {}    
-    for v, p in C0.items():
-        C[v*ds.q//ds.t] = p
 
     if ds.meths["s"] == "na":
         print ("Error: distribution 's' must be set.")
@@ -253,4 +302,3 @@ if __name__ == "__main__":
     # thres = q // 2 ** (w+1)
     # f = failure_common(ds, n, m, thres, unibd = 1)
     # print ("failure: %.1f = 2^%.1f"%(f, log(f + 2.**(-300))/log(2)))
-

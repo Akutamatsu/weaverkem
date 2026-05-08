@@ -272,3 +272,19 @@ def build_uniform_law(a, b):
     for i in range(a, b+1):
         D[i] = 1 / (b - a + 1)
     return D
+
+def build_asymmetric_error_law(q, dv):
+    D = {}
+    power_dv = 2 ** dv
+    for x in range(q):
+        y = mod_switch(x, q, power_dv)
+        z = mod_switch(y, power_dv, q) 
+        e0 = mod_centered(z - x, q)
+        y1 = y + power_dv/2
+        z1 = mod_switch(y1, power_dv, q)
+        e1 = mod_centered(z1 - x - (q-1)//2, q)
+        e = e0 + e1
+        # D[e0] = D.get(e0, 0) + 1./(2*q)
+        # D[e] = D.get(e, 0) + 1./(2*q)
+        D[e] = D.get(e, 0) + 1./(q)
+    return D

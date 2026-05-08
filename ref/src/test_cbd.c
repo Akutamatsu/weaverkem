@@ -202,7 +202,7 @@ static int test_cbd_param(const cbd_param *p)
 }
 
 /* ============================================================
- * Also test actual cbd_eta1/cbd_eta2 for current WEAVER_MODE
+ * Also test actual cbd_eta1 for current WEAVER_MODE
  * ============================================================ */
 static int test_actual_cbd(void)
 {

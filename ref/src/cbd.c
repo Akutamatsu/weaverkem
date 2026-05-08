@@ -160,6 +160,26 @@ static void cbd1(poly *r, const uint8_t buf[1*KYBER_N/4])
 }
 #endif
 
+#if KYBER_ETA1 == 5
+static void cbd5(poly *r, const uint8_t buf[5*KYBER_N/4])
+{
+  unsigned int i;
+
+  for(i = 0; i < KYBER_N; i++) {
+    unsigned int bitpos = 10 * i;
+    unsigned int bytepos = bitpos >> 3;
+    unsigned int shift = bitpos & 7;
+    uint32_t t = (uint32_t)buf[bytepos]
+               | ((uint32_t)buf[bytepos + 1] << 8)
+               | ((uint32_t)buf[bytepos + 2] << 16);
+    uint16_t v = (t >> shift) & 0x3FF;
+    int16_t a = v & 0x1F;
+    int16_t b = (v >> 5) & 0x1F;
+    r->coeffs[i] = a - b;
+  }
+}
+#endif
+
 void cbd_eta1(poly *r, const uint8_t buf[KYBER_ETA1*KYBER_N/4])
 {
 #if KYBER_ETA1 == 1
@@ -170,20 +190,9 @@ void cbd_eta1(poly *r, const uint8_t buf[KYBER_ETA1*KYBER_N/4])
   cbd3(r, buf);
 #elif KYBER_ETA1 == 4
   cbd4(r, buf);
+#elif KYBER_ETA1 == 5
+  cbd5(r, buf);
 #else
-#error "This implementation requires eta1 in {1,2,3,4}"
-#endif
-}
-
-void cbd_eta2(poly *r, const uint8_t buf[KYBER_ETA2*KYBER_N/4])
-{
-#if KYBER_ETA2 == 1
-  cbd1(r, buf);
-#elif KYBER_ETA2 == 2
-  cbd2(r, buf);
-#elif KYBER_ETA2 == 4
-  cbd4(r, buf);
-#else
-#error "This implementation requires eta2 in {1,2,4}"
+#error "This implementation requires eta1 in {1,2,3,4,5}"
 #endif
 }

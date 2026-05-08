@@ -82,6 +82,31 @@ static void cbd4_sim(int16_t *r, const uint8_t *buf, int n)
   }
 }
 
+/* CBD5: eta=5, 5 bytes -> 4 coefficients */
+static int popcount5_sim(uint16_t x)
+{
+  x &= 0x1F;
+  return (int)((x & 1u) + ((x >> 1) & 1u) + ((x >> 2) & 1u) + ((x >> 3) & 1u) + ((x >> 4) & 1u));
+}
+
+static void cbd5_sim(int16_t *r, const uint8_t *buf, int n)
+{
+  int i, j;
+  for(i = 0; i < n/4; i++) {
+    uint64_t t = (uint64_t)buf[5*i + 0]
+               | ((uint64_t)buf[5*i + 1] << 8)
+               | ((uint64_t)buf[5*i + 2] << 16)
+               | ((uint64_t)buf[5*i + 3] << 24)
+               | ((uint64_t)buf[5*i + 4] << 32);
+    for(j = 0; j < 4; j++) {
+      uint16_t v = (t >> (10*j)) & 0x3FF;
+      int16_t a = (int16_t)popcount5_sim(v);
+      int16_t b = (int16_t)popcount5_sim(v >> 5);
+      r[4*i+j] = a - b;
+    }
+  }
+}
+
 static void cbd_sim(int16_t *r, const uint8_t *buf, int n, int eta)
 {
   if(eta == 1) {
@@ -95,6 +120,7 @@ static void cbd_sim(int16_t *r, const uint8_t *buf, int n, int eta)
   else if(eta == 2) cbd2_sim(r, buf, n);
   else if(eta == 3) cbd3_sim(r, buf, n);
   else if(eta == 4) cbd4_sim(r, buf, n);
+  else if(eta == 5) cbd5_sim(r, buf, n);
 }
 
 /* ============================================================
@@ -142,7 +168,6 @@ typedef struct {
   const char *name;
   int n;
   int eta1;
-  int eta2;
 } cbd_param;
 
 static int test_cbd_param(const cbd_param *p)
@@ -154,8 +179,8 @@ static int test_cbd_param(const cbd_param *p)
   cbd_stats stats;
   int i;
 
-  printf("\n--- %s (n=%d, eta1=%d, eta2=%d) ---\n",
-         p->name, p->n, p->eta1, p->eta2);
+  printf("\n--- %s (n=%d, eta1=%d) ---\n",
+         p->name, p->n, p->eta1);
 
   /* Test eta1 */
   bufsize = p->eta1 * p->n / 4;
@@ -172,23 +197,8 @@ static int test_cbd_param(const cbd_param *p)
     printf("FAILED (out of range [-%d,%d])\n", p->eta1, p->eta1);
   }
 
-  /* Test eta2 */
-  bufsize = p->eta2 * p->n / 4;
-  for(i = 0; i < bufsize; i++) buf[i] = (uint8_t)(i * 11 + 17);
-  cbd_sim(coeffs, buf, p->n, p->eta2);
-  stats = compute_stats(coeffs, p->n);
-
-  printf("  [eta2=%d] min=%d max=%d mean=%.3f var=%.3f ",
-         p->eta2, stats.min_val, stats.max_val, stats.mean, stats.variance);
-  if(stats.min_val >= -p->eta2 && stats.max_val <= p->eta2) {
-    printf("PASSED (range [-%d,%d] OK)\n", p->eta2, p->eta2);
-    passed++;
-  } else {
-    printf("FAILED (out of range [-%d,%d])\n", p->eta2, p->eta2);
-  }
-
-  printf("  Result: %d/2 passed\n", passed);
-  return passed == 2;
+  printf("  Result: %d/1 passed\n", passed);
+  return passed == 1;
 }
 
 /* ============================================================
@@ -201,7 +211,7 @@ static int test_actual_cbd(void)
   int i;
   int passed = 0;
 
-  printf("\n--- Actual cbd_eta1/cbd_eta2 (WEAVER_MODE=%d, N=%d) ---\n",
+  printf("\n--- Actual cbd_eta1 (WEAVER_MODE=%d, N=%d) ---\n",
          WEAVER_MODE, KYBER_N);
 
   /* eta1 */
@@ -217,22 +227,8 @@ static int test_actual_cbd(void)
     else     printf("FAILED\n");
   }
 
-  /* eta2 */
-  {
-    uint8_t buf2[KYBER_ETA2 * KYBER_N / 4];
-    for(i = 0; i < (int)sizeof(buf2); i++) buf2[i] = (uint8_t)(i * 11 + 17);
-    cbd_eta2(&r, buf2);
-    int ok = 1;
-    for(i = 0; i < KYBER_N; i++) {
-      if(r.coeffs[i] < -KYBER_ETA2 || r.coeffs[i] > KYBER_ETA2) { ok = 0; break; }
-    }
-    printf("  cbd_eta2 (eta=%d): ", KYBER_ETA2);
-    if(ok) { printf("PASSED\n"); passed++; }
-    else     printf("FAILED\n");
-  }
-
-  printf("  Result: %d/2 passed\n", passed);
-  return passed == 2;
+  printf("  Result: %d/1 passed\n", passed);
+  return passed == 1;
 }
 
 int main(void)
@@ -248,9 +244,9 @@ int main(void)
 
   /* Table 1: all three parameter sets */
   cbd_param sets[3] = {
-    { "WEAVER-512",  256, 2, 4 },
-    { "WEAVER-1024", 256, 2, 4 },
-    { "WEAVER-2048", 512, 1, 4 }
+    { "WEAVER-512",  256, 5 },
+    { "WEAVER-1024", 256, 2 },
+    { "WEAVER-2048", 512, 1 }
   };
 
   for(s = 0; s < 3; s++) {

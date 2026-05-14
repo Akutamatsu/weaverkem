@@ -2,7 +2,7 @@
 #define PARAMS_H
 
 #ifndef WEAVER_MODE
-#define WEAVER_MODE 1  /* 1: 512, 3: 1024, 5: 2048 */
+#define WEAVER_MODE 3  /* 1: 512, 3: 1024, 5: 2048 */
 #endif
 
 #define PK_COMPRESS

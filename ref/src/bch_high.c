@@ -319,3 +319,120 @@ int decode_bch_high(uint8_t *data, unsigned int len, const uint8_t *recv_ecc)
     
     return err;
 }
+
+void encode_bch_high_nibbles(const unsigned char *data, unsigned int nibbles, uint8_t *ecc)
+{
+    int i;
+    const uint32_t *p;
+    const int l = BCH_ECC_WORDS-1;
+    uint32_t ecc_buf[BCH_ECC_WORDS];
+    
+    memset(ecc_buf,0,BCH_ECC_WORDS*sizeof(uint32_t));
+
+    // 每次处理 2 个半字节 (恰好等于 1 个完整字节)
+    while (nibbles >= 2) 
+    {
+        // 处理该字节的高 4 位
+        p = mod8_tab_half + (l+1)*(((ecc_buf[0] >> 28)^((*data)>>4)) & 0x0f);
+        for (i = 0; i < l; i++)
+            ecc_buf[i] = ((ecc_buf[i] << 4)|(ecc_buf[i+1] >> 28))^(*p++);
+        ecc_buf[l] = (ecc_buf[l] << 4)^(*p);
+        
+        // 处理该字节的低 4 位
+        p = mod8_tab_half + (l+1)*(((ecc_buf[0] >> 28)^(*data++)) & 0x0f);
+        for (i = 0; i < l; i++)
+            ecc_buf[i] = ((ecc_buf[i] << 4)|(ecc_buf[i+1] >> 28))^(*p++);
+        ecc_buf[l] = (ecc_buf[l] << 4)^(*p);
+        
+        nibbles -= 2;
+    }
+    
+    // 如果半字节总数是奇数，最后会剩余 1 个半字节，精准只处理高 4 位
+    if (nibbles == 1) 
+    {
+        p = mod8_tab_half + (l+1)*(((ecc_buf[0] >> 28)^((*data)>>4)) & 0x0f);
+        for (i = 0; i < l; i++)
+            ecc_buf[i] = ((ecc_buf[i] << 4)|(ecc_buf[i+1] >> 28))^(*p++);
+        ecc_buf[l] = (ecc_buf[l] << 4)^(*p);
+    }
+    
+    store_ecc8(ecc,ecc_buf);    
+}
+
+static int chien_search_nibbles(unsigned int nibbles, struct gf_poly *p, unsigned int *roots)
+{
+    unsigned int i, j, syn, count = 0, n=bch.n, t=bch.t;
+    
+    // 核心修正：信息总位数 = 4 * nibbles + 校验位数
+    unsigned int k = 4*nibbles + bch.ecc_bits; 
+    unsigned int bound = n - bch.ecc_bits;
+    uint16_t     syn_mask[BCH_T+1], syn_rep[BCH_T+1];
+    unsigned int syn_tmp;
+    unsigned int syn0=p->c[0];
+    
+    init_rep(p,syn_rep,syn_mask,n-k);
+    
+    for (i = n-k+1; i <= bound; i++) 
+    {
+        syn = syn0;
+        for (j = 1 ; j <= t; j++) 
+        {
+            syn_rep[j] = mod_s(syn_rep[j]+j);
+            syn_tmp = a_pow_tab[syn_rep[j]];
+            syn ^= (syn_tmp&syn_mask[j]);
+        }
+        roots[count] = n-i;
+        count += (syn==0);
+    }
+    
+    return count;
+}
+
+// 【关键改造 3】 decode 升级
+// 参数由 len (字节) 改为 nibbles (半字节)
+int decode_bch_high_nibbles(uint8_t *data, unsigned int nibbles, const uint8_t *recv_ecc)
+{
+    unsigned int nbits;
+    int i, err;
+    uint8_t ecc_buf[BCH_ECC_BYTES];
+    struct gf_poly elp;
+    unsigned int syn[2*BCH_T+1];
+    unsigned int errloc[BCH_T];
+
+    // 核心修正：容量检查公式变为 4 * nibbles
+    if (4*nibbles > (bch.n-bch.ecc_bits))
+        return -1;
+        
+    if (!data || !recv_ecc)
+        return -1;
+        
+    // 1. 调用新的半字节编码器
+    encode_bch_high_nibbles(data, nibbles, ecc_buf);
+    
+    for (i = 0; i < bch.ecc_bytes; i++) 
+    {
+        ecc_buf[i] ^= recv_ecc[i];
+    }
+    
+    compute_syndromes(ecc_buf, syn);
+    compute_error_locator_polynomial(syn,&elp);
+    
+    // 2. 调用新的半字节钱氏搜索
+    err = chien_search_nibbles(nibbles, &elp, errloc);
+
+    // 3. 核心修正：总位数变为 4 * nibbles
+    nbits = (nibbles*4) + bch.ecc_bits;
+    
+    unsigned char mask_err;
+    
+    // 定位与翻转错误的逻辑天然是 bit 级的，完美向下兼容
+    for (i = 0; i < bch.t; i++) 
+    {
+        mask_err  = (i<err)? 0xff: 0x00;
+        errloc[i] = (nbits-1-errloc[i])&mask_err;
+        errloc[i] = ((errloc[i] & ~7)|(7-(errloc[i] & 7)))&mask_err;
+        data[errloc[i]/8] ^= ((1 << (errloc[i] % 8))&mask_err);
+    }
+    
+    return err;
+}

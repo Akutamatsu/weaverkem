@@ -320,6 +320,7 @@ int decode_bch_high(uint8_t *data, unsigned int len, const uint8_t *recv_ecc)
     return err;
 }
 
+#if WEAVER_MODE == 3
 void encode_bch_high_nibbles(const unsigned char *data, unsigned int nibbles, uint8_t *ecc)
 {
     int i;
@@ -436,3 +437,4 @@ int decode_bch_high_nibbles(uint8_t *data, unsigned int nibbles, const uint8_t *
     
     return err;
 }
+#endif

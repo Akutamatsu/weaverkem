@@ -78,7 +78,7 @@ void poly_frommsg(poly *r, const uint8_t msg[KYBER_INDCPA_MSGBYTES])
 
     for (i = 0; i < KYBER_N / 8; i++) {
         for (j = 0; j < 8; j++) {
-            mask = -(int16_t)((mu_tilde[i] >> j) & 1);
+            mask = -(int16_t)((mu_tilde[i] >> (7 - j)) & 1);
             r->coeffs[8 * i + j] = mask & KYBER_HALFQ;
         }
     }
@@ -104,7 +104,7 @@ void poly_tomsg(uint8_t msg[KYBER_INDCPA_MSGBYTES], const poly *a)
             int16_t t = w_bar[8 * i + j];
             t += ((int16_t)t >> 15) & KYBER_Q; // map to positive
             t = ((((uint32_t)t << 1) + KYBER_Q / 2) / KYBER_Q) & 1;
-            mu_tilde[i] |= t << j;
+            mu_tilde[i] |= t << (7 -j);
         }
     }
 
@@ -114,6 +114,26 @@ void poly_tomsg(uint8_t msg[KYBER_INDCPA_MSGBYTES], const poly *a)
 }
 
 #elif WEAVER_MODE == 3 || WEAVER_MODE == 5
+
+/*************************************************
+* Name:        flipabs
+*
+* Description: Computes |(x mod+ q/2) - q/4|
+*
+* Arguments:   uint16_t x: input coefficient
+*
+* Returns |(x mod+ q/2) - q/4|
+**************************************************/
+static uint16_t flipabs_ex(int16_t x)
+{
+    int16_t r, m;
+    r = barrett_reduce_ex(x);
+
+    r = r - KYBER_Q / 4;
+    m = r >> 15;
+    return (r + m) ^ m; // turn to positive
+}
+
 // Algorithm 3: MsgEncode
 /*************************************************
 * Name:        poly_frommsg
@@ -129,27 +149,22 @@ void poly_frommsg(poly *r, const uint8_t msg[KYBER_INDCPA_MSGBYTES])
   for (i = 0; i < KYBER_N; i++) {
       r->coeffs[i] = 0;
   }
-#if WEAVER_MODE == 3 
-  // ==========================================================
-  // Step 1: Encode to Higher bits (MSB-first + 后置气囊对齐)
-  // ==========================================================
-  uint8_t ecc_high[4] = {0}; 
-  encode_bch_high_nibbles(msg, 55, ecc_high);
 
+  // ==========================================================
+  // Step 1: Encode to Higher bits (MSB-first)
+  // ==========================================================
+#if WEAVER_MODE == 3 
+  /* mu_tilde = msg[0] || msg[1] || ... ||(msg[27] = 1111xxxx) */
   memcpy(mu_tilde, msg, 28);
-  mu_tilde[27] &= 0xF0; // 保留高 4 位明文，低 4 位强制清零（充当后置气囊）
-  memcpy(mu_tilde + 28, ecc_high, 4); // 严丝合缝凑满 32 字节
+  mu_tilde[27] &= 0xF0; // leave 4 bits empty (0)
+  encode_bch_high_nibbles(mu_tilde, ELL_BAR_NIBBLES, mu_tilde + ELL_BAR_BYTES); // just fit in 32 Bytes
 
 #elif WEAVER_MODE == 5
-  // ==========================================================
-  // Step 1: Encode to Higher bits
-  // ==========================================================
   memcpy(mu_tilde, msg, ELL_BAR_BYTES);
   encode_bch_high(msg, ELL_BAR_BYTES, mu_tilde + ELL_BAR_BYTES);
 
 #endif
 
-  // 调制高位
   for(i = 0; i < KYBER_N/8; i++) {
     for(j = 0; j < 8; j++) {
       mask = -(int16_t)((mu_tilde[i] >> (7 - j)) & 1); // MSB-first
@@ -158,35 +173,21 @@ void poly_frommsg(poly *r, const uint8_t msg[KYBER_INDCPA_MSGBYTES])
     }
   }
 
+  // ==========================================================
+  // Step 2: Encode to Lower bits
+  // ==========================================================
 #if WEAVER_MODE == 3 
-  // ==========================================================
-  // Step 2: Encode to Lower bits (MSB-first + 前置气囊对齐)
-  // ==========================================================
-  uint8_t msg_low_buf[5] = {0};
-  uint8_t ecc_low[3] = {0};
-
-  // 修正 1：对齐到高半字节，喂给 BCH 引擎
-  msg_low_buf[0] = (msg[27] << 4) | (msg[28] >> 4);
-  msg_low_buf[1] = (msg[28] << 4) | (msg[29] >> 4);
-  msg_low_buf[2] = (msg[29] << 4) | (msg[30] >> 4);
-  msg_low_buf[3] = (msg[30] << 4) | (msg[31] >> 4);
-  msg_low_buf[4] = (msg[31] << 4); 
-
-  encode_bch_low_nibbles(msg_low_buf, 9, ecc_low);
-
-  // 修正 2：前置气囊填充！(0x0F 自动把高 4 位置零，保留低 4 位明文)
-  mu_ddot_buf[0] = msg[27] & 0x0F; 
-  memcpy(mu_ddot_buf + 1, msg + 28, 4); // 完美对齐
-  memcpy(mu_ddot_buf + 5, ecc_low, 3);  // 完美对齐
+  /* mu_ddot_buf = msg[28:31] || (msg[27] = xxxx1111 << 4) */
+  memcpy(mu_ddot_buf, msg + 28, 4);
+  mu_ddot_buf[4] = (msg[27] << 4);
+  encode_bch_low_nibbles(mu_ddot_buf, ELL_DDOT_NIBBLES, mu_ddot_buf + ELL_DDOT_BYTES);
 
 #elif WEAVER_MODE == 5
-  const uint8_t *msg_low = msg + ELL_BAR_BYTES; // msg lowbits part
-
-  memcpy(mu_ddot_buf, msg_low, ELL_DDOT_BYTES);
-  encode_bch_low(msg_low, ELL_DDOT_BYTES, mu_ddot_buf + ELL_DDOT_BYTES);
+  memcpy(mu_ddot_buf, msg + ELL_BAR_BYTES, ELL_DDOT_BYTES);
+  encode_bch_low(mu_ddot_buf, ELL_DDOT_BYTES, mu_ddot_buf + ELL_DDOT_BYTES);
 
 #endif
-  // 调制次高位 (带 4 倍重复码)
+  // D4 encoding
   for (i = 0; i < LOW_CODEWORD_BYTES; i++) {
       for (j = 0; j < 8; j++) {
           mask = -(int16_t)((mu_ddot_buf[i] >> (7 - j)) & 1);
@@ -198,25 +199,6 @@ void poly_frommsg(poly *r, const uint8_t msg[KYBER_INDCPA_MSGBYTES])
   }
 }
 
-/*************************************************
-* Name:        flipabs
-*
-* Description: Computes |(x mod+ q/2) - q/4|
-*
-* Arguments:   uint16_t x: input coefficient
-*
-* Returns |(x mod+ q/2) - q/4|
-**************************************************/
-static uint16_t flipabs_ex(int16_t x)
-{
-  int16_t r,m;
-  r = barrett_reduce_ex(x);
-
-  r = r - KYBER_Q/4;
-  m = r >> 15;
-  return (r + m)^m; // turn to positive
-}
-
 // Algorithm 5: MsgDecode
 void poly_tomsg(uint8_t msg[KYBER_INDCPA_MSGBYTES], const poly *a)
 {
@@ -224,6 +206,7 @@ void poly_tomsg(uint8_t msg[KYBER_INDCPA_MSGBYTES], const poly *a)
   int16_t w_bar[KYBER_N];
   uint8_t mu_tilde[KYBER_N / 8] = { 0 };
   uint8_t mu_ddot_noisy[LOW_CODEWORD_BYTES] = { 0 };
+  uint8_t mu_ddot_clean[LOW_CODEWORD_BYTES] = { 0 };
 
   memset(msg, 0, KYBER_INDCPA_MSGBYTES);
 
@@ -243,54 +226,21 @@ void poly_tomsg(uint8_t msg[KYBER_INDCPA_MSGBYTES], const poly *a)
     ee += flipabs_ex(w_bar[i + 3 * D4_STEP_LEN]);
     ee = (ee - KYBER_HALFQ);
     ee >>= 15;
-    mu_ddot_noisy[i>>3] |= ee << (7 - (i&7)); 
+    mu_ddot_noisy[i>>3] |= ee << (7 - (i&7)); /* Here: we need bits to be packed continuously w/o interleaving 0s */
   }
+
+  // ==========================================================
+  // Phase 2: Cancel Interference from Lower bits
+  // ==========================================================
 #if WEAVER_MODE == 3 
-  uint8_t msg_low_noisy_buf[8] = {0}; // 安全防越界气囊
-  uint8_t ecc_low_noisy[3] = {0};
-  
-  msg_low_noisy_buf[0] = (mu_ddot_noisy[0] << 4) | (mu_ddot_noisy[1] >> 4);
-  msg_low_noisy_buf[1] = (mu_ddot_noisy[1] << 4) | (mu_ddot_noisy[2] >> 4);
-  msg_low_noisy_buf[2] = (mu_ddot_noisy[2] << 4) | (mu_ddot_noisy[3] >> 4);
-  msg_low_noisy_buf[3] = (mu_ddot_noisy[3] << 4) | (mu_ddot_noisy[4] >> 4);
-  msg_low_noisy_buf[4] = (mu_ddot_noisy[4] << 4);
+  decode_bch_low_nibbles(mu_ddot_noisy, 9, mu_ddot_noisy + 5);
+  memcpy(mu_ddot_clean, mu_ddot_noisy, ELL_DDOT_BYTES);
+  encode_bch_low_nibbles(mu_ddot_clean, ELL_DDOT_NIBBLES, mu_ddot_clean + ELL_DDOT_BYTES);
 
-  // ECC 是完美字节对齐的，直接拷贝提取
-  memcpy(ecc_low_noisy, mu_ddot_noisy + 5, 3);
-
-  decode_bch_low_nibbles(msg_low_noisy_buf, 9, ecc_low_noisy);
-  
-  // ==========================================================
-  // Phase 2: Cancel Interference from Lower bits
-  // ==========================================================
-  uint8_t ecc_low_clean[3] = {0};
-  encode_bch_low_nibbles(msg_low_noisy_buf, 9, ecc_low_clean);
-
-  uint8_t mu_ddot_clean[8] = {0};
-  
-  //次高位msg
-  mu_ddot_clean[0] = msg_low_noisy_buf[0] >> 4; 
-  mu_ddot_clean[1] = (msg_low_noisy_buf[0] << 4) | (msg_low_noisy_buf[1] >> 4);
-  mu_ddot_clean[2] = (msg_low_noisy_buf[1] << 4) | (msg_low_noisy_buf[2] >> 4);
-  mu_ddot_clean[3] = (msg_low_noisy_buf[2] << 4) | (msg_low_noisy_buf[3] >> 4);
-  mu_ddot_clean[4] = (msg_low_noisy_buf[3] << 4) | (msg_low_noisy_buf[4] >> 4);
-  
-  // ECC 直接赋值对齐
-  memcpy(mu_ddot_clean + 5, ecc_low_clean, 3);
 #elif WEAVER_MODE == 5
-  uint8_t *msg_low = msg + ELL_BAR_BYTES;
-
-  // 关键步骤：纠错并提取出完美的纯数据
   decode_bch_low(mu_ddot_noisy, ELL_DDOT_BYTES, mu_ddot_noisy + ELL_DDOT_BYTES);
-  memcpy(msg_low, mu_ddot_noisy, ELL_DDOT_BYTES); // 将纯数据保存到输出区
-
-  // ==========================================================
-  // Phase 2: Cancel Interference from Lower bits
-  // ==========================================================
-  // 利用纯净的数据，重新编码出没有任何噪声的完美码字！
-  uint8_t mu_ddot_clean[16] = { 0 };
-  memcpy(mu_ddot_clean, msg_low, ELL_DDOT_BYTES);
-  encode_bch_low(msg_low, ELL_DDOT_BYTES, mu_ddot_clean + ELL_DDOT_BYTES);
+  memcpy(mu_ddot_clean, mu_ddot_noisy, ELL_DDOT_BYTES);
+  encode_bch_low(mu_ddot_clean, ELL_DDOT_BYTES, mu_ddot_clean + ELL_DDOT_BYTES);
 
 #endif
 
@@ -318,23 +268,17 @@ void poly_tomsg(uint8_t msg[KYBER_INDCPA_MSGBYTES], const poly *a)
   }
 
 #if WEAVER_MODE == 3 
-  decode_bch_high_nibbles(mu_tilde, 55, mu_tilde + 28);
-
-  // ==========================================================
-  // Phase 4: 完美缝合输出
-  // ==========================================================
-  // 前 27 字节直接从纠错完毕的 mu_tilde 拷贝
+  decode_bch_high_nibbles(mu_tilde, ELL_BAR_NIBBLES, mu_tilde + ELL_BAR_BYTES);
+  // all high bits and 4 of low bits
   memcpy(msg, mu_tilde, 27);
-  
-  // 第 27 字节是个完美契合的齿轮：高位来自 mu_tilde，低位来自 msg_low_noisy_buf
-  msg[27] = (mu_tilde[27] & 0xF0) | mu_ddot_clean[0];
-  
-  // 余下明文完美拼接
-  memcpy(msg + 28, mu_ddot_clean + 1, 4);
+  msg[27] = (mu_tilde[27] & 0xF0) | ((mu_ddot_clean[4] >> 4) & 0xF);
+  // low bits
+  memcpy(msg + ELL_BAR_BYTES, mu_ddot_clean, ELL_DDOT_BYTES - 1); /* mu_ddot_clean[0:3] */
+
 #elif WEAVER_MODE == 5
-  // BCH 纠错高位，并存入输出区
   decode_bch_high(mu_tilde, ELL_BAR_BYTES, mu_tilde + ELL_BAR_BYTES);
   memcpy(msg, mu_tilde, ELL_BAR_BYTES);
+  memcpy(msg + ELL_BAR_BYTES, mu_ddot_clean, ELL_DDOT_BYTES);
 
 #endif
 }

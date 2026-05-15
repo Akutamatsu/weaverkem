@@ -1,0 +1,39 @@
+副本目录: weaverkem/ref_ct_timing_fix（从 ref 复制；未修改 weaverkem/ref 原始源码）
+
+与 ConstantTimeRef / Kyber 类「rej_uniform」同思路的改动
+----------------------------------------
+1) src/indcpa.c — static rej_uniform
+   - 去掉对 val < KYBER_Q 的数据依赖分支，改为掩码写回与 ctr 增量。
+   - 用 idx0/idx1 避免「本 3 字节内第一次采样已填满 len」时仍访问 r[len] 的越界。
+   - gen_matrix 内对每个待采样多项式在 absorb 之后增加 memset(coeffs,0)，
+     使 CT 写回时读取的「旧系数」在未写入前为确定值 0（与旧实现「仅写接受项、不读未写槽」一致）。
+
+2) src/poly_invq.c — static rej_uniform
+   - 修正原 bug: r[ctr++] = bucket_lo[r[ctr]] + t[j] 中 ctr 自增导致桶下标错误。
+   - 用无符号差与 >>31 得到 t[j] < bucket_size[·] 的掩码，避免 if (t[j] < …) 分支。
+   - 用 mroom/idx 避免 ctr==len 时读/写 r[len]；写回使用 r[idx]。
+
+正确性验证（WSL，副本 correct/）
+----------------------------------------
+make CC=gcc 后三档各 100000 轮: Failure times: 0
+
+TIMECOP / Valgrind 说明
+----------------------------------------
+在 timecop harness 下 buf/kr 等仍可能被标为 poison，rej_uniform 内对 buf 导出的掩码与 ctr
+仍可能触发「依赖未初始化」类报告；与「消除 if(val<Q)」的 CT 目标并不完全等同。
+512 样例：ERROR SUMMARY 约 6322 / 17 contexts（此前含 BCH 时约 6461 / 23）；memcmp、gen_matrix 等仍可能报警。
+
+3) src/bch_high.c — 借鉴 ConstantTimeRef 中与 WEAVER 参数兼容的部分
+   - mod_s：无 v<bch.n 比较分支的掩码版。
+   - a_log_ct / a_pow_ct：对 a_log_tab / a_pow_tab 做全下标扫描，避免秘密值作表索引。
+   - gf_mul / gf_sqr：基于上述 CT 查表与掩码。
+   - encode_bch_high / encode_bch_high_nibbles：mod8_tab_half 用 mod8_tab_word(nib,v) 按 16 行扫描取字，
+     避免「p = 表 + (l+1)*nib」的秘密偏移指针。
+   - compute_syndromes：位掩码 mask_syn = 0 - bit；syn_tmp 用 a_pow_ct(w)。
+   - compute_error_locator_polynomial：mask_d / mask_deg / mask_pelp 用 bch_mask；
+     inv 用 a_pow_ct；elp/pelp 更新用双缓冲 cmov（去掉 if(tmp>deg) 真分支）。
+   - chien_search / chien_search_nibbles：乘法步进 + mz 根计数；roots[] 用掩码写入，避免 roots[count]。
+   - decode_bch_high / decode_bch_high_nibbles：memset(errloc)；按字节累加 XOR 掩码纠错（nibbles 版循环
+     codeword_bytes = (nbits+7)/8）。未引入 poison.h / rng（与 ConstantTimeRef 完整版不同）。
+
+bch_low.c 未改；若 1024/2048 仍有 low 层违例可再按同思路处理。

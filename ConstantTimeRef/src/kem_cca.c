@@ -10,6 +10,10 @@
 //#include "randombytes.h"
 #include "rng.h"
 
+#ifdef PK_COMPRESS
+#include "invq.h"
+#endif
+
 /*************************************************
 * Name:        crypto_kem_keypair_derand
 *

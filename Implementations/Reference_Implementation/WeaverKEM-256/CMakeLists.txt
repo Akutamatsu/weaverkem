@@ -27,6 +27,7 @@ set(SOURCES
     ${REF_SRC}/aes256ctr.c
     ${REF_SRC}/bch_high.c
     ${REF_SRC}/bch_low.c
+    ${REF_SRC}/poly_invq.c
 )
 
 add_executable(KAT_KEM_WeaverKEM-256 ${SOURCES})

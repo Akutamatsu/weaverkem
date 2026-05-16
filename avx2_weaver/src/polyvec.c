@@ -375,8 +375,8 @@ void polyvec_tobytes(uint8_t r[KYBER_POLYVECBYTES], const polyvec *a)
 * Description: De-serialize vector of polynomials;
 *              inverse of polyvec_tobytes
 *
-* Arguments:   - uint8_t *r:       pointer to output byte array
-*              - const polyvec *a: pointer to input vector of polynomials
+* Arguments:   - polyvec *r:        pointer to output vector of polynomials
+*              - const uint8_t *a: pointer to input byte array
 *                                  (of length KYBER_POLYVECBYTES)
 **************************************************/
 void polyvec_frombytes(polyvec *r, const uint8_t a[KYBER_POLYVECBYTES])

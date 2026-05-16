@@ -25,6 +25,15 @@ int16_t tomont_avx(int16_t *r, const int16_t *qdata);
 #define qdata KYBER_NAMESPACE(_qdata)
 extern const int16_t KYBER_NAMESPACE(_qdata)[];
 
+#define ntttobytes_avx KYBER_NAMESPACE(_ntttobytes_avx)
+void ntttobytes_avx(uint8_t *r, const int16_t *a, const int16_t *qdata);
+
+#define nttfrombytes_avx KYBER_NAMESPACE(_nttfrombytes_avx)
+void nttfrombytes_avx(int16_t *r, const uint8_t *a, const int16_t *qdata);
+
+#define nttunpack_avx KYBER_NAMESPACE(_nttunpack_avx)
+void nttunpack_avx(int16_t *r, const int16_t *qdata);
+
 #endif
 
 #endif

@@ -11,8 +11,6 @@
 #endif
 
 static uint64_t t[NTESTS];
-static uint8_t seed[KYBER_SYMBYTES];
-
 int main(void)
 {
   unsigned int i;

@@ -44,6 +44,20 @@ add		$256,%rdi
 call		reduce128_avx
 ret
 
+.global cdecl(reduce512_avx)
+cdecl(reduce512_avx):
+#consts
+vmovdqa		_16XQ*2(%rsi),%ymm0
+vmovdqa		_16XV*2(%rsi),%ymm1
+call		reduce128_avx
+add		$256,%rdi
+call		reduce128_avx
+add		$256,%rdi
+call		reduce128_avx
+add		$256,%rdi
+call		reduce128_avx
+ret
+
 csubq128_avx:
 #load
 vmovdqa		(%rdi),%ymm1
@@ -123,6 +137,21 @@ cdecl(tomont_avx):
 vmovdqa		_16XQ*2(%rsi),%ymm0
 vmovdqa		_16XMONTSQLO*2(%rsi),%ymm1
 vmovdqa		_16XMONTSQHI*2(%rsi),%ymm2
+call		tomont128_avx
+add		$256,%rdi
+call		tomont128_avx
+ret
+
+.global cdecl(tomont512_avx)
+cdecl(tomont512_avx):
+#consts
+vmovdqa		_16XQ*2(%rsi),%ymm0
+vmovdqa		_16XMONTSQLO*2(%rsi),%ymm1
+vmovdqa		_16XMONTSQHI*2(%rsi),%ymm2
+call		tomont128_avx
+add		$256,%rdi
+call		tomont128_avx
+add		$256,%rdi
 call		tomont128_avx
 add		$256,%rdi
 call		tomont128_avx

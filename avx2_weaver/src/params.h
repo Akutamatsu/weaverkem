@@ -45,8 +45,8 @@
   #error "WEAVER_MODE must be in {1,3,5}"
 #endif
 
-/* Use AVX2 NTT/basemul for n=256 (modes 1 and 3). Mode 5 uses portable C NTT. */
-#if 0 && (KYBER_N == 256)
+/* Optional AVX2 NTT/basemul for n=256 (modes 1 and 3). Enable with -DWEAVER_USE_AVX_NTT. */
+#if !defined(WEAVER_AVX256_NTT) && (KYBER_N == 256) && defined(WEAVER_USE_AVX_NTT)
 #define WEAVER_AVX256_NTT 1
 #endif
 

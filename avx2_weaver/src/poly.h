@@ -33,6 +33,8 @@ void poly_getnoise_eta1(poly *r, const uint8_t seed[KYBER_SYMBYTES], uint8_t non
 void poly_ntt(poly *r);
 #define poly_invntt_tomont KYBER_NAMESPACE(_poly_invntt_tomont)
 void poly_invntt_tomont(poly *r);
+#define poly_nttunpack KYBER_NAMESPACE(_poly_nttunpack)
+void poly_nttunpack(poly *r);
 #define poly_basemul_montgomery KYBER_NAMESPACE(_poly_basemul_montgomery)
 void poly_basemul_montgomery(poly *r, const poly *a, const poly *b);
 #define poly_tomont KYBER_NAMESPACE(_poly_tomont)

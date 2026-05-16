@@ -8,11 +8,14 @@ static AES256_CTR_DRBG_struct DRBG_ctx;
 static void aes256_ecb(const unsigned char *key, unsigned char *ctr, unsigned char *out)
 {
   aes256ctr_ctx s;
+  uint8_t block[AES256CTR_BLOCKBYTES];
   uint8_t nonce[12];
 
+  /* aes256ctr_squeezeblocks writes 64 bytes; DRBG needs 16-byte AES output */
   memcpy(nonce, ctr, 12);
   aes256ctr_init(&s, key, nonce);
-  aes256ctr_squeezeblocks(out, 1, &s);
+  aes256ctr_squeezeblocks(block, 1, &s);
+  memcpy(out, block, 16);
 }
 
 void AES256_CTR_DRBG_Update(unsigned char *provided_data,
@@ -49,7 +52,9 @@ void randombytes_init(unsigned char *entropy_input,
   unsigned int i;
 
   (void)security_strength;
-  memcpy(seed_material, entropy_input, 48);
+  /* NIST AES-256-DRBG: 256-bit entropy minimum; tools pass 32 bytes, zero-pad to 48 */
+  memset(seed_material, 0, 48);
+  memcpy(seed_material, entropy_input, 32);
   if(personalization_string) {
     for(i = 0; i < 48; i++)
       seed_material[i] ^= personalization_string[i];

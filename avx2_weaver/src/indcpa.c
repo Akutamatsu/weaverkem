@@ -151,7 +151,7 @@ static unsigned int rej_uniform(int16_t *r,
                                 const uint8_t *buf,
                                 unsigned int buflen)
 {
-  unsigned int ctr, pos;
+  unsigned int ctr, pos, j;
   uint16_t val0, val1;
 
   ctr = pos = 0;
@@ -166,6 +166,7 @@ static unsigned int rej_uniform(int16_t *r,
       r[ctr++] = val1;
   }
 
+  (void)j;
   return ctr;
 }
 
@@ -214,6 +215,10 @@ void gen_matrix(polyvec *a, const uint8_t seed[KYBER_SYMBYTES], int transposed)
         buflen = XOF_BLOCKBYTES;
         ctr += rej_uniform(a[i].vec[j].coeffs + ctr, KYBER_N - ctr, buf, buflen);
       }
+#if defined(WEAVER_AVX256_NTT)
+      /* AVX basemul expects matrix coeffs in unpacked layout (pq-crystals kyber avx2). */
+      poly_nttunpack(&a[i].vec[j]);
+#endif
     }
   }
 }
@@ -240,32 +245,70 @@ void indcpa_keypair_derand(uint8_t pk[KYBER_INDCPA_PUBLICKEYBYTES],
   uint8_t nonce = 0;
   polyvec a[KYBER_K] = {0}, pkpv = {0}, skpv = {0};
 
+  (void)i;
+
   memcpy(buf, coins, KYBER_SYMBYTES);
   buf[KYBER_SYMBYTES] = KYBER_K;
   hash_g(buf, buf, KYBER_SYMBYTES+1);
 
   gen_a(a, publicseed);
 
+  #if (KYBER_K == 2)
+  poly_getnoise_eta1(&skpv.vec[0], noiseseed, nonce++);
+  poly_getnoise_eta1(&skpv.vec[1], noiseseed, nonce++);
+  #elif (KYBER_K == 4)
+  poly_getnoise_eta1(&skpv.vec[0], noiseseed, nonce++);
+  poly_getnoise_eta1(&skpv.vec[1], noiseseed, nonce++);
+  poly_getnoise_eta1(&skpv.vec[2], noiseseed, nonce++);
+  poly_getnoise_eta1(&skpv.vec[3], noiseseed, nonce++);
+  #else
   for(i=0;i<KYBER_K;i++)
     poly_getnoise_eta1(&skpv.vec[i], noiseseed, nonce++);
+  #endif
 
   polyvec_ntt(&skpv);
   
 #ifndef PK_COMPRESS
 
   // matrix-vector multiplication
+  #if (KYBER_K == 2)
+  polyvec_basemul_acc_montgomery(&pkpv.vec[0], &a[0], &skpv);
+  poly_tomont(&pkpv.vec[0]);
+  polyvec_basemul_acc_montgomery(&pkpv.vec[1], &a[1], &skpv);
+  poly_tomont(&pkpv.vec[1]);
+  #elif (KYBER_K == 4)
+  polyvec_basemul_acc_montgomery(&pkpv.vec[0], &a[0], &skpv);
+  poly_tomont(&pkpv.vec[0]);
+  polyvec_basemul_acc_montgomery(&pkpv.vec[1], &a[1], &skpv);
+  poly_tomont(&pkpv.vec[1]);
+  polyvec_basemul_acc_montgomery(&pkpv.vec[2], &a[2], &skpv);
+  poly_tomont(&pkpv.vec[2]);
+  polyvec_basemul_acc_montgomery(&pkpv.vec[3], &a[3], &skpv);
+  poly_tomont(&pkpv.vec[3]);
+  #else
   for(i=0;i<KYBER_K;i++) {
     polyvec_basemul_acc_montgomery(&pkpv.vec[i], &a[i], &skpv);
     poly_tomont(&pkpv.vec[i]);
   }
+  #endif
 
   polyvec_reduce(&pkpv); // save in NTT domain.
 
 #else
+  #if (KYBER_K == 2)
+  polyvec_basemul_acc_montgomery(&pkpv.vec[0], &a[0], &skpv);
+  polyvec_basemul_acc_montgomery(&pkpv.vec[1], &a[1], &skpv);
+  #elif (KYBER_K == 4)
+  polyvec_basemul_acc_montgomery(&pkpv.vec[0], &a[0], &skpv);
+  polyvec_basemul_acc_montgomery(&pkpv.vec[1], &a[1], &skpv);
+  polyvec_basemul_acc_montgomery(&pkpv.vec[2], &a[2], &skpv);
+  polyvec_basemul_acc_montgomery(&pkpv.vec[3], &a[3], &skpv);
+  #else
   for (i = 0; i < KYBER_K; i++) {
       polyvec_basemul_acc_montgomery(&pkpv.vec[i], &a[i], &skpv);
       //poly_tomont(&pkpv.vec[i]);
   }
+  #endif
   polyvec_invntt_tomont(&pkpv);  // from NTT to plain.
   polyvec_reduce(&pkpv);
 
@@ -302,6 +345,8 @@ void indcpa_enc(uint8_t c[KYBER_INDCPA_BYTES],
   polyvec sp = {0}, pkpv = {0}, at[KYBER_K] = {0}, b = {0};
   poly v = {0}, k = {0};
 
+  (void)i;
+
 #ifdef INV_Q_LIFTING
   /*
    * WEAVER-Inv (Algorithm 2):
@@ -324,19 +369,34 @@ void indcpa_enc(uint8_t c[KYBER_INDCPA_BYTES],
   poly_frommsg(&k, m);
   gen_at(at, seed);
 
-#ifdef INV_Q_LIFTING
+  #if (KYBER_K == 2)
+  poly_getnoise_eta1(&sp.vec[0], coins, nonce++);
+  poly_getnoise_eta1(&sp.vec[1], coins, nonce++);
+  #elif (KYBER_K == 4)
+  poly_getnoise_eta1(&sp.vec[0], coins, nonce++);
+  poly_getnoise_eta1(&sp.vec[1], coins, nonce++);
+  poly_getnoise_eta1(&sp.vec[2], coins, nonce++);
+  poly_getnoise_eta1(&sp.vec[3], coins, nonce++);
+  #else
   for(i=0;i<KYBER_K;i++)
     poly_getnoise_eta1(sp.vec+i, coins, nonce++);
-#else
-  for(i=0;i<KYBER_K;i++)
-    poly_getnoise_eta1(sp.vec+i, coins, nonce++);
-#endif
+  #endif
 
   polyvec_ntt(&sp);
 
   // matrix-vector multiplication
+  #if (KYBER_K == 2)
+  polyvec_basemul_acc_montgomery(&b.vec[0], &at[0], &sp);
+  polyvec_basemul_acc_montgomery(&b.vec[1], &at[1], &sp);
+  #elif (KYBER_K == 4)
+  polyvec_basemul_acc_montgomery(&b.vec[0], &at[0], &sp);
+  polyvec_basemul_acc_montgomery(&b.vec[1], &at[1], &sp);
+  polyvec_basemul_acc_montgomery(&b.vec[2], &at[2], &sp);
+  polyvec_basemul_acc_montgomery(&b.vec[3], &at[3], &sp);
+  #else
   for(i=0;i<KYBER_K;i++)
     polyvec_basemul_acc_montgomery(&b.vec[i], &at[i], &sp);
+  #endif
 
   polyvec_basemul_acc_montgomery(&v, &pkpv, &sp);
 

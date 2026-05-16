@@ -1,11 +1,66 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#if defined(__AVX2__)
+#include <immintrin.h>
+#endif
 #include "params.h"
 #include "poly.h"
 #include "msgenc.h"
 #include "reduce.h"
 #include "bch.h"
+
+#if defined(__AVX2__)
+/*
+ * Constant-time AVX2 helper used by all WEAVER modes inside poly_frommsg.
+ *
+ * Expands KYBER_N/8 input bytes into KYBER_N coefficients such that
+ *   r[8*i + j] = ((mu_tilde[i] >> (7 - j)) & 1) ? KYBER_HALFQ : 0
+ *
+ * MSB-first per byte. Only uses arithmetic / shuffle with constant indices
+ * (no data-dependent loads), preserving constant-time behaviour.
+ */
+static void frommsg_high_bits_avx(int16_t r[KYBER_N], const uint8_t *mu_tilde)
+{
+    const __m256i bit_mask = _mm256_set_epi8(
+        /* lanes 31..24 (replicated byte 3) */
+        (char)0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01,
+        /* lanes 23..16 (replicated byte 2) */
+        (char)0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01,
+        /* lanes 15..8  (replicated byte 1) */
+        (char)0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01,
+        /* lanes 7..0   (replicated byte 0) */
+        (char)0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01
+    );
+    const __m256i replicate_idx = _mm256_set_epi8(
+        3,3,3,3,3,3,3,3,
+        2,2,2,2,2,2,2,2,
+        1,1,1,1,1,1,1,1,
+        0,0,0,0,0,0,0,0
+    );
+    const __m256i halfq16 = _mm256_set1_epi16(KYBER_HALFQ);
+    unsigned int i;
+
+    for(i = 0; i < KYBER_N / 32; i++) {
+        uint32_t b4 = ((uint32_t)mu_tilde[4*i + 0])
+                    | ((uint32_t)mu_tilde[4*i + 1] << 8)
+                    | ((uint32_t)mu_tilde[4*i + 2] << 16)
+                    | ((uint32_t)mu_tilde[4*i + 3] << 24);
+        __m256i src = _mm256_set1_epi32((int32_t)b4);
+        __m256i bytes = _mm256_shuffle_epi8(src, replicate_idx);
+        __m256i anded = _mm256_and_si256(bytes, bit_mask);
+        __m256i cmp   = _mm256_cmpeq_epi8(anded, bit_mask);
+        __m256i lo16  = _mm256_cvtepi8_epi16(_mm256_castsi256_si128(cmp));
+        __m256i hi16  = _mm256_cvtepi8_epi16(_mm256_extracti128_si256(cmp, 1));
+
+        lo16 = _mm256_and_si256(lo16, halfq16);
+        hi16 = _mm256_and_si256(hi16, halfq16);
+
+        _mm256_storeu_si256((__m256i *)&r[32*i],     lo16);
+        _mm256_storeu_si256((__m256i *)&r[32*i + 16], hi16);
+    }
+}
+#endif
 
 #if 0
 /*************************************************
@@ -76,12 +131,17 @@ void poly_frommsg(poly *r, const uint8_t msg[KYBER_INDCPA_MSGBYTES])
     memcpy(mu_tilde, msg, ELL_BAR_BYTES);
     encode_bch_high(msg, ELL_BAR_BYTES, mu_tilde + ELL_BAR_BYTES);
 
+#if defined(__AVX2__) && defined(WEAVER_EXPERIMENTAL_MSGENC_AVX) && (WEAVER_MODE != 1)
+    (void)j; (void)mask;
+    frommsg_high_bits_avx(r->coeffs, mu_tilde);
+#else
     for (i = 0; i < KYBER_N / 8; i++) {
         for (j = 0; j < 8; j++) {
             mask = -(int16_t)((mu_tilde[i] >> (7 - j)) & 1);
             r->coeffs[8 * i + j] = mask & KYBER_HALFQ;
         }
     }
+#endif
 }
 // Algorithm 5: MsgDecode
 void poly_tomsg(uint8_t msg[KYBER_INDCPA_MSGBYTES], const poly *a)
@@ -134,6 +194,76 @@ static uint16_t flipabs_ex(int16_t x)
     return (r + m) ^ m; // turn to positive
 }
 
+#if defined(__AVX2__)
+/*
+ * D4 encoding helper (CT-safe, AVX2): for each input byte b in src[0..n_bytes),
+ * compute v[j] = ((b >> (7-j)) & 1) ? KYBER_Q/4 : 0 for j in [0,8), then add v
+ * to r at offsets 0, D4_STEP_LEN, 2*D4_STEP_LEN, 3*D4_STEP_LEN.
+ */
+static void frommsg_d4_add_avx(int16_t *r, const uint8_t *src, unsigned int n_bytes)
+{
+    const __m128i bit_mask = _mm_set_epi8(
+        (char)0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01,
+        (char)0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01
+    );
+    const __m128i qquarter = _mm_set1_epi16(KYBER_Q / 4);
+    unsigned int i;
+
+    for(i = 0; i < n_bytes; i++) {
+        __m128i b8 = _mm_set1_epi8((char)src[i]);
+        __m128i anded = _mm_and_si128(b8, bit_mask);
+        __m128i cmp = _mm_cmpeq_epi8(anded, bit_mask);
+        __m128i v8 = _mm_cvtepi8_epi16(cmp);
+        v8 = _mm_and_si128(v8, qquarter);
+
+        __m128i o0 = _mm_loadu_si128((const __m128i *)&r[8*i + 0]);
+        __m128i o1 = _mm_loadu_si128((const __m128i *)&r[8*i + D4_STEP_LEN]);
+        __m128i o2 = _mm_loadu_si128((const __m128i *)&r[8*i + 2*D4_STEP_LEN]);
+        __m128i o3 = _mm_loadu_si128((const __m128i *)&r[8*i + 3*D4_STEP_LEN]);
+        o0 = _mm_add_epi16(o0, v8);
+        o1 = _mm_add_epi16(o1, v8);
+        o2 = _mm_add_epi16(o2, v8);
+        o3 = _mm_add_epi16(o3, v8);
+        _mm_storeu_si128((__m128i *)&r[8*i + 0], o0);
+        _mm_storeu_si128((__m128i *)&r[8*i + D4_STEP_LEN], o1);
+        _mm_storeu_si128((__m128i *)&r[8*i + 2*D4_STEP_LEN], o2);
+        _mm_storeu_si128((__m128i *)&r[8*i + 3*D4_STEP_LEN], o3);
+    }
+}
+
+/* D4 cancellation helper used by poly_tomsg: same shape as above but subtract. */
+static void tomsg_d4_sub_avx(int16_t *r, const uint8_t *src, unsigned int n_bytes)
+{
+    const __m128i bit_mask = _mm_set_epi8(
+        (char)0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01,
+        (char)0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01
+    );
+    const __m128i qquarter = _mm_set1_epi16(KYBER_Q / 4);
+    unsigned int i;
+
+    for(i = 0; i < n_bytes; i++) {
+        __m128i b8 = _mm_set1_epi8((char)src[i]);
+        __m128i anded = _mm_and_si128(b8, bit_mask);
+        __m128i cmp = _mm_cmpeq_epi8(anded, bit_mask);
+        __m128i v8 = _mm_cvtepi8_epi16(cmp);
+        v8 = _mm_and_si128(v8, qquarter);
+
+        __m128i o0 = _mm_loadu_si128((const __m128i *)&r[8*i + 0]);
+        __m128i o1 = _mm_loadu_si128((const __m128i *)&r[8*i + D4_STEP_LEN]);
+        __m128i o2 = _mm_loadu_si128((const __m128i *)&r[8*i + 2*D4_STEP_LEN]);
+        __m128i o3 = _mm_loadu_si128((const __m128i *)&r[8*i + 3*D4_STEP_LEN]);
+        o0 = _mm_sub_epi16(o0, v8);
+        o1 = _mm_sub_epi16(o1, v8);
+        o2 = _mm_sub_epi16(o2, v8);
+        o3 = _mm_sub_epi16(o3, v8);
+        _mm_storeu_si128((__m128i *)&r[8*i + 0], o0);
+        _mm_storeu_si128((__m128i *)&r[8*i + D4_STEP_LEN], o1);
+        _mm_storeu_si128((__m128i *)&r[8*i + 2*D4_STEP_LEN], o2);
+        _mm_storeu_si128((__m128i *)&r[8*i + 3*D4_STEP_LEN], o3);
+    }
+}
+#endif
+
 // Algorithm 3: MsgEncode
 /*************************************************
 * Name:        poly_frommsg
@@ -165,13 +295,17 @@ void poly_frommsg(poly *r, const uint8_t msg[KYBER_INDCPA_MSGBYTES])
 
 #endif
 
+#if defined(__AVX2__) && defined(WEAVER_EXPERIMENTAL_MSGENC_AVX)
+  (void)j; (void)mask;
+  frommsg_high_bits_avx(r->coeffs, mu_tilde);
+#else
   for(i = 0; i < KYBER_N/8; i++) {
     for(j = 0; j < 8; j++) {
       mask = -(int16_t)((mu_tilde[i] >> (7 - j)) & 1); // MSB-first
-      //mask = -(int16_t)((mu_tilde[i] >> j) & 1);
       r->coeffs[8*i+j] = mask & KYBER_HALFQ;
     }
   }
+#endif
 
   // ==========================================================
   // Step 2: Encode to Lower bits
@@ -188,6 +322,10 @@ void poly_frommsg(poly *r, const uint8_t msg[KYBER_INDCPA_MSGBYTES])
 
 #endif
   // D4 encoding
+#if defined(__AVX2__) && defined(WEAVER_EXPERIMENTAL_MSGENC_AVX)
+  (void)j; (void)mask;
+  frommsg_d4_add_avx(r->coeffs, mu_ddot_buf, LOW_CODEWORD_BYTES);
+#else
   for (i = 0; i < LOW_CODEWORD_BYTES; i++) {
       for (j = 0; j < 8; j++) {
           mask = -(int16_t)((mu_ddot_buf[i] >> (7 - j)) & 1);
@@ -197,6 +335,7 @@ void poly_frommsg(poly *r, const uint8_t msg[KYBER_INDCPA_MSGBYTES])
           r->coeffs[8 * i + j + 3 * D4_STEP_LEN] = r->coeffs[8 * i + j + 3 * D4_STEP_LEN] + (mask & (KYBER_Q / 4));
       }
   }
+#endif
 }
 
 // Algorithm 5: MsgDecode
@@ -244,6 +383,9 @@ void poly_tomsg(uint8_t msg[KYBER_INDCPA_MSGBYTES], const poly *a)
 
 #endif
 
+#if defined(__AVX2__) && defined(WEAVER_EXPERIMENTAL_MSGENC_AVX)
+  tomsg_d4_sub_avx(w_bar, mu_ddot_clean, LOW_CODEWORD_BYTES);
+#else
   for(i = 0; i < LOW_CODEWORD_BYTES; i++) { // 不保证为正
     for(j = 0; j < 8; j++) {
         int16_t mask = -((mu_ddot_clean[i] >> (7 - j)) & 1); 
@@ -253,6 +395,7 @@ void poly_tomsg(uint8_t msg[KYBER_INDCPA_MSGBYTES], const poly *a)
         w_bar[8*i + j + 3 * D4_STEP_LEN] -= (mask & (KYBER_Q/4));
     }
   }
+#endif
 
   // ==========================================================
   // Phase 3: Decode Higher bits

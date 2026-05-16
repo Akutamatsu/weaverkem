@@ -1,4 +1,7 @@
 #include <stdint.h>
+#if defined(__AVX2__)
+#include <immintrin.h>
+#endif
 #include "params.h"
 #include "cbd.h"
 
@@ -55,8 +58,68 @@ static uint32_t load24_littleendian(const uint8_t x[3])
 * Arguments:   - poly *r:            pointer to output polynomial
 *              - const uint8_t *buf: pointer to input byte array
 **************************************************/
+#if defined(__AVX2__)
+/*
+ * AVX2 vectorized cbd2 (CT-safe).
+ *
+ * Per input byte b (8 random bits = 2 coefficients):
+ *   coeff_lo = popcount(b[0,1]) - popcount(b[2,3])
+ *   coeff_hi = popcount(b[4,5]) - popcount(b[6,7])
+ * Result range {-2,-1,0,1,2}.
+ *
+ * Processes 32 input bytes (= 64 output coefficients) per iteration.
+ */
+static void cbd2_avx(poly *r, const uint8_t buf[2*KYBER_N/4])
+{
+    const __m256i mask55 = _mm256_set1_epi8(0x55);
+    const __m256i mask03 = _mm256_set1_epi8(0x03);
+    unsigned int i;
+
+    for(i = 0; i < KYBER_N / 64; i++) {
+        __m256i raw = _mm256_loadu_si256((const __m256i *)&buf[32*i]);
+        __m256i shifted1 = _mm256_srli_epi16(raw, 1);
+        __m256i pop_lo = _mm256_and_si256(raw, mask55);
+        __m256i pop_hi = _mm256_and_si256(shifted1, mask55);
+        __m256i d = _mm256_add_epi8(pop_lo, pop_hi);     /* per-byte 4 popcounts in 2-bit slots */
+
+        /* coeff_lo per byte = (d & 0x03) - ((d >> 2) & 0x03)  in {-2..2} */
+        __m256i a_lo = _mm256_and_si256(d, mask03);
+        __m256i b_lo = _mm256_and_si256(_mm256_srli_epi16(d, 2), mask03);
+        __m256i diff_lo = _mm256_sub_epi8(a_lo, b_lo);
+
+        /* coeff_hi per byte = ((d >> 4) & 0x03) - ((d >> 6) & 0x03) */
+        __m256i a_hi = _mm256_and_si256(_mm256_srli_epi16(d, 4), mask03);
+        __m256i b_hi = _mm256_and_si256(_mm256_srli_epi16(d, 6), mask03);
+        __m256i diff_hi = _mm256_sub_epi8(a_hi, b_hi);
+
+        /* Interleave so output is [diff_lo[0], diff_hi[0], diff_lo[1], ...] */
+        __m256i interlo = _mm256_unpacklo_epi8(diff_lo, diff_hi);
+        __m256i interhi = _mm256_unpackhi_epi8(diff_lo, diff_hi);
+
+        /* AVX2 unpack works per-128-bit lane:
+         *   interlo low 128 = bytes coming from diff_lo[0..7], diff_hi[0..7]  (coeffs 0..15)
+         *   interhi low 128 = bytes coming from diff_lo[8..15], diff_hi[8..15] (coeffs 16..31)
+         *   interlo high 128 = bytes from diff_lo[16..23], diff_hi[16..23]    (coeffs 32..47)
+         *   interhi high 128 = bytes from diff_lo[24..31], diff_hi[24..31]    (coeffs 48..63)
+         */
+        __m256i c0 = _mm256_cvtepi8_epi16(_mm256_castsi256_si128(interlo));
+        __m256i c1 = _mm256_cvtepi8_epi16(_mm256_castsi256_si128(interhi));
+        __m256i c2 = _mm256_cvtepi8_epi16(_mm256_extracti128_si256(interlo, 1));
+        __m256i c3 = _mm256_cvtepi8_epi16(_mm256_extracti128_si256(interhi, 1));
+
+        _mm256_storeu_si256((__m256i *)&r->coeffs[64*i +  0], c0);
+        _mm256_storeu_si256((__m256i *)&r->coeffs[64*i + 16], c1);
+        _mm256_storeu_si256((__m256i *)&r->coeffs[64*i + 32], c2);
+        _mm256_storeu_si256((__m256i *)&r->coeffs[64*i + 48], c3);
+    }
+}
+#endif
+
 static void cbd2(poly *r, const uint8_t buf[2*KYBER_N/4])
 {
+#if defined(__AVX2__)
+  cbd2_avx(r, buf);
+#else
   unsigned int i,j;
   uint32_t t,d;
   int16_t a,b;
@@ -72,6 +135,7 @@ static void cbd2(poly *r, const uint8_t buf[2*KYBER_N/4])
       r->coeffs[8*i+j] = a - b;
     }
   }
+#endif
 }
 
 /*************************************************
@@ -143,8 +207,80 @@ static void cbd4(poly *r, const uint8_t buf[4*KYBER_N/4])
 
 /* cbd1: eta=1, 1 bit per sample, 2 bits per coefficient */
 #if KYBER_ETA1 == 1
+#if defined(__AVX2__)
+/*
+ * AVX2 vectorized cbd1.
+ *
+ * Each input byte b produces 4 output coefficients:
+ *   c[4k+m] = ((b >> (2m+0)) & 1) - ((b >> (2m+1)) & 1)  for m in 0..3
+ * Result is in {-1, 0, 1}.
+ *
+ * Constant-time: only AVX2 arithmetic + shuffle with constant indices, no
+ * data-dependent loads. We process 8 input bytes (= 32 coefficients) per
+ * iteration via byte-broadcast + bit-mask compare, then sign-extend to int16.
+ */
+static void cbd1_avx(poly *r, const uint8_t buf[KYBER_N/4])
+{
+    const __m256i a_mask = _mm256_set_epi8(
+        0x40, 0x10, 0x04, 0x01,
+        0x40, 0x10, 0x04, 0x01,
+        0x40, 0x10, 0x04, 0x01,
+        0x40, 0x10, 0x04, 0x01,
+        0x40, 0x10, 0x04, 0x01,
+        0x40, 0x10, 0x04, 0x01,
+        0x40, 0x10, 0x04, 0x01,
+        0x40, 0x10, 0x04, 0x01
+    );
+    const __m256i b_mask = _mm256_set_epi8(
+        (char)0x80, 0x20, 0x08, 0x02,
+        (char)0x80, 0x20, 0x08, 0x02,
+        (char)0x80, 0x20, 0x08, 0x02,
+        (char)0x80, 0x20, 0x08, 0x02,
+        (char)0x80, 0x20, 0x08, 0x02,
+        (char)0x80, 0x20, 0x08, 0x02,
+        (char)0x80, 0x20, 0x08, 0x02,
+        (char)0x80, 0x20, 0x08, 0x02
+    );
+    /* Replicate each of 8 input bytes into 4 lanes; high 128 picks bytes 4..7,
+       low 128 picks bytes 0..3 (because shuffle is per-128-bit lane). */
+    const __m256i replicate_idx = _mm256_set_epi8(
+        7,7,7,7, 6,6,6,6, 5,5,5,5, 4,4,4,4,
+        3,3,3,3, 2,2,2,2, 1,1,1,1, 0,0,0,0
+    );
+    unsigned int i;
+
+    for(i = 0; i < KYBER_N / 32; i++) {
+        uint64_t b8 = ((uint64_t)buf[8*i + 0])
+                    | ((uint64_t)buf[8*i + 1] << 8)
+                    | ((uint64_t)buf[8*i + 2] << 16)
+                    | ((uint64_t)buf[8*i + 3] << 24)
+                    | ((uint64_t)buf[8*i + 4] << 32)
+                    | ((uint64_t)buf[8*i + 5] << 40)
+                    | ((uint64_t)buf[8*i + 6] << 48)
+                    | ((uint64_t)buf[8*i + 7] << 56);
+        __m256i src   = _mm256_set1_epi64x((long long)b8);
+        __m256i bytes = _mm256_shuffle_epi8(src, replicate_idx);
+        __m256i a_and = _mm256_and_si256(bytes, a_mask);
+        __m256i b_and = _mm256_and_si256(bytes, b_mask);
+        __m256i cmp_a = _mm256_cmpeq_epi8(a_and, a_mask);  /* 0xFF if a-bit set */
+        __m256i cmp_b = _mm256_cmpeq_epi8(b_and, b_mask);  /* 0xFF if b-bit set */
+
+        /* coeff = cmp_b - cmp_a (gives {-1, 0, +1} as int8) */
+        __m256i c8 = _mm256_sub_epi8(cmp_b, cmp_a);
+        __m256i c16_lo = _mm256_cvtepi8_epi16(_mm256_castsi256_si128(c8));
+        __m256i c16_hi = _mm256_cvtepi8_epi16(_mm256_extracti128_si256(c8, 1));
+
+        _mm256_storeu_si256((__m256i *)&r->coeffs[32*i +  0], c16_lo);
+        _mm256_storeu_si256((__m256i *)&r->coeffs[32*i + 16], c16_hi);
+    }
+}
+#endif
+
 static void cbd1(poly *r, const uint8_t buf[1*KYBER_N/4])
 {
+#if defined(__AVX2__)
+  cbd1_avx(r, buf);
+#else
   unsigned int i,j;
   uint32_t t;
   int16_t a,b;
@@ -157,6 +293,7 @@ static void cbd1(poly *r, const uint8_t buf[1*KYBER_N/4])
       r->coeffs[16*i+j] = a - b;
     }
   }
+#endif
 }
 #endif
 
@@ -166,6 +303,70 @@ static unsigned int popcount5(uint16_t x)
   x &= 0x1F;
   return (x & 1u) + ((x >> 1) & 1u) + ((x >> 2) & 1u) + ((x >> 3) & 1u) + ((x >> 4) & 1u);
 }
+
+#if defined(__AVX2__)
+/*
+ * AVX2 vectorized cbd5 (CT-safe).
+ *
+ * We keep the same 5-byte -> 4 coefficients bit mapping as the scalar code,
+ * batch 16 coefficients at a time, and compute popcount5 via nibble-popcount
+ * shuffle with constant lookup tables.
+ */
+static void cbd5_avx(poly *r, const uint8_t buf[5*KYBER_N/4])
+{
+  const __m256i nibble_mask = _mm256_set1_epi8(0x0F);
+  const __m256i popcnt_nibble = _mm256_setr_epi8(
+      0,1,1,2,1,2,2,3,1,2,2,3,2,3,3,4,
+      0,1,1,2,1,2,2,3,1,2,2,3,2,3,3,4
+  );
+  unsigned int i, k;
+
+  for(i = 0; i < KYBER_N/16; i++) {
+    uint8_t a5[32] = {0};
+    uint8_t b5[32] = {0};
+    const uint8_t *in = buf + 20*i;
+
+    for(k = 0; k < 4; k++) {
+      uint64_t t = (uint64_t)in[0]
+                 | ((uint64_t)in[1] << 8)
+                 | ((uint64_t)in[2] << 16)
+                 | ((uint64_t)in[3] << 24)
+                 | ((uint64_t)in[4] << 32);
+      uint16_t v0 = (t >> 0)  & 0x3FF;
+      uint16_t v1 = (t >> 10) & 0x3FF;
+      uint16_t v2 = (t >> 20) & 0x3FF;
+      uint16_t v3 = (t >> 30) & 0x3FF;
+      unsigned int o = 4*k;
+
+      a5[o + 0] = (uint8_t)(v0 & 0x1F);
+      a5[o + 1] = (uint8_t)(v1 & 0x1F);
+      a5[o + 2] = (uint8_t)(v2 & 0x1F);
+      a5[o + 3] = (uint8_t)(v3 & 0x1F);
+      b5[o + 0] = (uint8_t)(v0 >> 5);
+      b5[o + 1] = (uint8_t)(v1 >> 5);
+      b5[o + 2] = (uint8_t)(v2 >> 5);
+      b5[o + 3] = (uint8_t)(v3 >> 5);
+      in += 5;
+    }
+
+    {
+      __m256i av = _mm256_loadu_si256((const __m256i *)a5);
+      __m256i bv = _mm256_loadu_si256((const __m256i *)b5);
+      __m256i av_lo = _mm256_and_si256(av, nibble_mask);
+      __m256i av_hi = _mm256_and_si256(_mm256_srli_epi16(av, 4), nibble_mask);
+      __m256i bv_lo = _mm256_and_si256(bv, nibble_mask);
+      __m256i bv_hi = _mm256_and_si256(_mm256_srli_epi16(bv, 4), nibble_mask);
+      __m256i ap = _mm256_add_epi8(_mm256_shuffle_epi8(popcnt_nibble, av_lo),
+                                   _mm256_shuffle_epi8(popcnt_nibble, av_hi));
+      __m256i bp = _mm256_add_epi8(_mm256_shuffle_epi8(popcnt_nibble, bv_lo),
+                                   _mm256_shuffle_epi8(popcnt_nibble, bv_hi));
+      __m128i d8 = _mm256_castsi256_si128(_mm256_sub_epi8(ap, bp));
+      __m256i d16 = _mm256_cvtepi8_epi16(d8);
+      _mm256_storeu_si256((__m256i *)&r->coeffs[16*i], d16);
+    }
+  }
+}
+#endif
 
 static void cbd5(poly *r, const uint8_t buf[5*KYBER_N/4])
 {

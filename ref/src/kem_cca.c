@@ -89,7 +89,12 @@ int crypto_kem_enc_derand(uint8_t *ct,
   /* Will contain shared-key material || encryption coins */
   uint8_t kr[KYBER_SSBYTES + KYBER_SYMBYTES];
 
-  memcpy(buf, coins, KYBER_INDCPA_MSGBYTES);
+  if(KYBER_INDCPA_MSGBYTES <= KYBER_SYMBYTES)
+    memcpy(buf, coins, KYBER_INDCPA_MSGBYTES);
+  else {
+    memcpy(buf, coins, KYBER_SYMBYTES);
+    memset(buf + KYBER_SYMBYTES, 0, KYBER_INDCPA_MSGBYTES - KYBER_SYMBYTES);
+  }
 
   /* Multitarget countermeasure for coins + contributory KEM */
   hash_h(buf+KYBER_INDCPA_MSGBYTES, pk, KYBER_PUBLICKEYBYTES);

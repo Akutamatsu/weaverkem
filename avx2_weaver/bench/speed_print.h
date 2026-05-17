@@ -6,4 +6,7 @@
 
 void print_results(const char *s, uint64_t *t, size_t tlen);
 
+/* median, p10, p90 (after overhead subtraction; needs tlen >= 11). */
+void print_results_stats(const char *s, uint64_t *t, size_t tlen);
+
 #endif

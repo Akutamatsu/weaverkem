@@ -50,6 +50,16 @@
 #define WEAVER_AVX256_NTT 1
 #endif
 
+#if defined(WEAVER_AVX256_NTT)
+#define WEAVER_AVX_GEN_MATRIX 1
+#define WEAVER_USE_AVX_COMPRESS 1
+#endif
+
+/* n=512 (mode 5): AVX2 NTT + fq reduce/tomont */
+#if (KYBER_N == 512) && defined(WEAVER_USE_AVX_FQ_512)
+#define WEAVER_USE_AVX_NTT512 1
+#endif
+
 #define KYBER_Q     3329
 #define KYBER_HALFQ ((KYBER_Q + 1) / 2)
 
@@ -73,5 +83,7 @@
                                + KYBER_INDCPA_PUBLICKEYBYTES \
                                + 2*KYBER_SYMBYTES)
 #define KYBER_CIPHERTEXTBYTES  KYBER_INDCPA_BYTES
+
+#include "layout.h"
 
 #endif

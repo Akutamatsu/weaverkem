@@ -3,6 +3,10 @@
 #include "poly.h"
 #include "polyvec.h"
 
+#if defined(WEAVER_USE_AVX_COMPRESS)
+#include "poly_compress_avx.h"
+#endif
+
 #ifdef PK_COMPRESS
 /*************************************************
 * Name:        polyvec_compress_pk
@@ -19,6 +23,10 @@ void polyvec_compress_pk(uint8_t r[KYBER_PK_POLYVECBYTES], const polyvec *a)
     int16_t u;
 
 #if (KYBER_PK_POLYVECBYTES == (KYBER_K * KYBER_N * 10 / 8))
+#if defined(WEAVER_USE_AVX_COMPRESS)
+  for(i = 0; i < KYBER_K; i++)
+    poly_compress10_avx(r + i * ((KYBER_N * 10) / 8), &a->vec[i]);
+#else
   uint16_t t[4];
   for(i=0;i<KYBER_K;i++) {
     for(j=0;j<KYBER_N/4;j++) {
@@ -36,6 +44,7 @@ void polyvec_compress_pk(uint8_t r[KYBER_PK_POLYVECBYTES], const polyvec *a)
       r += 5;
     }
   }
+#endif
 #elif (KYBER_PK_POLYVECBYTES == (KYBER_K * KYBER_N * 9 / 8))
   uint16_t t[8];
   for(i=0;i<KYBER_K;i++) {
@@ -86,6 +95,10 @@ void polyvec_decompress_pk(polyvec *r, const uint8_t a[KYBER_PK_POLYVECBYTES])
     unsigned int i, j, k;
 
 #if (KYBER_PK_POLYVECBYTES == (KYBER_K * KYBER_N * 10 / 8))
+#if defined(WEAVER_USE_AVX_COMPRESS)
+  for(i = 0; i < KYBER_K; i++)
+    poly_decompress10_avx(&r->vec[i], a + i * ((KYBER_N * 10) / 8));
+#else
   uint16_t t[4];
   for(i=0;i<KYBER_K;i++) {
     for(j=0;j<KYBER_N/4;j++) {
@@ -99,6 +112,7 @@ void polyvec_decompress_pk(polyvec *r, const uint8_t a[KYBER_PK_POLYVECBYTES])
         r->vec[i].coeffs[4*j+k] = ((uint32_t)(t[k] & 0x3FF)*KYBER_Q + 512) >> 10;
     }
   }
+#endif
 #elif (KYBER_PK_POLYVECBYTES == (KYBER_K * KYBER_N * 9 / 8))
   uint16_t t[8];
   for(i=0;i<KYBER_K;i++) {
@@ -226,6 +240,10 @@ void polyvec_compress(uint8_t r[KYBER_POLYVECCOMPRESSEDBYTES], const polyvec *a)
     }
   }
 #elif (KYBER_POLYVECCOMPRESSEDBYTES == (KYBER_K * KYBER_N * 10 / 8))
+#if defined(WEAVER_USE_AVX_COMPRESS)
+  for(i = 0; i < KYBER_K; i++)
+    poly_compress10_avx(r + i * ((KYBER_N * 10) / 8), &a->vec[i]);
+#else
   uint16_t t[4];
   for(i=0;i<KYBER_K;i++) {
     for(j=0;j<KYBER_N/4;j++) {
@@ -243,6 +261,7 @@ void polyvec_compress(uint8_t r[KYBER_POLYVECCOMPRESSEDBYTES], const polyvec *a)
       r += 5;
     }
   }
+#endif
 #elif (KYBER_POLYVECCOMPRESSEDBYTES == (KYBER_K * KYBER_N * 9 / 8))
   uint16_t t[8];
   for(i=0;i<KYBER_K;i++) {
@@ -311,6 +330,10 @@ void polyvec_decompress(polyvec *r, const uint8_t a[KYBER_POLYVECCOMPRESSEDBYTES
     }
   }
 #elif (KYBER_POLYVECCOMPRESSEDBYTES == (KYBER_K * KYBER_N * 10 / 8))
+#if defined(WEAVER_USE_AVX_COMPRESS)
+  for(i = 0; i < KYBER_K; i++)
+    poly_decompress10_avx(&r->vec[i], a + i * ((KYBER_N * 10) / 8));
+#else
   uint16_t t[4];
   for(i=0;i<KYBER_K;i++) {
     for(j=0;j<KYBER_N/4;j++) {
@@ -324,6 +347,7 @@ void polyvec_decompress(polyvec *r, const uint8_t a[KYBER_POLYVECCOMPRESSEDBYTES
         r->vec[i].coeffs[4*j+k] = ((uint32_t)(t[k] & 0x3FF)*KYBER_Q + 512) >> 10;
     }
   }
+#endif
 #elif (KYBER_POLYVECCOMPRESSEDBYTES == (KYBER_K * KYBER_N * 9 / 8))
   uint16_t t[8];
   for(i=0;i<KYBER_K;i++) {

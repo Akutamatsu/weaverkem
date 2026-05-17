@@ -7,6 +7,13 @@
 #include "reduce.h"
 #include "cbd.h"
 #include "symmetric.h"
+#if defined(WEAVER_USE_AVX_COMPRESS)
+#include "poly_compress_avx.h"
+#endif
+
+#if defined(WEAVER_USE_AVX_NTT512)
+#include "ntt_avx512.h"
+#endif
 
 #if (KYBER_N == 512) && defined(WEAVER_USE_AVX_FQ_512)
 #define reduce_avx_fq KYBER_NAMESPACE(_reduce_avx)
@@ -36,6 +43,9 @@ void poly_compress(uint8_t r[KYBER_POLYCOMPRESSEDBYTES], const poly *a)
 
 
 #if (KYBER_POLYCOMPRESSEDBYTES == (KYBER_N * 4 / 8))
+#if defined(WEAVER_USE_AVX_COMPRESS) && (KYBER_N == 256)
+  poly_compress_d4_avx(r, a);
+#else
   for(i=0;i<KYBER_N/8;i++) {
     for(j=0;j<8;j++) {
       u  = a->coeffs[8*i+j];
@@ -49,6 +59,7 @@ void poly_compress(uint8_t r[KYBER_POLYCOMPRESSEDBYTES], const poly *a)
     r[3] = t[6] | (t[7] << 4);
     r += 4;
   }
+#endif
 #elif (KYBER_POLYCOMPRESSEDBYTES == (KYBER_N * 5 / 8))
   for(i=0;i<KYBER_N/8;i++) {
     for(j=0;j<8;j++) {
@@ -89,11 +100,15 @@ void poly_decompress(poly *r, const uint8_t a[KYBER_POLYCOMPRESSEDBYTES])
   unsigned int i;
 
 #if (KYBER_POLYCOMPRESSEDBYTES == (KYBER_N * 4 / 8))
+#if defined(WEAVER_USE_AVX_COMPRESS) && (KYBER_N == 256)
+  poly_decompress_d4_avx(r, a);
+#else
   for(i=0;i<KYBER_N/2;i++) {
     r->coeffs[2*i+0] = (((uint16_t)(a[0] & 15)*KYBER_Q) + 8) >> 4;
     r->coeffs[2*i+1] = (((uint16_t)(a[0] >> 4)*KYBER_Q) + 8) >> 4;
     a += 1;
   }
+#endif
 #elif (KYBER_POLYCOMPRESSEDBYTES == (KYBER_N * 5 / 8))
   unsigned int j;
   uint8_t t[8];
@@ -163,7 +178,40 @@ void poly_getnoise_eta1(poly *r, const uint8_t seed[KYBER_SYMBYTES], uint8_t non
   cbd_eta1(r, buf);
 }
 
-#if !defined(WEAVER_AVX256_NTT)
+#if defined(WEAVER_USE_AVX_NTT512)
+
+void poly_ntt(poly *r)
+{
+  ntt512_avx(r->coeffs);
+  poly_reduce(r);
+}
+
+void poly_invntt_tomont(poly *r)
+{
+  invntt512_avx(r->coeffs);
+}
+
+void poly_basemul_montgomery(poly *r, const poly *a, const poly *b)
+{
+  basemul512_avx(r->coeffs, a->coeffs, b->coeffs);
+}
+
+void poly_nttunpack(poly *r)
+{
+  (void)r;
+}
+
+void poly_add(poly *r, const poly *a, const poly *b)
+{
+  poly_add512_avx(r->coeffs, a->coeffs, b->coeffs);
+}
+
+void poly_sub(poly *r, const poly *a, const poly *b)
+{
+  poly_sub512_avx(r->coeffs, a->coeffs, b->coeffs);
+}
+
+#elif !defined(WEAVER_AVX256_NTT)
 
 void poly_ntt(poly *r)
 {
@@ -203,6 +251,24 @@ void poly_nttunpack(poly *r)
   (void)r;
 }
 
+void poly_add(poly *r, const poly *a, const poly *b)
+{
+  unsigned int i;
+  for(i=0;i<KYBER_N;i++)
+    r->coeffs[i] = a->coeffs[i] + b->coeffs[i];
+}
+
+void poly_sub(poly *r, const poly *a, const poly *b)
+{
+  unsigned int i;
+  for(i=0;i<KYBER_N;i++)
+    r->coeffs[i] = a->coeffs[i] - b->coeffs[i];
+}
+
+#endif /* !WEAVER_AVX256_NTT && !WEAVER_USE_AVX_NTT512 */
+
+#if defined(WEAVER_USE_AVX_NTT512) || !defined(WEAVER_AVX256_NTT)
+
 void poly_tomont(poly *r)
 {
 #if (KYBER_N == 512) && defined(WEAVER_USE_AVX_FQ_512)
@@ -219,10 +285,16 @@ void poly_reduce(poly *r)
 {
 #if (KYBER_N == 512) && defined(WEAVER_USE_AVX_FQ_512)
   unsigned int i;
+  int32_t diff;
+  int16_t mask;
+
   reduce512_avx_fq(r->coeffs, qdata_fq);
-  /* AVX red16 yields [0,q] (can be q); ref uses centered barrett for poly_tobytes. */
-  for(i = 0; i < KYBER_N; i++)
+  for(i = 0; i < KYBER_N; i++) {
+    diff = (int32_t)r->coeffs[i] - KYBER_Q;
+    mask = (int16_t)(((uint32_t)diff | (uint32_t)(-diff)) >> 31) - 1;
+    r->coeffs[i] = r->coeffs[i] + (mask & (int16_t)(-KYBER_Q));
     r->coeffs[i] = barrett_reduce(r->coeffs[i]);
+  }
 #else
   unsigned int i;
   for(i=0;i<KYBER_N;i++)
@@ -230,18 +302,4 @@ void poly_reduce(poly *r)
 #endif
 }
 
-void poly_add(poly *r, const poly *a, const poly *b)
-{
-  unsigned int i;
-  for(i=0;i<KYBER_N;i++)
-    r->coeffs[i] = a->coeffs[i] + b->coeffs[i];
-}
-
-void poly_sub(poly *r, const poly *a, const poly *b)
-{
-  unsigned int i;
-  for(i=0;i<KYBER_N;i++)
-    r->coeffs[i] = a->coeffs[i] - b->coeffs[i];
-}
-
-#endif /* !WEAVER_AVX256_NTT */
+#endif /* WEAVER_USE_AVX_NTT512 || !WEAVER_AVX256_NTT */

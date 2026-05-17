@@ -105,7 +105,7 @@ static void unpack_sk(polyvec *sk,
 *              poly *pk:   pointer to the input vector of polynomials b
 *              poly *v:    pointer to the input polynomial v
 **************************************************/
-void pack_ciphertext(uint8_t r[KYBER_INDCPA_BYTES],
+static void pack_ciphertext(uint8_t r[KYBER_INDCPA_BYTES],
                             polyvec *b,
                             poly *v)
 {
@@ -191,6 +191,8 @@ static unsigned int rej_uniform(int16_t *r,
 #endif
 
 #define GEN_MATRIX_NBLOCKS ((12*KYBER_N/8*(1 << 12)/KYBER_Q + XOF_BLOCKBYTES)/XOF_BLOCKBYTES)
+
+#ifndef WEAVER_AVX_GEN_MATRIX
 // Not static for benchmarking
 void gen_matrix(polyvec *a, const uint8_t seed[KYBER_SYMBYTES], int transposed)
 {
@@ -222,6 +224,7 @@ void gen_matrix(polyvec *a, const uint8_t seed[KYBER_SYMBYTES], int transposed)
     }
   }
 }
+#endif /* !WEAVER_AVX_GEN_MATRIX */
 
 /*************************************************
 * Name:        indcpa_keypair

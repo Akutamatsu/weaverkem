@@ -253,3 +253,7 @@ add		$256,%rdi
 add		$192,%rsi
 call		nttfrombytes128_avx
 ret
+
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack,"",%progbits
+#endif

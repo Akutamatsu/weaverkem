@@ -27,9 +27,5 @@ void indcpa_dec(uint8_t m[KYBER_INDCPA_MSGBYTES],
 void unpack_pk(polyvec *pk,
                uint8_t seed[KYBER_SYMBYTES],
                const uint8_t packedpk[KYBER_INDCPA_PUBLICKEYBYTES]);
-                      
-void pack_ciphertext(uint8_t r[KYBER_INDCPA_BYTES],
-                     polyvec *b,
-                     poly *v);              
 
 #endif

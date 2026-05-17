@@ -9,7 +9,7 @@
  * coeffs[0] + X*coeffs[1] + X^2*coeffs[2] + ... + X^{n-1}*coeffs[n-1]
  */
 typedef struct{
-#if defined(WEAVER_AVX256_NTT)
+#if defined(WEAVER_AVX256_NTT) || defined(WEAVER_USE_AVX_NTT512)
   int16_t coeffs[KYBER_N] __attribute__((aligned(32)));
 #else
   int16_t coeffs[KYBER_N];

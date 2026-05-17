@@ -28,6 +28,46 @@ static uint64_t average(uint64_t *t, size_t tlen) {
   return acc/tlen;
 }
 
+static uint64_t percentile(uint64_t *l, size_t llen, unsigned pct)
+{
+  size_t idx;
+
+  if(llen == 0)
+    return 0;
+  if(pct > 100)
+    pct = 100;
+  idx = (llen - 1) * (size_t)pct / 100;
+  return l[idx];
+}
+
+void print_results_stats(const char *s, uint64_t *t, size_t tlen)
+{
+  size_t i;
+  static uint64_t overhead = -1;
+
+  if(tlen < 11) {
+    fprintf(stderr, "ERROR: Need at least 11 cycle samples for stats!\n");
+    return;
+  }
+
+  if(overhead == (uint64_t)-1)
+    overhead = cpucycles_overhead();
+
+  tlen--;
+  for(i = 0; i < tlen; ++i)
+    t[i] = t[i + 1] - t[i] - overhead;
+
+  qsort(t, tlen, sizeof(uint64_t), cmp_uint64);
+
+  printf("%s\n", s);
+  printf("median: %llu  p10: %llu  p90: %llu  avg: %llu cycles\n",
+         (unsigned long long)median(t, tlen),
+         (unsigned long long)percentile(t, tlen, 10),
+         (unsigned long long)percentile(t, tlen, 90),
+         (unsigned long long)average(t, tlen));
+  printf("\n");
+}
+
 void print_results(const char *s, uint64_t *t, size_t tlen) {
   size_t i;
   static uint64_t overhead = -1;

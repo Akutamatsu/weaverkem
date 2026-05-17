@@ -419,9 +419,18 @@ test-extended: test \
 	@echo "=== Random ref vs AVX (mode 5, 5000) ===" \
 	  && $(MAKE) bin/compare_ref_random_2048
 
+bin/test_enc_derand_coins_2048:
+	@mkdir -p bin
+	$(call compile_objs,tedc5,$(WEAVER_C) $(NTT_C) $(MODE5_C_FQ),5,$(MODE5_DEFS),$(MODE5_S_FQ))
+	@$(CC) $(CFLAGS) -DWEAVER_MODE=5 $(INC) -c tools/test_enc_derand_coins.c \
+	  -o $(BD)/tedc5/test_enc_derand_coins.o
+	$(CC) $(LDFLAGS) -o $@ $(BD)/tedc5/*.o
+
 test-san: SAN=1
-test-san: clean kat bin/compare_ref_random_512 bin/compare_ref_random_1024
-	@echo "=== ASan/UBSan KAT + random diff (modes 1/3) done ==="
+test-san: clean kat bin/compare_ref_random_512 bin/compare_ref_random_1024 \
+          bin/test_enc_derand_coins_2048 bin/compare_ref_random_2048
+	@bin/test_enc_derand_coins_2048
+	@echo "=== ASan/UBSan KAT + random diff + mode-5 enc_derand coins done ==="
 
 bench: all
 	@echo "========== AVX2 Weaver (median cycles, 10000 iters) =========="

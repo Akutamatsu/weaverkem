@@ -64,6 +64,8 @@
 #define KYBER_HALFQ ((KYBER_Q + 1) / 2)
 
 #define KYBER_SYMBYTES 32
+/* Randomness passed to crypto_kem_*_derand (fixed 32 bytes for all modes). */
+#define KYBER_KEM_DERAND_COINBYTES KYBER_SYMBYTES
 #define KYBER_SSBYTES  KYBER_INDCPA_MSGBYTES
 
 #define KYBER_POLYBYTES     ((KYBER_N * 12) / 8)

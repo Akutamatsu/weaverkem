@@ -36,7 +36,8 @@ ifeq ($(ENABLE_LTO),1)
   LDFLAGS += -flto
   # Keccak x4 / rejsample / compress: avoid LTO miscompilation with gen_matrix (mode 1).
   NO_LTO_C = src/fips202x4.c src/rejsample.c src/indcpa_gen_matrix_avx.c \
-             src/poly_compress_avx.c src/keccak4x/KeccakP-1600-times4-SIMD256.c
+             src/poly_compress_avx.c src/poly_compress9.c \
+             src/keccak4x/KeccakP-1600-times4-SIMD256.c
   CFLAGS_NO_LTO = $(filter-out -flto,$(CFLAGS)) -fno-lto
 endif
 BD      = build
@@ -48,13 +49,14 @@ REF_SRC = ../ref/src
 
 WEAVER_C = \
 	src/indcpa.c src/kem_cca.c src/msgenc.c src/bch_high.c src/bch_low.c \
-	src/polyvec.c src/poly_weaver.c src/cbd.c src/reduce.c src/verify.c \
-	src/fips202.c src/symmetric-shake.c src/randombytes_ctr.c src/aes256ctr.c src/poly_invq.c
+	src/polyvec.c src/poly_weaver.c src/poly_compress9.c src/cbd.c src/reduce.c \
+	src/verify.c src/fips202.c src/symmetric-shake.c src/randombytes_ctr.c \
+	src/aes256ctr.c src/poly_invq.c
 
 WEAVER_C_NORNG = \
 	src/indcpa.c src/kem_cca.c src/msgenc.c src/bch_high.c src/bch_low.c \
-	src/polyvec.c src/poly_weaver.c src/cbd.c src/reduce.c src/verify.c \
-	src/fips202.c src/symmetric-shake.c src/poly_invq.c
+	src/polyvec.c src/poly_weaver.c src/poly_compress9.c src/cbd.c src/reduce.c \
+	src/verify.c src/fips202.c src/symmetric-shake.c src/poly_invq.c
 
 AVX_C  = src/poly_avx.c src/avx/consts.c
 AVX_S  = src/avx/ntt.S src/avx/invntt.S src/avx/basemul.S src/avx/fq.S src/avx/shuffle.S
@@ -106,7 +108,11 @@ MODE5_C_FQ =
 MODE5_S_FQ =
 endif
 
-.PHONY: all kat test bench bench-components gen_vectors ref_vectors clean test-san
+.PHONY: all kat test bench bench-components gen_vectors ref_vectors clean test-san quick-check
+
+quick-check: test test-extended bin/test_enc_derand_coins_2048 bin/test_compress9_512
+	@chmod +x tools/quick_check.sh
+	@bin/test_compress9_512
 
 define link_bench_components
 	@mkdir -p bin
@@ -435,6 +441,13 @@ test-san: clean kat bin/compare_ref_random_512 bin/compare_ref_random_1024 \
 bench: all
 	@echo "========== AVX2 Weaver (median cycles, 10000 iters) =========="
 	@for x in 512 1024 2048; do echo "--- WEAVER-$$x ---"; bin/weaver_avx_$$x; done
+
+bin/test_compress9_512:
+	@mkdir -p bin
+	$(call compile_objs,tc9,$(WEAVER_C) $(MODE13_C_NTT),1,$(MODE13_DEFS),$(MODE13_S_NTT))
+	@$(CC) $(CFLAGS) -DWEAVER_MODE=1 $(INC) $(MODE13_DEFS) -c tools/test_compress9.c \
+	  -o $(BD)/tc9/test_compress9.o
+	$(CC) $(LDFLAGS) -o $@ $(BD)/tc9/*.o
 
 bench-components: bin/bench_components_512 bin/bench_components_1024 bin/bench_components_2048
 	@echo "========== component benchmarks (modes 1, 3, 5) =========="

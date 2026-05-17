@@ -132,4 +132,41 @@ void poly_decompress_d4_avx(poly * restrict r, const uint8_t a[KYBER_POLYCOMPRES
 
 #endif /* 4-bit v */
 
+#if (KYBER_PK_POLYVECBYTES == (KYBER_K * KYBER_N * 9 / 8))
+
+#include "poly_compress9.h"
+
+void poly_compress9_quant_avx(uint16_t t[KYBER_N], const poly *a)
+{
+  unsigned int i, k;
+  const __m256i qv = _mm256_set1_epi32(KYBER_Q);
+  const __m256i halfv = _mm256_set1_epi32(KYBER_Q / 2);
+  uint32_t num[8];
+
+  for(i = 0; i < KYBER_N; i += 8) {
+    __m128i c = _mm_loadu_si128((__m128i *)&a->coeffs[i]);
+    __m256i u = _mm256_cvtepi16_epi32(c);
+    __m256i neg = _mm256_srai_epi32(u, 31);
+    u = _mm256_add_epi32(u, _mm256_and_si256(neg, qv));
+    u = _mm256_and_si256(u, _mm256_set1_epi32(0xffff));
+    u = _mm256_slli_epi32(u, 9);
+    u = _mm256_add_epi32(u, halfv);
+    _mm256_storeu_si256((__m256i *)num, u);
+    for(k = 0; k < 8; k++)
+      t[i + k] = (uint16_t)((num[k] / KYBER_Q) & 0x1ff);
+  }
+}
+
+void poly_compress9_avx(uint8_t r[(KYBER_N * 9) / 8], const poly *a)
+{
+  unsigned int j;
+  uint16_t t[KYBER_N];
+
+  poly_compress9_quant_avx(t, a);
+  for(j = 0; j < KYBER_N / 8; j++)
+    poly_compress9_pack8(r + 9 * j, t + 8 * j);
+}
+
+#endif /* 9-bit pk */
+
 #endif /* WEAVER_USE_AVX_COMPRESS */

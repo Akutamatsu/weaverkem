@@ -17,11 +17,7 @@
 static void kem_enc_derand_fill_msg(uint8_t buf[KYBER_INDCPA_MSGBYTES],
                                     const uint8_t coins[KYBER_KEM_DERAND_COINBYTES])
 {
-  size_t copylen = KYBER_INDCPA_MSGBYTES < KYBER_KEM_DERAND_COINBYTES
-                 ? KYBER_INDCPA_MSGBYTES : KYBER_KEM_DERAND_COINBYTES;
-
-  memset(buf, 0, KYBER_INDCPA_MSGBYTES);
-  memcpy(buf, coins, copylen);
+  memcpy(buf, coins, KYBER_INDCPA_MSGBYTES);
 }
 
 /*************************************************
@@ -85,8 +81,7 @@ int crypto_kem_keypair(uint8_t *pk,
 *                (an already allocated array of KYBER_SSBYTES bytes)
 *              - const uint8_t *pk: pointer to input public key
 *                (an already allocated array of KYBER_PUBLICKEYBYTES bytes)
-*              - const uint8_t *coins: pointer to input randomness
-*                (an already allocated array filled with KYBER_SYMBYTES random bytes)
+*              - const uint8_t *coins: FO message m (KYBER_INDCPA_MSGBYTES bytes)
 **
 * Returns 0 (success)
 **************************************************/

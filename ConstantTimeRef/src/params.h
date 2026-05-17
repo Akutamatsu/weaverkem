@@ -68,7 +68,7 @@
 
 /* size in bytes of hashes, and seeds */
 #define KYBER_SYMBYTES 32
-#define KYBER_KEM_DERAND_COINBYTES KYBER_SYMBYTES
+#define KYBER_KEM_DERAND_COINBYTES KYBER_INDCPA_MSGBYTES
 
 // 确保 SSBYTES（共享密钥长度）也跟随 SYMBYTES 变动
 #define KYBER_SSBYTES  KYBER_INDCPA_MSGBYTES /* size in bytes of shared key */

@@ -11,7 +11,7 @@ int crypto_kem_keypair_derand(uint8_t *pk, uint8_t *sk, const uint8_t *coins);
 int crypto_kem_keypair(uint8_t *pk, uint8_t *sk);
 
 #define crypto_kem_enc_derand KYBER_NAMESPACE(_enc_derand)
-/* coins: exactly KYBER_KEM_DERAND_COINBYTES (32) bytes of external randomness. */
+/* coins: KYBER_INDCPA_MSGBYTES bytes (FO message m; 16/32/64 by mode). */
 int crypto_kem_enc_derand(uint8_t *ct, uint8_t *ss, const uint8_t *pk,
                           const uint8_t coins[KYBER_KEM_DERAND_COINBYTES]);
 

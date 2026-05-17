@@ -14,20 +14,11 @@
 #include "invq.h"
 #endif
 
-/*
- * Fill the IND-CPA message prefix of the KEM encapsulation buffer.
- * crypto_kem_enc_derand receives only KYBER_KEM_DERAND_COINBYTES (32) bytes;
- * KYBER_INDCPA_MSGBYTES may be larger (e.g. 64 for WEAVER-2048). Zero-pad
- * instead of reading past the caller buffer (Kyber assumes MSGBYTES==SYMBYTES).
- */
+/* FO message m; length is KYBER_INDCPA_MSGBYTES (32 for modes 1/3, 64 for mode 5). */
 static void kem_enc_derand_fill_msg(uint8_t buf[KYBER_INDCPA_MSGBYTES],
                                     const uint8_t coins[KYBER_KEM_DERAND_COINBYTES])
 {
-  size_t copylen = KYBER_INDCPA_MSGBYTES < KYBER_KEM_DERAND_COINBYTES
-                 ? KYBER_INDCPA_MSGBYTES : KYBER_KEM_DERAND_COINBYTES;
-
-  memset(buf, 0, KYBER_INDCPA_MSGBYTES);
-  memcpy(buf, coins, copylen);
+  memcpy(buf, coins, KYBER_INDCPA_MSGBYTES);
 }
 
 /*************************************************
@@ -91,8 +82,7 @@ int crypto_kem_keypair(uint8_t *pk,
 *                (an already allocated array of KYBER_SSBYTES bytes)
 *              - const uint8_t *pk: pointer to input public key
 *                (an already allocated array of KYBER_PUBLICKEYBYTES bytes)
-*              - const uint8_t *coins: pointer to input randomness
-*                (an already allocated array filled with KYBER_SYMBYTES random bytes)
+*              - const uint8_t *coins: FO message m (KYBER_INDCPA_MSGBYTES bytes)
 **
 * Returns 0 (success)
 **************************************************/

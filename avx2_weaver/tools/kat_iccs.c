@@ -31,18 +31,24 @@ static int parse_hex(const char *hex, unsigned char *out, size_t len)
 }
 
 static int cmp_hex(const char *tag, const unsigned char *got, size_t len,
-                   const char *expect_hex)
+                   const char *expect_hex, int verbose)
 {
   unsigned char exp[8192];
+  size_t off;
   if(parse_hex(expect_hex, exp, len) != 0) {
     fprintf(stderr, "%s: bad hex in KAT file\n", tag);
     return 1;
   }
-  if(memcmp(got, exp, len) != 0) {
-    fprintf(stderr, "%s: MISMATCH\n", tag);
-    return 1;
+  if(memcmp(got, exp, len) == 0)
+    return 0;
+  fprintf(stderr, "%s: MISMATCH", tag);
+  if(verbose) {
+    for(off = 0; off < len; off++)
+      if(got[off] != exp[off]) break;
+    fprintf(stderr, " first_diff@%zu got=0x%02x exp=0x%02x", off, got[off], exp[off]);
   }
-  return 0;
+  fprintf(stderr, "\n");
+  return 1;
 }
 
 int main(int argc, char **argv)
@@ -50,6 +56,8 @@ int main(int argc, char **argv)
   FILE *f;
   char line[LINE_MAX];
   int count = -1, errors = 0;
+  int trace = (argc > 2 && strcmp(argv[2], "--trace") == 0);
+  int case_pk = 0, case_sk = 0, case_ct = 0, case_ss = 0;
   unsigned char seed[64];
   unsigned char pk[CRYPTO_PUBLICKEYBYTES], sk[CRYPTO_SECRETKEYBYTES];
   unsigned char ct[CRYPTO_CIPHERTEXTBYTES], ss[CRYPTO_BYTES], ss1[CRYPTO_BYTES];
@@ -74,26 +82,39 @@ int main(int argc, char **argv)
       continue;
     }
     if(strncmp(line, "PK = ", 5) == 0) {
+      case_pk = case_sk = case_ct = case_ss = 0;
       init_random_number(&drng_algorithm, seed, 64);
       crypto_kem_keypair(pk, sk);
-      errors += cmp_hex("PK", pk, CRYPTO_PUBLICKEYBYTES, line + 5);
+      case_pk = cmp_hex("PK", pk, CRYPTO_PUBLICKEYBYTES, line + 5, trace);
+      errors += case_pk;
       continue;
     }
     if(strncmp(line, "SK = ", 5) == 0) {
-      errors += cmp_hex("SK", sk, CRYPTO_SECRETKEYBYTES, line + 5);
+      case_sk = cmp_hex("SK", sk, CRYPTO_SECRETKEYBYTES, line + 5, trace);
+      errors += case_sk;
       continue;
     }
     if(strncmp(line, "CT = ", 5) == 0) {
       crypto_kem_enc(ct, ss, pk);
-      errors += cmp_hex("CT", ct, CRYPTO_CIPHERTEXTBYTES, line + 5);
+      case_ct = cmp_hex("CT", ct, CRYPTO_CIPHERTEXTBYTES, line + 5, trace);
+      errors += case_ct;
       continue;
     }
     if(strncmp(line, "SS = ", 5) == 0) {
-      errors += cmp_hex("SS", ss, CRYPTO_BYTES, line + 5);
+      case_ss = cmp_hex("SS", ss, CRYPTO_BYTES, line + 5, trace);
+      errors += case_ss;
       crypto_kem_dec(ss1, ct, sk);
       if(memcmp(ss, ss1, CRYPTO_BYTES) != 0) {
         fprintf(stderr, "SS: decaps mismatch at count %d\n", count);
         errors++;
+      }
+      if(trace && (case_pk || case_sk || case_ct || case_ss)) {
+        fprintf(stderr, "KAT case #%d: pk=%s sk=%s ct=%s ss=%s\n",
+                count,
+                case_pk ? "FAIL" : "PASS",
+                case_sk ? "FAIL" : "PASS",
+                case_ct ? "FAIL" : "PASS",
+                case_ss ? "FAIL" : "PASS");
       }
     }
   }

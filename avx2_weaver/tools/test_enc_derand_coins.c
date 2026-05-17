@@ -1,4 +1,4 @@
-/* Regression: enc_derand must not read past KYBER_KEM_DERAND_COINBYTES (32). */
+/* Regression: enc_derand must not read past KYBER_KEM_DERAND_COINBYTES (64 for mode 5). */
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
@@ -10,13 +10,13 @@
 #error "test_enc_derand_coins is for WEAVER-2048 (mode 5) only"
 #endif
 
-#if KYBER_INDCPA_MSGBYTES <= KYBER_KEM_DERAND_COINBYTES
-#error "mode 5 expected KYBER_INDCPA_MSGBYTES > KYBER_KEM_DERAND_COINBYTES"
+#if KYBER_KEM_DERAND_COINBYTES != KYBER_INDCPA_MSGBYTES
+#error "mode 5 expected KYBER_KEM_DERAND_COINBYTES == KYBER_INDCPA_MSGBYTES"
 #endif
 
 int main(void)
 {
-  uint8_t kp_coins[2 * KYBER_KEM_DERAND_COINBYTES];
+  uint8_t kp_coins[2 * KYBER_SYMBYTES];
   uint8_t enc_coins[KYBER_KEM_DERAND_COINBYTES];
   uint8_t canary[KYBER_KEM_DERAND_COINBYTES];
   uint8_t pk[CRYPTO_PUBLICKEYBYTES];
@@ -48,6 +48,6 @@ int main(void)
   }
 
   printf("PASS: enc_derand with strict %u-byte coins buffer (mode 5)\n",
-         (unsigned)KYBER_KEM_DERAND_COINBYTES);
+         (unsigned)KYBER_INDCPA_MSGBYTES);
   return 0;
 }

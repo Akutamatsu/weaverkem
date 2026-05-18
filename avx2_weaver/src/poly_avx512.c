@@ -30,16 +30,110 @@ static inline __m256i fqmul_zeta_ct(__m256i v, int16_t zeta)
   return fqmul_avx2(v, _mm256_set1_epi16(zeta));
 }
 
-static __m256i barrett_ct(__m256i v)
+/* Exact Barrett mod q on 16 lanes; matches barrett_reduce() per coefficient. */
+static inline __m256i barrett_avx2(__m256i a)
 {
-  int16_t in[16] __attribute__((aligned(32)));
-  int16_t out[16] __attribute__((aligned(32)));
-  unsigned int i;
+  const __m256i v32 = _mm256_set1_epi32(20159);
+  const __m256i bias = _mm256_set1_epi32(1 << 25);
+  const __m256i q32 = _mm256_set1_epi32(KYBER_Q);
+  __m128i a_lo128 = _mm256_castsi256_si128(a);
+  __m128i a_hi128 = _mm256_extracti128_si256(a, 1);
+  __m256i a_lo32 = _mm256_cvtepi16_epi32(a_lo128);
+  __m256i a_hi32 = _mm256_cvtepi16_epi32(a_hi128);
+  __m256i t_lo, t_hi, r_lo32, r_hi32, packed;
 
-  _mm256_store_si256((__m256i *)in, v);
-  for(i = 0; i < 16; i++)
-    out[i] = barrett_reduce(in[i]);
-  return _mm256_load_si256((__m256i *)out);
+  t_lo = _mm256_srai_epi32(_mm256_add_epi32(_mm256_mullo_epi32(a_lo32, v32), bias), 26);
+  t_hi = _mm256_srai_epi32(_mm256_add_epi32(_mm256_mullo_epi32(a_hi32, v32), bias), 26);
+  r_lo32 = _mm256_sub_epi32(a_lo32, _mm256_mullo_epi32(t_lo, q32));
+  r_hi32 = _mm256_sub_epi32(a_hi32, _mm256_mullo_epi32(t_hi, q32));
+  packed = _mm256_packs_epi32(r_lo32, r_hi32);
+  return _mm256_permute4x64_epi64(packed, _MM_SHUFFLE(3, 1, 2, 0));
+}
+
+static inline __m256i barrett_ct(__m256i v)
+{
+  return barrett_avx2(v);
+}
+
+static void ntt_layer8_avx(int16_t *r, unsigned int *k)
+{
+  unsigned int start;
+
+  for(start = 0; start < KYBER_N; start += 16) {
+    const __m256i zeta_vec = _mm256_set1_epi16(zetas[(*k)++]);
+    __m256i uv = _mm256_load_si256((__m256i *)(r + start));
+    __m128i u = _mm256_castsi256_si128(uv);
+    __m128i v = _mm256_extracti128_si256(uv, 1);
+    __m128i t = _mm256_castsi256_si128(fqmul_avx2(_mm256_castsi128_si256(v), zeta_vec));
+    __m128i add = _mm_add_epi16(u, t);
+    __m128i sub = _mm_sub_epi16(u, t);
+    _mm256_store_si256((__m256i *)(r + start), _mm256_set_m128i(sub, add));
+  }
+}
+
+static void ntt_layer4_block128(int16_t *p, int16_t zeta)
+{
+  const __m128i mask_u = _mm_set_epi64x(0, -1);
+  __m128i x = _mm_load_si128((__m128i *)p);
+  __m128i u = _mm_and_si128(x, mask_u);
+  __m128i v = _mm_srli_si128(x, 8);
+  __m128i t = _mm256_castsi256_si128(
+      fqmul_avx2(_mm256_castsi128_si256(v), _mm256_set1_epi16(zeta)));
+  __m128i add = _mm_add_epi16(u, t);
+  __m128i sub = _mm_sub_epi16(u, t);
+  _mm_store_si128((__m128i *)p, _mm_unpacklo_epi64(add, sub));
+}
+
+static void ntt_layer4_avx(int16_t *r, unsigned int *k)
+{
+  unsigned int start;
+
+  for(start = 0; start < KYBER_N; start += 16) {
+    ntt_layer4_block128(r + start, zetas[(*k)++]);
+    ntt_layer4_block128(r + start + 8, zetas[(*k)++]);
+  }
+}
+
+static void invntt_layer4_block128(int16_t *p, int16_t zeta)
+{
+  const __m128i mask_u = _mm_set_epi64x(0, -1);
+  __m128i x = _mm_load_si128((__m128i *)p);
+  __m128i u = _mm_and_si128(x, mask_u);
+  __m128i v = _mm_srli_si128(x, 8);
+  __m128i sum = _mm256_castsi256_si128(
+      barrett_avx2(_mm256_castsi128_si256(_mm_add_epi16(u, v))));
+  __m128i diff = _mm256_castsi256_si128(
+      fqmul_avx2(_mm256_castsi128_si256(_mm_sub_epi16(u, v)),
+                 _mm256_set1_epi16(zeta)));
+  _mm_store_si128((__m128i *)p, _mm_unpacklo_epi64(sum, diff));
+}
+
+static void invntt_layer8_avx(int16_t *r, unsigned int *k)
+{
+  unsigned int start;
+
+  for(start = 0; start < KYBER_N; start += 16) {
+    const __m256i zeta_vec = _mm256_set1_epi16(zetas_inv[(*k)++]);
+    __m256i uv = _mm256_load_si256((__m256i *)(r + start));
+    __m128i u = _mm256_castsi256_si128(uv);
+    __m128i v = _mm256_extracti128_si256(uv, 1);
+    __m256i sum = barrett_avx2(_mm256_add_epi16(_mm256_castsi128_si256(u),
+                                               _mm256_castsi128_si256(v)));
+    __m128i diff = _mm256_castsi256_si128(
+        fqmul_avx2(_mm256_castsi128_si256(_mm_sub_epi16(u, v)), zeta_vec));
+    _mm256_store_si256((__m256i *)(r + start),
+                        _mm256_set_m128i(diff, _mm256_castsi256_si128(sum)));
+  }
+}
+
+static void invntt_layer4_avx(int16_t *r, unsigned int *k)
+{
+  unsigned int start;
+
+  for(start = 0; start < KYBER_N; start += 16) {
+    invntt_layer4_block128(r + start, zetas_inv[(*k)++]);
+    invntt_layer4_block128(r + start + 8, zetas_inv[(*k)++]);
+  }
 }
 
 /* Gather coefficient k from four degree-4 blocks (16 coeffs). */
@@ -188,28 +282,28 @@ static void inv_butterfly_block(int16_t *r, unsigned start, unsigned len, int16_
 void ntt512_avx(int16_t *r)
 {
   unsigned int len, start, k;
-  int16_t zeta;
 
   k = 1;
-  for(len = 256; len >= 4; len >>= 1) {
-    for(start = 0; start < KYBER_N; start += 2 * len) {
-      zeta = zetas[k++];
-      butterfly_block(r, start, len, zeta);
-    }
+  for(len = 256; len >= 16; len >>= 1) {
+    for(start = 0; start < KYBER_N; start += 2 * len)
+      butterfly_block(r, start, len, zetas[k++]);
   }
+
+  ntt_layer8_avx(r, &k);
+  ntt_layer4_avx(r, &k);
 }
 
 void invntt512_avx(int16_t *r)
 {
   unsigned int len, start, k, i;
-  int16_t zeta;
 
   k = 0;
-  for(len = 4; len <= 256; len <<= 1) {
-    for(start = 0; start < KYBER_N; start += 2 * len) {
-      zeta = zetas_inv[k++];
-      inv_butterfly_block(r, start, len, zeta);
-    }
+  invntt_layer4_avx(r, &k);
+  invntt_layer8_avx(r, &k);
+
+  for(len = 16; len <= 256; len <<= 1) {
+    for(start = 0; start < KYBER_N; start += 2 * len)
+      inv_butterfly_block(r, start, len, zetas_inv[k++]);
   }
 
   for(i = 0; i < KYBER_N; i += 16) {

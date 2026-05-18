@@ -113,6 +113,18 @@ MODE5_C_FQ =
 MODE5_S_FQ =
 endif
 
+USE_AVX_GEN_MATRIX512 ?= 1
+ifeq ($(USE_AVX_GEN_MATRIX512),1)
+MODE5_DEFS += -DWEAVER_AVX_GEN_MATRIX512
+MODE5_GEN_MATRIX_C = src/indcpa_gen_matrix_avx512.c src/fips202x4.c \
+                     src/keccak4x/KeccakP-1600-times4-SIMD256.c
+NO_LTO_C += src/indcpa_gen_matrix_avx512.c src/fips202x4.c \
+            src/keccak4x/KeccakP-1600-times4-SIMD256.c
+else
+MODE5_GEN_MATRIX_C =
+endif
+MODE5_BUILD_C = $(NTT_C) $(MODE5_C_FQ) $(MODE5_GEN_MATRIX_C)
+
 .PHONY: all kat test bench bench-components gen_vectors ref_vectors clean test-san quick-check
 
 quick-check: test test-extended bin/test_enc_derand_coins_2048 bin/test_compress9_512
@@ -204,7 +216,7 @@ bin/weaver_avx_1024:
 	$(call link_bin,$@,w1024)
 
 bin/weaver_avx_2048:
-	$(call compile_objs,w2048,$(WEAVER_C) $(NTT_C) $(MODE5_C_FQ),5,$(MODE5_DEFS),$(MODE5_S_FQ))
+	$(call compile_objs,w2048,$(WEAVER_C) $(MODE5_BUILD_C),5,$(MODE5_DEFS),$(MODE5_S_FQ))
 	@$(CC) $(CFLAGS) -DWEAVER_MODE=5 $(INC) -c bench/speed_test.c -o $(BD)/w2048/speed_test.o
 	@$(CC) $(CFLAGS) -DWEAVER_MODE=5 $(INC) -c bench/cpucycles.c -o $(BD)/w2048/cpucycles.o
 	@$(CC) $(CFLAGS) -DWEAVER_MODE=5 $(INC) -c bench/speed_print.c -o $(BD)/w2048/speed_print.o
@@ -225,7 +237,7 @@ bin/kat_iccs_128: tools/kat_iccs.c
 
 bin/kat_iccs_512: tools/kat_iccs.c
 	@mkdir -p bin
-	$(call compile_objs,kat512,$(WEAVER_C_NORNG) $(NTT_C) $(MODE5_C_FQ) $(ICCS512)/drng.c $(ICCS512)/auxfunc.c,5,-I$(ICCS512) $(MODE5_DEFS),$(MODE5_S_FQ))
+	$(call compile_objs,kat512,$(WEAVER_C_NORNG) $(MODE5_BUILD_C) $(ICCS512)/drng.c $(ICCS512)/auxfunc.c,5,-I$(ICCS512) $(MODE5_DEFS),$(MODE5_S_FQ))
 	$(CC) $(CFLAGS) -DWEAVER_MODE=5 $(INC) -I$(ICCS512) -c tools/kat_iccs.c -o $(BD)/kat512/kat_iccs.o
 	$(CC) $(LDFLAGS) -o $@ $(BD)/kat512/*.o
 
@@ -244,7 +256,7 @@ bin/gen_vectors_1024:
 
 bin/gen_vectors_2048:
 	@mkdir -p bin
-	$(call compile_objs,gv2048,$(WEAVER_C) $(NTT_C) $(MODE5_C_FQ),5,$(MODE5_DEFS),$(MODE5_S_FQ))
+	$(call compile_objs,gv2048,$(WEAVER_C) $(MODE5_BUILD_C),5,$(MODE5_DEFS),$(MODE5_S_FQ))
 	$(CC) $(CFLAGS) -DWEAVER_MODE=5 $(INC) -c tools/gen_vectors.c -o $(BD)/gv2048/gen_vectors.o
 	$(CC) $(LDFLAGS) -o $@ $(BD)/gv2048/*.o
 
@@ -268,7 +280,7 @@ bin/compare_ref_avx_1024: tools/compare_ref_avx.c
 
 bin/compare_ref_avx_512: tools/compare_ref_avx.c
 	@mkdir -p bin
-	$(call compile_objs,cmp512,$(WEAVER_C) $(NTT_C) $(MODE5_C_FQ),5,$(MODE5_DEFS),$(MODE5_S_FQ))
+	$(call compile_objs,cmp512,$(WEAVER_C) $(MODE5_BUILD_C),5,$(MODE5_DEFS),$(MODE5_S_FQ))
 	$(CC) $(CFLAGS) -DWEAVER_MODE=5 $(INC) -c tools/compare_ref_avx.c -o $(BD)/cmp512/compare_ref_avx.o
 	$(CC) $(LDFLAGS) -o $@ $(BD)/cmp512/*.o
 
@@ -288,7 +300,7 @@ bin/kem_replay_avx_1024:
 	$(call link_kem_replay_avx,3,1024,$(MODE13_C_NTT),$(MODE13_DEFS),$(MODE13_S_NTT))
 
 bin/kem_replay_avx_2048:
-	$(call link_kem_replay_avx,5,2048,$(NTT_C) $(MODE5_C_FQ),$(MODE5_DEFS),$(MODE5_S_FQ))
+	$(call link_kem_replay_avx,5,2048,$(MODE5_BUILD_C),$(MODE5_DEFS),$(MODE5_S_FQ))
 
 COMPARE_RANDOM_SH = tools/compare_ref_random.sh
 
@@ -324,7 +336,7 @@ endef
 
 define link_trace_encap_avx
 	@mkdir -p bin
-	$(call compile_objs,tea$(1),$(WEAVER_C_NORNG) src/kem_cca.c src/randombytes_ctr.c src/aes256ctr.c $(NTT_C) $(MODE5_C_FQ),$(1),$(MODE5_DEFS),$(MODE5_S_FQ))
+	$(call compile_objs,tea$(1),$(WEAVER_C_NORNG) src/kem_cca.c src/randombytes_ctr.c src/aes256ctr.c $(MODE5_BUILD_C),$(1),$(MODE5_DEFS),$(MODE5_S_FQ))
 	@$(CC) $(CFLAGS) -DWEAVER_MODE=$(1) $(INC) -c tools/trace_encap_mode5.c \
 	  -o $(BD)/tea$(1)/trace_encap.o
 	$(CC) $(LDFLAGS) -o bin/trace_encap_avx_2048 $(BD)/tea$(1)/*.o
@@ -349,7 +361,7 @@ bin/bench_components_1024:
 	$(call link_bench_components,3,1024,$(MODE13_C_NTT),$(MODE13_DEFS),$(MODE13_S_NTT))
 
 bin/bench_components_2048:
-	$(call link_bench_components,5,2048,$(NTT_C) $(MODE5_C_FQ),$(MODE5_DEFS),$(MODE5_S_FQ))
+	$(call link_bench_components,5,2048,$(MODE5_BUILD_C),$(MODE5_DEFS),$(MODE5_S_FQ))
 
 bin/compare_ntt_avx_512: tools/compare_ntt_avx.c
 	@mkdir -p bin
@@ -423,7 +435,7 @@ test: kat ref_vectors gen_vectors \
 	@echo "=== NTT512 AVX primitives (mode 5) ===" \
 	  && bin/compare_ntt_avx_2048
 
-test-extended: test \
+test-extended: test test-gen-matrix-mode5 \
       bin/compare_ref_avx_512 bin/compare_ref_random_2048
 	@echo "=== Ref vs AVX vectors (mode 5) ===" \
 	  && bin/compare_ref_avx_512 test_vectors/weaver_ref_mode5.vec
@@ -432,7 +444,7 @@ test-extended: test \
 
 bin/test_enc_derand_coins_2048:
 	@mkdir -p bin
-	$(call compile_objs,tedc5,$(WEAVER_C) $(NTT_C) $(MODE5_C_FQ),5,$(MODE5_DEFS),$(MODE5_S_FQ))
+	$(call compile_objs,tedc5,$(WEAVER_C) $(MODE5_BUILD_C),5,$(MODE5_DEFS),$(MODE5_S_FQ))
 	@$(CC) $(CFLAGS) -DWEAVER_MODE=5 $(INC) -c tools/test_enc_derand_coins.c \
 	  -o $(BD)/tedc5/test_enc_derand_coins.o
 	$(CC) $(LDFLAGS) -o $@ $(BD)/tedc5/*.o
@@ -453,6 +465,26 @@ bin/test_compress9_512:
 	@$(CC) $(CFLAGS) -DWEAVER_MODE=1 $(INC) $(MODE13_DEFS) -c tools/test_compress9.c \
 	  -o $(BD)/tc9/test_compress9.o
 	$(CC) $(LDFLAGS) -o $@ $(BD)/tc9/*.o
+
+bin/test_gen_matrix5_scalar:
+	@mkdir -p bin
+	$(call compile_objs,tgm5s,$(WEAVER_C) $(NTT_C) $(MODE5_C_FQ),5,\
+	  $(filter-out -DWEAVER_AVX_GEN_MATRIX512,$(MODE5_DEFS)),$(MODE5_S_FQ))
+	@$(CC) $(CFLAGS) -DWEAVER_MODE=5 $(INC) \
+	  $(filter-out -DWEAVER_AVX_GEN_MATRIX512,$(MODE5_DEFS)) \
+	  -c tools/test_gen_matrix_mode5.c -o $(BD)/tgm5s/test_gen_matrix_mode5.o
+	$(CC) $(LDFLAGS) -o $@ $(BD)/tgm5s/*.o
+
+bin/test_gen_matrix5_avx:
+	@mkdir -p bin
+	$(call compile_objs,tgm5a,$(WEAVER_C) $(MODE5_BUILD_C),5,$(MODE5_DEFS),$(MODE5_S_FQ))
+	@$(CC) $(CFLAGS) -DWEAVER_MODE=5 $(INC) $(MODE5_DEFS) \
+	  -c tools/test_gen_matrix_mode5.c -o $(BD)/tgm5a/test_gen_matrix_mode5.o
+	$(CC) $(LDFLAGS) -o $@ $(BD)/tgm5a/*.o
+
+test-gen-matrix-mode5: bin/test_gen_matrix5_scalar bin/test_gen_matrix5_avx
+	@chmod +x tools/compare_gen_matrix_mode5.sh
+	@tools/compare_gen_matrix_mode5.sh 50
 
 bench-components: bin/bench_components_512 bin/bench_components_1024 bin/bench_components_2048
 	@echo "========== component benchmarks (modes 1, 3, 5) =========="

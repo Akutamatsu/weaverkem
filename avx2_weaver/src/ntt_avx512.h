@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include "params.h"
+#include "polyvec.h"
 
 #if defined(WEAVER_USE_AVX_NTT512) && (KYBER_N == 512)
 
@@ -14,6 +15,9 @@ void invntt512_avx(int16_t *r);
 
 #define basemul512_avx KYBER_NAMESPACE(_basemul512_avx)
 void basemul512_avx(int16_t *r, const int16_t *a, const int16_t *b);
+
+#define polyvec_basemul_acc_avx512 KYBER_NAMESPACE(_polyvec_basemul_acc_avx512)
+void polyvec_basemul_acc_avx512(poly *r, const polyvec *a, const polyvec *b);
 
 #define poly_add512_avx KYBER_NAMESPACE(_poly_add512_avx)
 void poly_add512_avx(int16_t *r, const int16_t *a, const int16_t *b);

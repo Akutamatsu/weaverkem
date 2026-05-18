@@ -8,6 +8,7 @@
 #include "ntt.h"
 #include "reduce.h"
 #include "ntt_avx512.h"
+#include "polyvec.h"
 
 extern const int16_t zetas[128];
 extern const int16_t zetas_inv[128];
@@ -172,15 +173,18 @@ static inline void scatter_degree4_x4(int16_t *r,
   r[15] = o3[3];
 }
 
-static void basemul_degree4_x4_avx(int16_t *r, const int16_t *a, const int16_t *b,
-                                   int16_t z_lo, int16_t z_hi)
+/* Four lane-wise degree-4 products (16 coeffs); outputs stay in ymm (no scatter). */
+static inline void basemul_degree4_x4_compute(const int16_t *a, const int16_t *b,
+                                              int16_t z_lo, int16_t z_hi,
+                                              __m256i *out0, __m256i *out1,
+                                              __m256i *out2, __m256i *out3)
 {
   /* lane i uses zeta for block i: +z_lo, -z_lo, +z_hi, -z_hi */
   const __m256i zeta_v = _mm256_set_epi16(
       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
       -z_hi, z_hi, -z_lo, z_lo);
   __m256i a0, a1, a2, a3, b0, b1, b2, b3;
-  __m256i t0, t1, t2, r0, r1, r2, r3;
+  __m256i t0, t1, t2;
 
   a0 = coeff4(a, 0);
   a1 = coeff4(a, 1);
@@ -200,24 +204,56 @@ static void basemul_degree4_x4_avx(int16_t *r, const int16_t *a, const int16_t *
 
   t2 = fqmul_avx2(a3, b3);
 
-  r0 = fqmul_avx2(t0, zeta_v);
-  r0 = _mm256_add_epi16(r0, fqmul_avx2(a0, b0));
+  *out0 = fqmul_avx2(t0, zeta_v);
+  *out0 = _mm256_add_epi16(*out0, fqmul_avx2(a0, b0));
 
-  r1 = fqmul_avx2(t1, zeta_v);
-  r1 = _mm256_add_epi16(r1, fqmul_avx2(a0, b1));
-  r1 = _mm256_add_epi16(r1, fqmul_avx2(a1, b0));
+  *out1 = fqmul_avx2(t1, zeta_v);
+  *out1 = _mm256_add_epi16(*out1, fqmul_avx2(a0, b1));
+  *out1 = _mm256_add_epi16(*out1, fqmul_avx2(a1, b0));
 
-  r2 = fqmul_avx2(t2, zeta_v);
-  r2 = _mm256_add_epi16(r2, fqmul_avx2(a0, b2));
-  r2 = _mm256_add_epi16(r2, fqmul_avx2(a1, b1));
-  r2 = _mm256_add_epi16(r2, fqmul_avx2(a2, b0));
+  *out2 = fqmul_avx2(t2, zeta_v);
+  *out2 = _mm256_add_epi16(*out2, fqmul_avx2(a0, b2));
+  *out2 = _mm256_add_epi16(*out2, fqmul_avx2(a1, b1));
+  *out2 = _mm256_add_epi16(*out2, fqmul_avx2(a2, b0));
 
-  r3 = fqmul_avx2(a0, b3);
-  r3 = _mm256_add_epi16(r3, fqmul_avx2(a1, b2));
-  r3 = _mm256_add_epi16(r3, fqmul_avx2(a2, b1));
-  r3 = _mm256_add_epi16(r3, fqmul_avx2(a3, b0));
+  *out3 = fqmul_avx2(a0, b3);
+  *out3 = _mm256_add_epi16(*out3, fqmul_avx2(a1, b2));
+  *out3 = _mm256_add_epi16(*out3, fqmul_avx2(a2, b1));
+  *out3 = _mm256_add_epi16(*out3, fqmul_avx2(a3, b0));
+}
 
+static void basemul_degree4_x4_avx(int16_t *r, const int16_t *a, const int16_t *b,
+                                   int16_t z_lo, int16_t z_hi)
+{
+  __m256i r0, r1, r2, r3;
+
+  basemul_degree4_x4_compute(a, b, z_lo, z_hi, &r0, &r1, &r2, &r3);
   scatter_degree4_x4(r, r0, r1, r2, r3);
+}
+
+void polyvec_basemul_acc_avx512(poly *r, const polyvec *a, const polyvec *b)
+{
+  unsigned int i, j;
+  __m256i acc0, acc1, acc2, acc3;
+  __m256i t0, t1, t2, t3;
+
+  for(i = 0; i < KYBER_N / 16; i++) {
+    const unsigned int off = 16 * i;
+    const int16_t z_lo = zetas[64 + 2 * i];
+    const int16_t z_hi = zetas[64 + 2 * i + 1];
+
+    basemul_degree4_x4_compute(a->vec[0].coeffs + off, b->vec[0].coeffs + off,
+                               z_lo, z_hi, &acc0, &acc1, &acc2, &acc3);
+    for(j = 1; j < KYBER_K; j++) {
+      basemul_degree4_x4_compute(a->vec[j].coeffs + off, b->vec[j].coeffs + off,
+                                 z_lo, z_hi, &t0, &t1, &t2, &t3);
+      acc0 = _mm256_add_epi16(acc0, t0);
+      acc1 = _mm256_add_epi16(acc1, t1);
+      acc2 = _mm256_add_epi16(acc2, t2);
+      acc3 = _mm256_add_epi16(acc3, t3);
+    }
+    scatter_degree4_x4(r->coeffs + off, acc0, acc1, acc2, acc3);
+  }
 }
 
 /* Cooley-Tukey butterfly: (u,v) -> (u+t, u-t) with t = fqmul(zeta, v). */

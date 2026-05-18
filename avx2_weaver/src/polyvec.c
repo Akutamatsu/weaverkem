@@ -3,6 +3,10 @@
 #include "poly.h"
 #include "polyvec.h"
 
+#if defined(WEAVER_USE_AVX_NTT512) && (KYBER_N == 512)
+#include "ntt_avx512.h"
+#endif
+
 #if defined(WEAVER_USE_AVX_COMPRESS)
 #include "poly_compress_avx.h"
 #endif
@@ -441,6 +445,9 @@ void polyvec_invntt_tomont(polyvec *r)
 **************************************************/
 void polyvec_basemul_acc_montgomery(poly *r, const polyvec *a, const polyvec *b)
 {
+#if defined(WEAVER_USE_AVX_NTT512) && (KYBER_N == 512) && (KYBER_K == 4)
+  polyvec_basemul_acc_avx512(r, a, b);
+#else
   unsigned int i;
   poly t;
 
@@ -449,6 +456,7 @@ void polyvec_basemul_acc_montgomery(poly *r, const polyvec *a, const polyvec *b)
     poly_basemul_montgomery(&t, &a->vec[i], &b->vec[i]);
     poly_add(r, r, &t);
   }
+#endif
 
   poly_reduce(r);
 }

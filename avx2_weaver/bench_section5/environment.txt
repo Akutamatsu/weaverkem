@@ -1,0 +1,4 @@
+=== Environment ===
+model name	: AMD EPYC 7C13 64-Core Processor
+gcc (Debian 12.2.0-14+deb12u1) 12.2.0
+6.1.0-44-amd64

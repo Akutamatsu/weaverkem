@@ -9,6 +9,21 @@
 #include "ntt.h"
 #include "symmetric.h"
 
+#ifdef WEAVER_PROFILE_KEYPAIR_DERAND
+#include "cpucycles.h"
+#include "weaver_kp_profile.h"
+#define WEAVER_KP_T0() uint64_t weaver_kp_ts = cpucycles()
+#define WEAVER_KP_T(slot)                                                      \
+  do {                                                                         \
+    uint64_t weaver_kp_te = cpucycles();                                      \
+    weaver_kp_prof_segment((slot), weaver_kp_te - weaver_kp_ts);               \
+    weaver_kp_ts = weaver_kp_te;                                               \
+  } while(0)
+#else
+#define WEAVER_KP_T0() ((void)0)
+#define WEAVER_KP_T(slot) ((void)0)
+#endif
+
 #ifdef PK_COMPRESS
 #include "invq.h"
 #if !defined(NO_INV_Q_LIFTING)
@@ -192,7 +207,8 @@ static unsigned int rej_uniform(int16_t *r,
 
 #define GEN_MATRIX_NBLOCKS ((12*KYBER_N/8*(1 << 12)/KYBER_Q + XOF_BLOCKBYTES)/XOF_BLOCKBYTES)
 
-#ifndef WEAVER_AVX_GEN_MATRIX
+#if !defined(WEAVER_AVX_GEN_MATRIX) && \
+    !(defined(WEAVER_AVX_GEN_MATRIX512) && (KYBER_N == 512))
 // Not static for benchmarking
 void gen_matrix(polyvec *a, const uint8_t seed[KYBER_SYMBYTES], int transposed)
 {
@@ -224,7 +240,7 @@ void gen_matrix(polyvec *a, const uint8_t seed[KYBER_SYMBYTES], int transposed)
     }
   }
 }
-#endif /* !WEAVER_AVX_GEN_MATRIX */
+#endif /* !WEAVER_AVX_GEN_MATRIX && !WEAVER_AVX_GEN_MATRIX512 on n=512 */
 
 /*************************************************
 * Name:        indcpa_keypair
@@ -250,11 +266,14 @@ void indcpa_keypair_derand(uint8_t pk[KYBER_INDCPA_PUBLICKEYBYTES],
 
   (void)i;
 
+  WEAVER_KP_T0();
   memcpy(buf, coins, KYBER_SYMBYTES);
   buf[KYBER_SYMBYTES] = KYBER_K;
   hash_g(buf, buf, KYBER_SYMBYTES+1);
+  WEAVER_KP_T(0); /* 0: buf + hash_g */
 
   gen_a(a, publicseed);
+  WEAVER_KP_T(1); /* 1: gen_matrix (gen_a) */
 
   #if (KYBER_K == 2)
   poly_getnoise_eta1(&skpv.vec[0], noiseseed, nonce++);
@@ -268,8 +287,10 @@ void indcpa_keypair_derand(uint8_t pk[KYBER_INDCPA_PUBLICKEYBYTES],
   for(i=0;i<KYBER_K;i++)
     poly_getnoise_eta1(&skpv.vec[i], noiseseed, nonce++);
   #endif
+  WEAVER_KP_T(2); /* 2: poly_getnoise x K */
 
   polyvec_ntt(&skpv);
+  WEAVER_KP_T(3); /* 3: polyvec_ntt (K polys) */
   
 #ifndef PK_COMPRESS
 
@@ -295,7 +316,12 @@ void indcpa_keypair_derand(uint8_t pk[KYBER_INDCPA_PUBLICKEYBYTES],
   }
   #endif
 
-  polyvec_reduce(&pkpv); // save in NTT domain.
+  WEAVER_KP_T(4); /* matvec (NTT domain) */
+  polyvec_reduce(&pkpv); /* save in NTT domain */
+  WEAVER_KP_T(5); /* polyvec_reduce */
+#ifdef WEAVER_PROFILE_KEYPAIR_DERAND
+  weaver_kp_prof_segment(6, 0); /* no invntt in this path */
+#endif
 
 #else
   #if (KYBER_K == 2)
@@ -312,12 +338,18 @@ void indcpa_keypair_derand(uint8_t pk[KYBER_INDCPA_PUBLICKEYBYTES],
       //poly_tomont(&pkpv.vec[i]);
   }
   #endif
+  WEAVER_KP_T(4); /* 4: matrix-vector (k basemul_acc), NTT domain */
+
   polyvec_invntt_tomont(&pkpv);  // from NTT to plain.
+  WEAVER_KP_T(5); /* 5: polyvec_invntt_tomont */
+
   polyvec_reduce(&pkpv);
+  WEAVER_KP_T(6); /* 6: polyvec_reduce */
 
 #endif
   pack_sk(sk, &skpv);
   pack_pk(pk, &pkpv, publicseed);
+  WEAVER_KP_T(7); /* 7: pack_sk + pack_pk */
 }
 
 /*************************************************

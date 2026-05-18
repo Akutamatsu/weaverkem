@@ -29,6 +29,11 @@ endif
 ifeq ($(NO_INV_Q),1)
   CFLAGS += -DNO_INV_Q_LIFTING
 endif
+# Linux + glibc: fast OS RNG for randombytes() (KAT still uses AES-DRBG after randombytes_init).
+USE_GETRANDOM ?= 0
+ifeq ($(USE_GETRANDOM),1)
+  CFLAGS += -DUSE_GETRANDOM
+endif
 ASMFLAGS = $(CFLAGS) -x assembler-with-cpp
 INC     = -Isrc -Isrc/avx -Ibench
 LDFLAGS = $(ARCH_FLAGS)
@@ -491,6 +496,31 @@ bench-components: bin/bench_components_512 bin/bench_components_1024 bin/bench_c
 	@bin/bench_components_512
 	@bin/bench_components_1024
 	@bin/bench_components_2048
+
+bin/profile_encap_512:
+	@mkdir -p bin
+	$(call compile_objs,pe1,$(WEAVER_C) $(MODE13_C_NTT),1,$(MODE13_DEFS),$(MODE13_S_NTT))
+	@$(CC) $(CFLAGS) -DWEAVER_MODE=1 $(INC) $(MODE13_DEFS) -DWEAVER_PROFILE_KEYPAIR_DERAND -c src/indcpa.c \
+	  -o $(BD)/pe1/src_indcpa.o
+	@$(CC) $(CFLAGS) -DWEAVER_MODE=1 $(INC) $(MODE13_DEFS) -DWEAVER_PROFILE_KEYPAIR_DERAND -c tools/profile_encap_decaps.c \
+	  -o $(BD)/pe1/profile_encap_decaps.o
+	@$(CC) $(CFLAGS) -DWEAVER_MODE=1 $(INC) -c bench/cpucycles.c -o $(BD)/pe1/cpucycles.o
+	$(CC) $(LDFLAGS) -o $@ $(BD)/pe1/*.o
+
+bin/profile_encap_1024:
+	@mkdir -p bin
+	$(call compile_objs,pe3,$(WEAVER_C) $(MODE13_C_NTT),3,$(MODE13_DEFS),$(MODE13_S_NTT))
+	@$(CC) $(CFLAGS) -DWEAVER_MODE=3 $(INC) $(MODE13_DEFS) -DWEAVER_PROFILE_KEYPAIR_DERAND -c src/indcpa.c \
+	  -o $(BD)/pe3/src_indcpa.o
+	@$(CC) $(CFLAGS) -DWEAVER_MODE=3 $(INC) $(MODE13_DEFS) -DWEAVER_PROFILE_KEYPAIR_DERAND -c tools/profile_encap_decaps.c \
+	  -o $(BD)/pe3/profile_encap_decaps.o
+	@$(CC) $(CFLAGS) -DWEAVER_MODE=3 $(INC) -c bench/cpucycles.c -o $(BD)/pe3/cpucycles.o
+	$(CC) $(LDFLAGS) -o $@ $(BD)/pe3/*.o
+
+profile-encap: bin/profile_encap_512 bin/profile_encap_1024
+	@echo "========== encaps/decaps profile (modes 1, 3) =========="
+	@bin/profile_encap_512
+	@bin/profile_encap_1024
 
 clean:
 	rm -rf bin build test_vectors/*.vec

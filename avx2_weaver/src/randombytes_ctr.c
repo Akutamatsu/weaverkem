@@ -1,9 +1,18 @@
-/* NIST AES256-CTR-DRBG using in-tree aes256ctr (no OpenSSL). */
+/* NIST AES256-CTR-DRBG using in-tree aes256ctr (no OpenSSL).
+ * Optional USE_GETRANDOM: OS RNG for randombytes() until randombytes_init()
+ * is called (KAT / deterministic tools seed the DRBG via randombytes_init). */
+#define _GNU_SOURCE
 #include <string.h>
 #include "rng.h"
 #include "aes256ctr.h"
 
+#if defined(USE_GETRANDOM) && defined(__linux__)
+#include <errno.h>
+#include <sys/random.h>
+#endif
+
 static AES256_CTR_DRBG_struct DRBG_ctx;
+static int randombytes_kat_mode;
 
 static void aes256_ecb(const unsigned char *key, unsigned char *ctr, unsigned char *out)
 {
@@ -51,6 +60,8 @@ void randombytes_init(unsigned char *entropy_input,
   unsigned char seed_material[48];
   unsigned int i;
 
+  randombytes_kat_mode = 1;
+
   (void)security_strength;
   /* NIST AES-256-DRBG: 256-bit entropy minimum; tools pass 32 bytes, zero-pad to 48 */
   memset(seed_material, 0, 48);
@@ -67,6 +78,26 @@ void randombytes_init(unsigned char *entropy_input,
 
 int randombytes(unsigned char *x, unsigned long long xlen)
 {
+#if defined(USE_GETRANDOM) && defined(__linux__)
+  if(!randombytes_kat_mode) {
+    unsigned char *p = x;
+    while(xlen > 0) {
+      size_t chunk = xlen > (unsigned long long)1048576 ? (size_t)1048576 : (size_t)xlen;
+      ssize_t ret = getrandom(p, chunk, 0);
+      if(ret < 0) {
+        if(errno == EINTR)
+          continue;
+        return RNG_BAD_OUTBUF;
+      }
+      if(ret == 0)
+        return RNG_BAD_OUTBUF;
+      p += ret;
+      xlen -= (unsigned long long)ret;
+    }
+    return RNG_SUCCESS;
+  }
+#endif
+
   unsigned char block[16];
   unsigned long long i = 0;
   unsigned int j;

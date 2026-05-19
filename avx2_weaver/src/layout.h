@@ -10,9 +10,9 @@
  *   - ntt_avx / basemul_avx use pq-crystals shuffle layout.
  *
  * mode 5 (n=512, WEAVER_USE_AVX_NTT512):
- *   - gen_matrix stays natural coefficient order (scalar rej_uniform).
+ *   - WEAVER_AVX_GEN_MATRIX512: SHAKE128x4 + scalar rej_uniform (standard order).
  *   - ntt512_avx matches portable ntt.c order; poly_nttunpack is a no-op.
- *   - Do not enable WEAVER_AVX_GEN_MATRIX or Kyber packed layout on mode 5.
+ *   - Do not enable WEAVER_AVX_GEN_MATRIX (Kyber packed layout) on mode 5.
  */
 
 #if (WEAVER_MODE == 5) && defined(WEAVER_AVX_GEN_MATRIX)

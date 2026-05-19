@@ -60,6 +60,11 @@
 #define WEAVER_USE_AVX_NTT512 1
 #endif
 
+/* n=512 (mode 5): parallel SHAKE128x4 matrix gen (standard coefficient order). */
+#if (KYBER_N == 512) && defined(WEAVER_AVX_GEN_MATRIX512)
+/* Must not use Kyber packed gen_matrix on mode 5 (see layout.h). */
+#endif
+
 #define KYBER_Q     3329
 #define KYBER_HALFQ ((KYBER_Q + 1) / 2)
 

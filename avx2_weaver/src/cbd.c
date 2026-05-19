@@ -370,6 +370,9 @@ static void cbd5_avx(poly *r, const uint8_t buf[5*KYBER_N/4])
 
 static void cbd5(poly *r, const uint8_t buf[5*KYBER_N/4])
 {
+#if defined(__AVX2__)
+  cbd5_avx(r, buf);
+#else
   unsigned int i, j;
 
   for(i = 0; i < KYBER_N/4; i++) {
@@ -386,6 +389,7 @@ static void cbd5(poly *r, const uint8_t buf[5*KYBER_N/4])
       r->coeffs[4*i + j] = a - b;
     }
   }
+#endif
 }
 #endif
 

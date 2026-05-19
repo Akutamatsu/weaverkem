@@ -128,7 +128,7 @@ void poly_frommsg(poly *r, const uint8_t msg[KYBER_INDCPA_MSGBYTES])
     memcpy(mu_tilde, msg, ELL_BAR_BYTES);
     encode_bch_high(msg, ELL_BAR_BYTES, mu_tilde + ELL_BAR_BYTES);
 
-#if defined(__AVX2__) && defined(WEAVER_EXPERIMENTAL_MSGENC_AVX) && (WEAVER_MODE != 1)
+#if defined(__AVX2__) && defined(WEAVER_EXPERIMENTAL_MSGENC_AVX)
     (void)j; (void)mask;
     frommsg_high_bits_avx(r->coeffs, mu_tilde);
 #else

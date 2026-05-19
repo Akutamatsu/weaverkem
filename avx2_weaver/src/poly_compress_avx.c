@@ -136,35 +136,94 @@ void poly_decompress_d4_avx(poly * restrict r, const uint8_t a[KYBER_POLYCOMPRES
 
 #include "poly_compress9.h"
 
+/* Pack eight 9-bit values (lanes of t) into nine output bytes. */
+static void poly_compress9_pack8_si128(uint8_t r[9], __m128i t)
+{
+  uint64_t bits;
+  uint16_t v[8];
+
+  t = _mm_and_si128(t, _mm_set1_epi16(511));
+  _mm_storeu_si128((__m128i *)v, t);
+  bits = (uint64_t)v[0]
+       | ((uint64_t)v[1] << 9)
+       | ((uint64_t)v[2] << 18)
+       | ((uint64_t)v[3] << 27)
+       | ((uint64_t)v[4] << 36)
+       | ((uint64_t)v[5] << 45)
+       | ((uint64_t)v[6] << 54)
+       | ((uint64_t)v[7] << 63);
+  r[0] = (uint8_t)(bits >> 0);
+  r[1] = (uint8_t)(bits >> 8);
+  r[2] = (uint8_t)(bits >> 16);
+  r[3] = (uint8_t)(bits >> 24);
+  r[4] = (uint8_t)(bits >> 32);
+  r[5] = (uint8_t)(bits >> 40);
+  r[6] = (uint8_t)(bits >> 48);
+  r[7] = (uint8_t)(bits >> 56);
+  r[8] = (uint8_t)(v[7] >> 1);
+}
+
+/* Exact 9-bit quant on eight lanes. */
+static __m128i poly_compress9_quant8_avx(__m128i f16)
+{
+  const __m256i qv = _mm256_set1_epi32(KYBER_Q);
+  const __m256i half = _mm256_set1_epi32(KYBER_Q / 2);
+  const __m256i recip = _mm256_set1_epi64x(1290168ULL);
+  __m256i u, neg, p0, p1;
+  uint32_t q[8];
+
+  u = _mm256_cvtepi16_epi32(f16);
+  neg = _mm256_srai_epi32(u, 31);
+  u = _mm256_add_epi32(u, _mm256_and_si256(neg, qv));
+  u = _mm256_and_si256(u, _mm256_set1_epi32(0xffff));
+  u = _mm256_add_epi32(_mm256_slli_epi32(u, 9), half);
+  p0 = _mm256_mul_epu32(u, recip);
+  p1 = _mm256_mul_epu32(_mm256_srli_si256(u, 4), recip);
+  q[0] = (uint32_t)_mm256_extract_epi32(p0, 1);
+  q[2] = (uint32_t)_mm256_extract_epi32(p0, 3);
+  q[4] = (uint32_t)_mm256_extract_epi32(p0, 5);
+  q[6] = (uint32_t)_mm256_extract_epi32(p0, 7);
+  q[1] = (uint32_t)_mm256_extract_epi32(p1, 1);
+  q[3] = (uint32_t)_mm256_extract_epi32(p1, 3);
+  q[5] = (uint32_t)_mm256_extract_epi32(p1, 5);
+  q[7] = (uint32_t)_mm256_extract_epi32(p1, 7);
+  return _mm_set_epi16((short)(q[7] & 511), (short)(q[6] & 511),
+                       (short)(q[5] & 511), (short)(q[4] & 511),
+                       (short)(q[3] & 511), (short)(q[2] & 511),
+                       (short)(q[1] & 511), (short)(q[0] & 511));
+}
+
+static __m256i poly_compress9_quant16_avx(__m256i f0)
+{
+  __m128i lo, hi;
+
+  lo = poly_compress9_quant8_avx(_mm256_castsi256_si128(f0));
+  hi = poly_compress9_quant8_avx(_mm256_extracti128_si256(f0, 1));
+  return _mm256_set_m128i(hi, lo);
+}
+
 void poly_compress9_quant_avx(uint16_t t[KYBER_N], const poly *a)
 {
-  unsigned int i, k;
-  const __m256i qv = _mm256_set1_epi32(KYBER_Q);
-  const __m256i halfv = _mm256_set1_epi32(KYBER_Q / 2);
-  uint32_t num[8];
+  unsigned int i;
 
-  for(i = 0; i < KYBER_N; i += 8) {
-    __m128i c = _mm_loadu_si128((__m128i *)&a->coeffs[i]);
-    __m256i u = _mm256_cvtepi16_epi32(c);
-    __m256i neg = _mm256_srai_epi32(u, 31);
-    u = _mm256_add_epi32(u, _mm256_and_si256(neg, qv));
-    u = _mm256_and_si256(u, _mm256_set1_epi32(0xffff));
-    u = _mm256_slli_epi32(u, 9);
-    u = _mm256_add_epi32(u, halfv);
-    _mm256_storeu_si256((__m256i *)num, u);
-    for(k = 0; k < 8; k++)
-      t[i + k] = (uint16_t)((num[k] / KYBER_Q) & 0x1ff);
+  for(i = 0; i < KYBER_N; i += 16) {
+    __m256i q = poly_compress9_quant16_avx(
+        _mm256_load_si256((__m256i *)&a->coeffs[i]));
+    _mm_storeu_si128((__m128i *)&t[i + 0], _mm256_castsi256_si128(q));
+    _mm_storeu_si128((__m128i *)&t[i + 8], _mm256_extracti128_si256(q, 1));
   }
 }
 
 void poly_compress9_avx(uint8_t r[(KYBER_N * 9) / 8], const poly *a)
 {
-  unsigned int j;
-  uint16_t t[KYBER_N];
+  unsigned int i;
 
-  poly_compress9_quant_avx(t, a);
-  for(j = 0; j < KYBER_N / 8; j++)
-    poly_compress9_pack8(r + 9 * j, t + 8 * j);
+  for(i = 0; i < KYBER_N / 16; i++) {
+    __m256i q = poly_compress9_quant16_avx(
+        _mm256_load_si256((__m256i *)&a->coeffs[16 * i]));
+    poly_compress9_pack8_si128(r + 18 * i + 0, _mm256_castsi256_si128(q));
+    poly_compress9_pack8_si128(r + 18 * i + 9, _mm256_extracti128_si256(q, 1));
+  }
 }
 
 #endif /* 9-bit pk */

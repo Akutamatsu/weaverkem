@@ -5,16 +5,7 @@
 # include "params.h"  
 # include "bch.h"
 
-#if WEAVER_MODE == 3 || WEAVER_MODE == 5
-     
-    #if WEAVER_MODE == 3
-        #include "bch63_33_4.h"
-    #elif WEAVER_MODE == 5
-        #include "bch127_56_6.h"
-    #else
-        #error "Invalid WEAVER_MODE for BCH configuration"
-    #endif
-
+#include "bch63_36_4.h"
 
 
 // convert 32-bit ecc words to ecc bytes
@@ -322,7 +313,7 @@ int decode_bch_low(uint8_t *data, unsigned int len, const uint8_t *recv_ecc)
     return err;
 }
 
-#if WEAVER_MODE == 3
+
 void encode_bch_low_nibbles(const unsigned char *data, unsigned int nibbles, uint8_t *ecc)
 {
     int i;
@@ -439,6 +430,4 @@ int decode_bch_low_nibbles(uint8_t *data, unsigned int nibbles, const uint8_t *r
     
     return err;
 }
-#endif
 
-#endif

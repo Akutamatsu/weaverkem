@@ -5,15 +5,9 @@
 # include "params.h"  // <--- 引入我们自己架构的参数
 # include "bch.h"
 
-#if WEAVER_MODE == 1
-    #include "bch255_128_5.h"
-#elif WEAVER_MODE == 3
-    #include "bch255_223_4.h"
-#elif WEAVER_MODE == 5
-    #include "bch511_456_6.h"
-#else
-    #error "Invalid WEAVER_MODE for BCH configuration"
-#endif
+
+#include "bch255_220_4.h"
+
 
 // convert 32-bit ecc words to ecc bytes
 static void store_ecc8(uint8_t *dst, const uint32_t *src)
@@ -320,7 +314,7 @@ int decode_bch_high(uint8_t *data, unsigned int len, const uint8_t *recv_ecc)
     return err;
 }
 
-#if WEAVER_MODE == 3
+
 void encode_bch_high_nibbles(const unsigned char *data, unsigned int nibbles, uint8_t *ecc)
 {
     int i;
@@ -438,4 +432,3 @@ int decode_bch_high_nibbles(uint8_t *data, unsigned int nibbles, const uint8_t *
     
     return err;
 }
-#endif

@@ -125,12 +125,7 @@ int main()
   }
   PRINT_AND_CSV("gen_s: ", t, NTESTS);
 
-  for(i=0;i<NTESTS;i++) {
-    t[i] = cpucycles();
-    poly_getnoise_eta2(&ap, seed, 0); 
-  }
-  PRINT_AND_CSV("gen_e: ", t, NTESTS);
-
+  
   for(i=0;i<NTESTS;i++) {
     t[i] = cpucycles();
     poly_ntt(&ap);

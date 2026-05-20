@@ -10,6 +10,7 @@ struct bch_control {
 };
 //bch encode
 void encode_bch_high(const uint8_t *data, unsigned int len, uint8_t *ecc);
+void encode_bch_high_nibbles(const unsigned char *data, unsigned int nibbles, uint8_t *ecc);
 //bch decode and correct
 int  decode_bch_high(uint8_t *data, unsigned int len, const uint8_t *recv_ecc);
-
+int decode_bch_high_nibbles(uint8_t *data, unsigned int nibbles, const uint8_t *recv_ecc);

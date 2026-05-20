@@ -1,0 +1,119 @@
+% Section 5 — measured on AMD EPYC 7C13 (see bench_section5/environment.txt)
+% ML-KEM: pq-crystals/kyber @ 4768bd3 (avx2/)
+% Weaver: avx2_weaver/bench_components, USE_GETRANDOM=1, 5 runs × N_test=1000, median of medians
+
+\subsection{Software Performance on x86 Processors}
+We provide two implementations for the x86 platform: a portable ISO~C99 reference implementation (\texttt{ref/}) and an AVX2-optimized implementation (\texttt{avx2\_weaver/}). The optimized build vectorizes NTT, base multiplication, compression, and parallel matrix generation for $n{=}256$ (\textsc{Weaver-512}, \textsc{Weaver-1024}); for \textsc{Weaver-2048} ($n{=}512$, $k{=}4$) it additionally enables AVX2 NTT in standard coefficient order, SHAKE128$\times$4 matrix sampling, fused \texttt{polyvec\_basemul\_acc}, and AVX2 modular reduction.
+
+\subsubsection{Experimental Setup}
+All measurements were taken on:
+\begin{itemize}
+  \item \textbf{Processor:} AMD EPYC 7C13 (x86-64), 2 logical CPUs (guest); firmware-reported nominal frequency 2.0\,GHz.
+  \item \textbf{OS:} Linux (Debian), kernel \texttt{6.1.0-44-amd64}, 64-bit.
+  \item \textbf{Compiler:} GCC 12.2.0, \texttt{-std=c99 -O3 -march=native -fomit-frame-pointer}.
+  \item \textbf{ISA (AVX2 build):} \texttt{-mavx2 -mbmi2 -mpopcnt}.
+  \item \textbf{Weaver flags:} \texttt{USE\_AVX\_NTT=1}, \texttt{USE\_AVX\_COMPRESS=1}, \texttt{USE\_GETRANDOM=1}; for mode~5 also \texttt{USE\_AVX\_FQ\_512=1}, \texttt{USE\_AVX\_GEN\_MATRIX512=1}. LTO enabled except on Keccak$\times$4 / rejection-sampling / selected compression units.
+  \item \textbf{Timing:} \texttt{RDTSC} via \texttt{cpucycles}; medians over five consecutive runs ($N_{\mathrm{test}}{=}1000$ per run).
+  \item \textbf{Weaver benchmark:} \texttt{avx2\_weaver/bench/bench\_components.c}.
+  \item \textbf{ML-KEM benchmark:} pq-crystals Kyber \texttt{test/test\_speed*} (\texttt{avx2/}, commit \texttt{4768bd3}).
+\end{itemize}
+
+\subsubsection{End-to-end KEM performance (AVX2)}
+Table~\ref{tab:kem_avx} lists median cycle counts. \textsc{Weaver-512/1024} include $\mathrm{Inv}_q$ and BCH message coding absent from ML-KEM; they trade lower bandwidth (Table~\ref{tab:bandwidth}) for higher CPU cost on encaps/decaps.
+
+\begin{table}[t]
+\centering
+\caption{End-to-end KEM performance (median CPU cycles, AVX2)}
+\label{tab:kem_avx}
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{llrrrr}
+\toprule
+\textbf{Scheme} & $(n,k)$ & \textbf{Sec.} & \textbf{KeyGen} & \textbf{Encaps} & \textbf{Decaps} \\
+\midrule
+ML-KEM-512   & $(256,2)$ & 128-bit & 17{,}000 & 17{,}820 & 18{,}180 \\
+Weaver-512   & $(256,2)$ & 128-bit & 22{,}060 & 28{,}680 & 30{,}580 \\
+\midrule
+ML-KEM-768   & $(256,3)$ & 192-bit & 32{,}060 & 27{,}240 & 28{,}500 \\
+ML-KEM-1024  & $(256,4)$ & 256-bit & 38{,}740 & 39{,}060 & 41{,}500 \\
+Weaver-1024  & $(256,4)$ & 256-bit & 38{,}600 & 59{,}820 & 57{,}720 \\
+\midrule
+Weaver-2048  & $(512,4)$ & 512-bit & 145{,}900 & 147{,}160 & 163{,}380 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{Ciphertext and public-key sizes (bytes)}
+\label{tab:bandwidth}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Scheme} & $|\mathsf{pk}|$ & $|\mathsf{ct}|$ & $|\mathsf{pk}|+|\mathsf{ct}|$ \\
+\midrule
+ML-KEM-512   & 800  & 768  & 1568 \\
+Weaver-512   & 608  & 736  & 1344 \\
+ML-KEM-768   & 1184 & 1088 & 2272 \\
+ML-KEM-1024  & 1568 & 1568 & 3136 \\
+Weaver-1024  & 1184 & 1312 & 2496 \\
+Weaver-2048  & 2336 & 2688 & 5024 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{Weaver vs.\ ML-KEM at matching $(n,k)$: cycle ratio (AVX2) and bandwidth savings}
+\label{tab:weaver_vs_mlkem}
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Comparison} & \textbf{KeyGen} & \textbf{Encaps} & \textbf{Decaps} & $|\mathsf{pk}|$ & $|\mathsf{ct}|$ \\
+\midrule
+Weaver-512 / ML-KEM-512   & 1.30$\times$ & 1.61$\times$ & 1.68$\times$ & $-24\%$ & $-4\%$ \\
+Weaver-1024 / ML-KEM-1024 & 1.00$\times$ & 1.53$\times$ & 1.39$\times$ & $-24\%$ & $-16\%$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent
+Ratios are Weaver\,/\,ML-KEM cycle counts ($>1$ means Weaver uses more cycles). Bandwidth savings are relative to ML-KEM.
+
+\begin{table}[t]
+\centering
+\caption{AVX2 speedup over portable C (median cycles, same benchmark harness per codebase)}
+\label{tab:avx_speedup}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Scheme} & \textbf{KeyGen} & \textbf{Encaps} & \textbf{Decaps} \\
+\midrule
+ML-KEM-512   & 4.51$\times$ & 5.23$\times$ & 7.01$\times$ \\
+ML-KEM-1024  & 5.11$\times$ & 5.36$\times$ & 6.65$\times$ \\
+Weaver-512   & 3.60$\times$ & 3.69$\times$ & 4.78$\times$ \\
+Weaver-1024  & 5.02$\times$ & 4.06$\times$ & 5.01$\times$ \\
+Weaver-2048  & 3.01$\times$ & 3.74$\times$ & 4.13$\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Component benchmarks (Weaver AVX2)}
+Table~\ref{tab:weaver_components} breaks down \texttt{bench\_components} primitives (median cycles, single run representative).
+
+\begin{table}[t]
+\centering
+\caption{Weaver primitive benchmarks (AVX2, median cycles)}
+\label{tab:weaver_components}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Component} & \textbf{W-512} & \textbf{W-1024} & \textbf{W-2048} \\
+\midrule
+\texttt{poly\_ntt} (one poly)       & 120   & 120   & 780 \\
+\texttt{poly\_invntt\_tomont}       & 120   & 120   & 1{,}160 \\
+\texttt{polyvec\_basemul\_acc}     & 120   & 220   & 6{,}160 \\
+\texttt{gen\_matrix}               & 5{,}200 & 20{,}860 & 47{,}380 \\
+\texttt{kem\_keypair}              & 22{,}060 & 38{,}600 & 145{,}900 \\
+\texttt{kem\_encaps}               & 28{,}680 & 59{,}820 & 147{,}160 \\
+\texttt{kem\_decaps}               & 30{,}580 & 57{,}720 & 163{,}380 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+For $n{=}512$, \texttt{poly\_ntt} is $\approx 6.5\times$ the $n{=}256$ cost; \texttt{polyvec\_basemul\_acc} grows sharply with $k$ and $n$. Matrix generation dominates \textsc{Weaver-2048} key generation ($\approx$47k cycles per \texttt{gen\_matrix}).

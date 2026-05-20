@@ -1,6 +1,2 @@
 *.exe
 *.o
-correct/test_codec
-speed_test/*-speed_cca
-speed_test/*-speed_cca.exe
-*_performance.csv

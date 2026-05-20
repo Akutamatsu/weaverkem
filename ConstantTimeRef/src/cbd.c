@@ -118,7 +118,7 @@ static void cbd3(poly *r, const uint8_t buf[3*KYBER_N/4])
 * Arguments:   - poly *r:            pointer to output polynomial
 *              - const uint8_t *buf: pointer to input byte array
 **************************************************/
-#if KYBER_ETA1 == 4 || KYBER_ETA2 == 4
+#if KYBER_ETA1 == 4
 static void cbd4(poly *r, const uint8_t buf[4*KYBER_N/4])
 {
   unsigned int i,j;
@@ -142,7 +142,7 @@ static void cbd4(poly *r, const uint8_t buf[4*KYBER_N/4])
 #endif
 
 /* cbd1: eta=1, 1 bit per sample, 2 bits per coefficient */
-#if KYBER_ETA1 == 1 || KYBER_ETA2 == 1
+#if KYBER_ETA1 == 1
 static void cbd1(poly *r, const uint8_t buf[1*KYBER_N/4])
 {
   unsigned int i,j;
@@ -160,6 +160,34 @@ static void cbd1(poly *r, const uint8_t buf[1*KYBER_N/4])
 }
 #endif
 
+#if KYBER_ETA1 == 5
+static unsigned int popcount5(uint16_t x)
+{
+  x &= 0x1F;
+  return (x & 1u) + ((x >> 1) & 1u) + ((x >> 2) & 1u) + ((x >> 3) & 1u) + ((x >> 4) & 1u);
+}
+
+static void cbd5(poly *r, const uint8_t buf[5*KYBER_N/4])
+{
+  unsigned int i, j;
+
+  for(i = 0; i < KYBER_N/4; i++) {
+    uint64_t t = (uint64_t)buf[5*i + 0]
+               | ((uint64_t)buf[5*i + 1] << 8)
+               | ((uint64_t)buf[5*i + 2] << 16)
+               | ((uint64_t)buf[5*i + 3] << 24)
+               | ((uint64_t)buf[5*i + 4] << 32);
+
+    for(j = 0; j < 4; j++) {
+      uint16_t v = (t >> (10*j)) & 0x3FF;
+      int16_t a = (int16_t)popcount5(v);
+      int16_t b = (int16_t)popcount5(v >> 5);
+      r->coeffs[4*i + j] = a - b;
+    }
+  }
+}
+#endif
+
 void cbd_eta1(poly *r, const uint8_t buf[KYBER_ETA1*KYBER_N/4])
 {
 #if KYBER_ETA1 == 1
@@ -170,20 +198,10 @@ void cbd_eta1(poly *r, const uint8_t buf[KYBER_ETA1*KYBER_N/4])
   cbd3(r, buf);
 #elif KYBER_ETA1 == 4
   cbd4(r, buf);
+#elif KYBER_ETA1 == 5
+  cbd5(r, buf);
 #else
-#error "This implementation requires eta1 in {1,2,3,4}"
+#error "This implementation requires eta1 in {1,2,3,4,5}"
 #endif
 }
 
-void cbd_eta2(poly *r, const uint8_t buf[KYBER_ETA2*KYBER_N/4])
-{
-#if KYBER_ETA2 == 1
-  cbd1(r, buf);
-#elif KYBER_ETA2 == 2
-  cbd2(r, buf);
-#elif KYBER_ETA2 == 4
-  cbd4(r, buf);
-#else
-#error "This implementation requires eta2 in {1,2,4}"
-#endif
-}

@@ -14,6 +14,12 @@
 #include "invq.h"
 #endif
 
+static void kem_enc_derand_fill_msg(uint8_t buf[KYBER_INDCPA_MSGBYTES],
+                                    const uint8_t coins[KYBER_KEM_DERAND_COINBYTES])
+{
+  memcpy(buf, coins, KYBER_INDCPA_MSGBYTES);
+}
+
 /*************************************************
 * Name:        crypto_kem_keypair_derand
 *
@@ -75,21 +81,20 @@ int crypto_kem_keypair(uint8_t *pk,
 *                (an already allocated array of KYBER_SSBYTES bytes)
 *              - const uint8_t *pk: pointer to input public key
 *                (an already allocated array of KYBER_PUBLICKEYBYTES bytes)
-*              - const uint8_t *coins: pointer to input randomness
-*                (an already allocated array filled with KYBER_SYMBYTES random bytes)
+*              - const uint8_t *coins: FO message m (KYBER_INDCPA_MSGBYTES bytes)
 **
 * Returns 0 (success)
 **************************************************/
 int crypto_kem_enc_derand(uint8_t *ct,
                           uint8_t *ss,
                           const uint8_t *pk,
-                          const uint8_t *coins)
+                          const uint8_t coins[KYBER_KEM_DERAND_COINBYTES])
 {
   uint8_t buf[KYBER_INDCPA_MSGBYTES + KYBER_SYMBYTES];
   /* Will contain shared-key material || encryption coins */
   uint8_t kr[KYBER_SSBYTES + KYBER_SYMBYTES];
 
-  memcpy(buf, coins, KYBER_INDCPA_MSGBYTES);
+  kem_enc_derand_fill_msg(buf, coins);
 
   /* Multitarget countermeasure for coins + contributory KEM */
   hash_h(buf+KYBER_INDCPA_MSGBYTES, pk, KYBER_PUBLICKEYBYTES);

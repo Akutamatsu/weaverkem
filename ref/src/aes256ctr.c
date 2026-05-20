@@ -483,7 +483,7 @@ static void inc4_be(uint32_t *x)
   *x = br_swap32(*x);
 }
 
-static void aes_ctr4x(uint8_t out[64], uint32_t ivw[16], uint64_t sk_exp[64])
+static void aes_ctr4x(uint8_t out[64], uint32_t ivw[16], uint64_t sk_exp[120])
 {
   uint32_t w[16];
   uint64_t q[8];

@@ -29,10 +29,10 @@
   #define KYBER_ETA2 KYBER_ETA1
   #define KYBER_K 4
   
-  /* paper-aligned core: (n,k,q,eta1,dt,du,dv) = (256,4,3329,2,9,9,5) */
-  #define KYBER_PK_POLYVECBYTES        (KYBER_K * ((KYBER_N * 9) / 8))
-  #define KYBER_POLYVECCOMPRESSEDBYTES (KYBER_K * ((KYBER_N * 9) / 8))
-  #define KYBER_POLYCOMPRESSEDBYTES    ((KYBER_N * 5) / 8)
+  /* ICCS KAT (Test_Vectors/KAT_KEM_WeaverKEM-256.txt): du=10 for pk & u, dv=4 for v */
+  #define KYBER_PK_POLYVECBYTES        (KYBER_K * ((KYBER_N * 10) / 8))
+  #define KYBER_POLYVECCOMPRESSEDBYTES (KYBER_K * ((KYBER_N * 10) / 8))
+  #define KYBER_POLYCOMPRESSEDBYTES    ((KYBER_N * 4) / 8)
 
 #elif (WEAVER_MODE == 5)
   #define KYBER_N 512
@@ -68,6 +68,7 @@
 
 /* size in bytes of hashes, and seeds */
 #define KYBER_SYMBYTES 32
+#define KYBER_KEM_DERAND_COINBYTES KYBER_INDCPA_MSGBYTES
 
 // 确保 SSBYTES（共享密钥长度）也跟随 SYMBYTES 变动
 #define KYBER_SSBYTES  KYBER_INDCPA_MSGBYTES /* size in bytes of shared key */

@@ -25,9 +25,6 @@ void poly_frombytes(poly *r, const uint8_t a[KYBER_POLYBYTES]);
 #define poly_getnoise_eta1 KYBER_NAMESPACE(_poly_getnoise_eta1)
 void poly_getnoise_eta1(poly *r, const uint8_t seed[KYBER_SYMBYTES], uint8_t nonce);
 
-#define poly_getnoise_eta2 KYBER_NAMESPACE(_poly_getnoise_eta2)
-void poly_getnoise_eta2(poly *r, const uint8_t seed[KYBER_SYMBYTES], uint8_t nonce);
-
 #define poly_ntt KYBER_NAMESPACE(_poly_ntt)
 void poly_ntt(poly *r);
 #define poly_invntt_tomont KYBER_NAMESPACE(_poly_invntt_tomont)

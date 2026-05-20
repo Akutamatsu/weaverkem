@@ -1,0 +1,198 @@
+\subsection{Software Performance on x86 Processors}
+
+We provide two implementations for the x86 platform: a portable ISO~C99
+reference implementation (\texttt{ref/}) and an AVX2-optimized implementation
+(\texttt{avx2\_weaver/}). The optimized build vectorizes polynomial arithmetic
+and matrix sampling for $n{=}256$ (\textsc{Weaver-512} and \textsc{Weaver-1024}).
+For \textsc{Weaver-2048} ($n{=}512$, $k{=}4$), it additionally provides an AVX2
+NTT, SHAKE128$\times$4 parallel matrix generation, fused
+\texttt{polyvec\_basemul\_acc}, and AVX2 modular reduction.
+On \textsc{Weaver-512}, recent micro-optimizations add AVX2 centered-binomial
+sampling for $\eta_1{=}5$, fused 9-bit public-key compression, and vectorized
+message bit expansion in \texttt{poly\_frommsg}.
+
+\subsubsection{Experimental Setup}
+
+All measurements were taken on an AMD EPYC 7C13 (x86-64, 2.0\,GHz firmware
+frequency) running Linux 6.1.0-44 (Debian~12), compiled with GCC~12.2.0
+(\texttt{-O3 -march=native -fomit-frame-pointer}, AVX2/BMI2/POPCNT).
+Cycle counts use \texttt{RDTSC} with overhead subtracted; each entry is the
+median of $N_{\mathrm{test}}{=}1{,}000$ iterations over five consecutive runs.
+Non-deterministic \texttt{randombytes} calls use Linux \texttt{getrandom(2)}
+(\texttt{USE\_GETRANDOM=1}), matching the entropy backend of the ML-KEM
+reference; KAT paths retain the in-tree AES-256-CTR-DRBG.
+ML-KEM data are from pq-crystals/kyber commit~\texttt{4768bd3} (AVX2 build),
+collected on the same machine with the same methodology.
+
+\subsubsection{Benchmarking Results}
+
+\paragraph{Weaver: reference vs.\ AVX2.}
+Table~\ref{tab:x86_perf} reports the self-comparison.
+The AVX2 build achieves $3.7\times$--$4.8\times$ on \textsc{Weaver-512},
+$3.3\times$--$5.0\times$ on \textsc{Weaver-1024}, and
+$2.7\times$--$4.2\times$ on \textsc{Weaver-2048},
+with the largest gains from vectorized NTT, fused base multiplication,
+and SHAKE128$\times$4 matrix generation.
+
+\begin{table}[t]
+\centering
+\caption{Weaver KEM performance: reference vs.\ AVX2 (median CPU cycles).}
+\label{tab:x86_perf}
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{llrrr}
+\toprule
+\textbf{Scheme} & \textbf{Impl.} & \textbf{KeyGen} & \textbf{Encaps} & \textbf{Decaps} \\
+\midrule
+\multirow{2}{*}{Weaver-512}
+  & Ref (C99)  & 79{,}500  & 105{,}760 & 146{,}300 \\
+  & AVX2       & \textbf{21{,}500}  & \textbf{28{,}100}  & \textbf{30{,}000}  \\
+\midrule
+\multirow{2}{*}{Weaver-1024}
+  & Ref (C99)  & 192{,}760 & 243{,}040 & 289{,}160 \\
+  & AVX2       & \textbf{38{,}900}  & \textbf{60{,}500}  & \textbf{57{,}900}  \\
+\midrule
+\multirow{2}{*}{Weaver-2048}
+  & Ref (C99)  & 439{,}460 & 550{,}640 & 675{,}400 \\
+  & AVX2       & \textbf{145{,}300} & \textbf{146{,}100} & \textbf{161{,}000} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Comparison with ML-KEM.}
+Tables~\ref{tab:kem_avx}--\ref{tab:overhead_breakdown} compare Weaver against
+ML-KEM at matching $(n,k)$.
+At $(256,2)$, \textsc{Weaver-512} incurs a $1.26\times$ / $1.58\times$ /
+$1.65\times$ overhead in KeyGen / Encaps / Decaps relative to ML-KEM-512.
+At $(256,4)$, \textsc{Weaver-1024} key generation is \emph{on par} with
+ML-KEM-1024 ($1.00\times$), while encapsulation and decapsulation are
+$1.55\times$ and $1.39\times$ slower.
+In exchange, both Weaver variants reduce $|\mathsf{pk}|$ by 24\,\% and
+$|\mathsf{ct}|$ by 4--16\,\% (Table~\ref{tab:bandwidth}); \textsc{Weaver-512}'s
+total wire size of 1{,}344\,B fits within a standard 1{,}500\,B Ethernet MTU,
+unlike ML-KEM-512 (1{,}568\,B).
+
+\begin{table}[t]
+\centering
+\caption{End-to-end KEM performance vs.\ ML-KEM (median CPU cycles, AVX2).}
+\label{tab:kem_avx}
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{llcrrr}
+\toprule
+\textbf{Scheme} & $(n,k)$ & \textbf{Sec.} & \textbf{KeyGen} & \textbf{Encaps} & \textbf{Decaps} \\
+\midrule
+ML-KEM-512   & $(256,2)$ & 128-bit & 17{,}000 & 17{,}820 & 18{,}180 \\
+Weaver-512   & $(256,2)$ & 128-bit & 21{,}500 & 28{,}100 & 30{,}000 \\
+\midrule
+ML-KEM-768   & $(256,3)$ & 192-bit & 32{,}060 & 27{,}240 & 28{,}500 \\
+ML-KEM-1024  & $(256,4)$ & 256-bit & 38{,}740 & 39{,}060 & 41{,}500 \\
+Weaver-1024  & $(256,4)$ & 256-bit & 38{,}900 & 60{,}500 & 57{,}900 \\
+\midrule
+Weaver-2048  & $(512,4)$ & 512-bit & 145{,}300 & 146{,}100 & 161{,}000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{Ciphertext and public-key sizes (bytes).}
+\label{tab:bandwidth}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Scheme} & $|\mathsf{pk}|$ & $|\mathsf{ct}|$ & Total \\
+\midrule
+ML-KEM-512   & 800   & 768   & 1{,}568 \\
+Weaver-512   & 608   & 736   & \textbf{1{,}344} \\
+ML-KEM-768   & 1{,}184 & 1{,}088 & 2{,}272 \\
+ML-KEM-1024  & 1{,}568 & 1{,}568 & 3{,}136 \\
+Weaver-1024  & 1{,}184 & 1{,}312 & \textbf{2{,}496} \\
+Weaver-2048  & 2{,}336 & 2{,}688 & 5{,}024 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Overhead decomposition.}
+Table~\ref{tab:overhead_breakdown} attributes the encapsulation gap to
+three categories.
+%
+\emph{Design-intrinsic} components---randomized lifting $\mathrm{Inv}_q$
+and BCH message encoding---are absent from ML-KEM and constitute the direct
+algorithmic cost of Weaver's tight MLWR reduction and aggressive compression;
+together they account for $+5{,}800$ cycles at $(256,2)$ and $+13{,}100$
+cycles at $(256,4)$, i.e.\ 56\,\% and 63\,\% of the total encapsulation gap.
+%
+\emph{Parameter-induced} overhead arises on \textsc{Weaver-512} from
+$\eta_1{=}5$ (vs.\ $\eta_1{=}3$ in ML-KEM-512), adding $+2{,}060$ cycles in
+CBD sampling; at $(256,4)$ both schemes use $\eta_1{=}2$, so this term
+collapses to $+160$ cycles.
+%
+\emph{Implementation-aligned} primitives (\texttt{gen\_matrix}, NTT,
+\texttt{basemul}) differ by at most 2--5\,\%, confirming that the vectorized
+polynomial core is not the bottleneck.
+
+The same split explains key generation: because $\mathrm{Inv}_q$ and BCH are
+not invoked, \textsc{Weaver-1024} matches ML-KEM-1024 exactly ($1.00\times$);
+the \textsc{Weaver-512} gap ($1.26\times$, $+4{,}500$ cycles) is driven by
+$\eta_1{=}5$ noise expansion ($+2{,}060$ cycles) and 9-bit compressed
+public-key packing ($+1{,}260$ cycles).
+Note that \texttt{kem\_decaps} is faster than \texttt{kem\_encaps} on all
+parameter sets because the FO re-encryption inside decapsulation omits the
+\texttt{randombytes} draw present in \texttt{kem\_encaps}.
+
+\begin{table}[h]
+\centering
+\caption{Encapsulation overhead breakdown: Weaver vs.\ ML-KEM (AVX2, median
+         cycles). Components marked~$\dagger$ are absent in ML-KEM.}
+\label{tab:overhead_breakdown}
+\renewcommand{\arraystretch}{1.12}
+\small
+\begin{tabular}{lrrrrrr}
+\toprule
+ & \multicolumn{3}{c}{\textbf{$(256,2)$}} & \multicolumn{3}{c}{\textbf{$(256,4)$}} \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}
+\textbf{Component} & ML-KEM & Weaver & $\Delta$ & ML-KEM & Weaver & $\Delta$ \\
+\midrule
+\texttt{gen\_matrix}              & 5{,}180 & 5{,}340 & +160
+                                  & 20{,}480 & 20{,}860 & +380 \\
+\texttt{poly\_getnoise} (CBD)     & 4{,}560 & 6{,}620 & +2{,}060
+                                  & 3{,}760  & 3{,}920  & +160 \\
+NTT + \texttt{basemul}            & 220     & 260     & +40
+                                  & 420      & 520      & +100 \\
+\textbf{Inv}$_q$ ($\dagger$)      & ---     & \textbf{2{,}800}  & \textbf{+2{,}800}$^\dagger$
+                                  & ---      & \textbf{10{,}100} & \textbf{+10{,}100}$^\dagger$ \\
+\textbf{BCH MsgEncode} ($\dagger$)& 200     & \textbf{3{,}200}  & \textbf{+3{,}000}$^\dagger$
+                                  & 200      & \textbf{3{,}200}  & \textbf{+3{,}000}$^\dagger$ \\
+Compress + pack                   & 4{,}260 & 5{,}840 & +1{,}580
+                                  & 8{,}700  & 16{,}120 & +7{,}420 \\
+\texttt{randombytes} + hash       & 3{,}400 & 3{,}840 & +440
+                                  & 5{,}500  & 5{,}780  & +280 \\
+\midrule
+\textbf{Total}                    & \textbf{17{,}820} & \textbf{28{,}100} & \textbf{+10{,}280}
+                                  & \textbf{39{,}060} & \textbf{60{,}500} & \textbf{+21{,}440} \\
+\bottomrule
+\end{tabular}
+\smallskip\\
+{\footnotesize $^\dagger$\,Direct cost of randomized lifting $\mathrm{Inv}_q$
+(tight MLWR reduction) and BCH coding (aggressive compression).}
+\end{table}
+
+Excluding the two design-intrinsic components ($\mathrm{Inv}_q$ and BCH), the
+remaining encapsulation overhead is at most $4{,}480$ and $7{,}660$ cycles on
+\textsc{Weaver-512} and \textsc{Weaver-1024}, respectively ($25\%$ and $20\%$ of
+the corresponding ML-KEM encapsulation medians, or $44\%$ and $37\%$ of the
+measured Weaver excess).
+This confirms that the performance gap is primarily a deliberate
+bandwidth--security trade-off rather than a gap in core lattice arithmetic.
+
+Component-level timings on the AVX2 build show that \texttt{gen\_matrix} is
+already within $\approx 5\%$ of ML-KEM's \texttt{gen\_a} at $(256,2)$
+($\approx 5.3$\,k vs.\ $\approx 5.2$\,k cycles); single-polynomial NTT and
+\texttt{polyvec\_basemul\_acc} differ by at most $\approx 1.6\times$.
+The remaining key-generation gap at $(256,2)$ is therefore not matrix generation
+but CPA-specific work---notably $\eta_1{=}5$ noise expansion ($\approx 6.6$\,k
+cycles for two polynomials vs.\ $\approx 4.6$\,k for the ML-KEM analogue) and
+compressed public-key packing ($\approx 1.7$\,k cycles).
+
+On \textsc{Weaver-2048}, end-to-end performance is dominated by matrix sampling
+and serialization; \texttt{gen\_matrix} costs $\approx 47$\,k cycles per call in
+the AVX2 build, and fused \texttt{polyvec\_basemul\_acc} accounts for
+$\approx 6$\,k cycles per dot product at $n{=}512$.

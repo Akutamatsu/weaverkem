@@ -10,6 +10,16 @@
 //#include "randombytes.h"
 #include "rng.h"
 
+#ifdef PK_COMPRESS
+#include "invq.h"
+#endif
+
+static void kem_enc_derand_fill_msg(uint8_t buf[KYBER_INDCPA_MSGBYTES],
+                                    const uint8_t coins[KYBER_KEM_DERAND_COINBYTES])
+{
+  memcpy(buf, coins, KYBER_INDCPA_MSGBYTES);
+}
+
 /*************************************************
 * Name:        crypto_kem_keypair_derand
 *
@@ -79,13 +89,13 @@ int crypto_kem_keypair(uint8_t *pk,
 int crypto_kem_enc_derand(uint8_t *ct,
                           uint8_t *ss,
                           const uint8_t *pk,
-                          const uint8_t *coins)
+                          const uint8_t coins[KYBER_KEM_DERAND_COINBYTES])
 {
   uint8_t buf[KYBER_INDCPA_MSGBYTES + KYBER_SYMBYTES];
   /* Will contain shared-key material || encryption coins */
   uint8_t kr[KYBER_SSBYTES + KYBER_SYMBYTES];
 
-  memcpy(buf, coins, KYBER_INDCPA_MSGBYTES);
+  kem_enc_derand_fill_msg(buf, coins);
 
   /* Multitarget countermeasure for coins + contributory KEM */
   hash_h(buf+KYBER_INDCPA_MSGBYTES, pk, KYBER_PUBLICKEYBYTES);

@@ -1,0 +1,37 @@
+ConstantTimeRef 与 weaverkem/ref 对齐核查（结论：不拷贝 CT 源码覆盖 ref）
+================================================================================
+日期：以本机验证为准。
+
+一、结论（是否把 CT「修复」拷到 ref）
+  未从 ConstantTimeRef 向 ref 覆盖拷贝任何核心 .c/.h。
+  原因：两树已分叉；ref 为论文对齐后的主开发线，ConstantTimeRef 为较早参考实现。
+  若强行用 CT 覆盖 params.h / cbd.c / poly.c / indcpa.c / kem_cca.c 等，会回退参数（如 512 档 η、1024 档 dv/压缩位宽）并破坏与现有 kem_cca + PK_COMPRESS + Inv_q 路径的一致性。
+
+二、与 KEM 核心完全一致、diff 无差异的文件（无需同步）
+  api.h, fips202.c, ntt.c, reduce.c, rng.c, verify.c, symmetric-shake.c, kem_cpa.c, correct_test.c
+
+三、两侧均有且内容不同（ref 视为「已演进」，不取 CT 旧版）
+  params.h        — ref：默认 WEAVER_MODE、512 档 KYBER_ETA1=5、ETA2=ETA1、paper 注释；1024/2048 压缩位宽与 CT 不同。
+  poly.c / poly.h — ref：去掉 poly_getnoise_eta2 / 与统一 eta 路径一致；CT 仍保留 eta2 接口。
+  cbd.c / cbd.h   — ref：cbd5(η=5)、仅 cbd_eta1；CT：仍含 cbd_eta2 与旧 #if KYBER_ETA2 条件。
+  indcpa.c        — ref：PK_COMPRESS 下 Inv_q lifting（polyvec_fromcompressed_pk + polyvec_invq）、enc 侧噪声仅用 eta1 等；CT：仍用 unpack_pk + poly_getnoise_eta2 + ep/epp 加噪路径。
+  kem_cca.c       — ref：含 #include "invq.h"（PK_COMPRESS）；CT 无。
+  polyvec.c/h, msgenc.c/h, bch_high.c, bch_low.c, bch.h — 与 BCH 表头命名、消息编码等实现不同；ref 使用 bch*_*.h 命名表，CT 使用 bch127.h 等另一套表文件。
+  test_cbd.c / test_coding.c / test_compress.c — 测试程序随参数与 API 分叉，不混拷。
+  poison.h        — 逻辑相同，仅换行风格（CRLF/LF）差异。
+
+四、仅在 ConstantTimeRef 存在的文件（ref 不缺失功能）
+  bch127.h, bch255.h, bch2551283.h, bch511.h, bch63.h 等旧表命名；ref 侧为等价功能的另一组预生成表（如 bch255_128_5.h、bch511_464_5.h 等）。
+
+五、仅在 ref 存在（相对 CT 为新增模块）
+  poly_invq.c, invq.h, invq_table_data.h, gen_invq_table.c
+  speed/test_speed_simp.c
+  test_compare.c, test_compare_kem_global.c
+  （及 ref 侧 BCH 表头文件命名与 CT 不同的一组 .h）
+
+六、正确性验证（已执行）
+  命令：cd weaverkem/ref/correct && make CC=gcc clean all && ./512-failure && ./1024-failure && ./2048-failure
+  结果（各 100000 轮）：
+    WEAVER-512:  Failure times: 0 / in total 100000 rounds of Test
+    WEAVER-1024: Failure times: 0 / in total 100000 rounds of Test
+    WEAVER-2048: Failure times: 0 / in total 100000 rounds of Test

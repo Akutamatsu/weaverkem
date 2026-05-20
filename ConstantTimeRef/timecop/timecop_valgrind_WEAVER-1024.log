@@ -1,0 +1,66 @@
+==833== Memcheck, a memory error detector
+==833== Copyright (C) 2002-2022, and GNU GPL'd, by Julian Seward et al.
+==833== Using Valgrind-3.22.0 and LibVEX; rerun with -h for copyright info
+==833== Command: ./timecop_ref_weaver_1024
+==833== 
+==833== Use of uninitialised value of size 8
+==833==    at 0x10F06D: rej_uniform (poly_invq.c:93)
+==833==    by 0x10F1A4: pqcrystals_weaver1024_ref_polyvec_invq (poly_invq.c:130)
+==833==    by 0x10A3A1: pqcrystals_weaver1024_ref_indcpa_enc (indcpa.c:315)
+==833==    by 0x109B0D: pqcrystals_weaver1024_ref_dec (kem_cca.c:167)
+==833==    by 0x1096BE: main (timecop_harness.c:33)
+==833==  Uninitialised value was created by a client request
+==833==    at 0x10968E: main (timecop_harness.c:31)
+==833== 
+==833== Conditional jump or move depends on uninitialised value(s)
+==833==    at 0x10F073: rej_uniform (poly_invq.c:93)
+==833==    by 0x10F1A4: pqcrystals_weaver1024_ref_polyvec_invq (poly_invq.c:130)
+==833==    by 0x10A3A1: pqcrystals_weaver1024_ref_indcpa_enc (indcpa.c:315)
+==833==    by 0x109B0D: pqcrystals_weaver1024_ref_dec (kem_cca.c:167)
+==833==    by 0x1096BE: main (timecop_harness.c:33)
+==833==  Uninitialised value was created by a client request
+==833==    at 0x10968E: main (timecop_harness.c:31)
+==833== 
+==833== Use of uninitialised value of size 8
+==833==    at 0x10F094: rej_uniform (poly_invq.c:94)
+==833==    by 0x10F1A4: pqcrystals_weaver1024_ref_polyvec_invq (poly_invq.c:130)
+==833==    by 0x10A3A1: pqcrystals_weaver1024_ref_indcpa_enc (indcpa.c:315)
+==833==    by 0x109B0D: pqcrystals_weaver1024_ref_dec (kem_cca.c:167)
+==833==    by 0x1096BE: main (timecop_harness.c:33)
+==833==  Uninitialised value was created by a client request
+==833==    at 0x10968E: main (timecop_harness.c:31)
+==833== 
+==833== Conditional jump or move depends on uninitialised value(s)
+==833==    at 0x109DBA: rej_uniform (indcpa.c:163)
+==833==    by 0x109F32: pqcrystals_weaver1024_ref_gen_matrix (indcpa.c:210)
+==833==    by 0x10A3E4: pqcrystals_weaver1024_ref_indcpa_enc (indcpa.c:325)
+==833==    by 0x109B0D: pqcrystals_weaver1024_ref_dec (kem_cca.c:167)
+==833==    by 0x1096BE: main (timecop_harness.c:33)
+==833==  Uninitialised value was created by a client request
+==833==    at 0x10968E: main (timecop_harness.c:31)
+==833== 
+==833== Conditional jump or move depends on uninitialised value(s)
+==833==    at 0x109DE7: rej_uniform (indcpa.c:165)
+==833==    by 0x109F32: pqcrystals_weaver1024_ref_gen_matrix (indcpa.c:210)
+==833==    by 0x10A3E4: pqcrystals_weaver1024_ref_indcpa_enc (indcpa.c:325)
+==833==    by 0x109B0D: pqcrystals_weaver1024_ref_dec (kem_cca.c:167)
+==833==    by 0x1096BE: main (timecop_harness.c:33)
+==833==  Uninitialised value was created by a client request
+==833==    at 0x10968E: main (timecop_harness.c:31)
+==833== 
+==833== Conditional jump or move depends on uninitialised value(s)
+==833==    at 0x48524EE: bcmp (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==833==    by 0x109784: main (timecop_harness.c:39)
+==833==  Uninitialised value was created by a client request
+==833==    at 0x10968E: main (timecop_harness.c:31)
+==833== 
+TIMECOP harness finished successfully
+==833== 
+==833== HEAP SUMMARY:
+==833==     in use at exit: 0 bytes in 0 blocks
+==833==   total heap usage: 6,795 allocs, 6,795 frees, 565,076 bytes allocated
+==833== 
+==833== All heap blocks were freed -- no leaks are possible
+==833== 
+==833== For lists of detected and suppressed errors, rerun with: -s
+==833== ERROR SUMMARY: 8520 errors from 6 contexts (suppressed: 0 from 0)

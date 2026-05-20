@@ -1,0 +1,21 @@
+TIMECOP / Valgrind memcheck（sk 全量 poison 后跑 crypto_kem_dec）
+================================================================
+环境: WSL Ubuntu, valgrind 3.22.0, gcc -O0 -g, 与 harness 同目录执行 ./run_timecop.sh
+
+与 ConstantTimeRef 上一版脚本（仅 WEAVER_MODE=1、无 poly_invq、含 aes256ctr）对比：
+  仓库内未检入旧版 timecop_valgrind.log；本机在 2026-02 对 ConstantTimeRef/timecop 复跑得到：
+  ERROR SUMMARY: 1223 errors from 3 contexts（仅 512 档）
+
+本版 weaverkem/ref（当前 ref/src，harness 含 poly_invq.c、无 aes256ctr，三档参数）复跑得到：
+  WEAVER-512:  ERROR SUMMARY: 3155 errors from 15 contexts  （日志: timecop_valgrind_WEAVER-512.log）
+  WEAVER-1024: ERROR SUMMARY: 8713 errors from 23 contexts （日志: timecop_valgrind_WEAVER-1024.log）
+  WEAVER-2048: ERROR SUMMARY: 17312 errors from 16 contexts（日志: timecop_valgrind_WEAVER-2048.log）
+
+说明:
+  - 报告项为「依赖未初始化值的分支/使用」等；在 poison(sk) 语义下，凡 decaps 内按 sk 字节做条件/查表而未先与公钥路径完全解耦，均会报。
+  - 本版 512 栈上热点示例（详见各 .log）: encode_bch_high / compute_syndromes（bch_high.c），rej_uniform（poly_invq.c），以及由 BCH 解码写栈再被后续路径读到的传播。
+
+Windows: MSYS2 ucrt64 一般无 valgrind，请在 WSL 下:
+  wsl -e bash -lc 'cd /mnt/c/Users/si-ga/CursorProjects/WeaverKEM/weaverkem/ref/timecop && ./run_timecop.sh'
+
+仅跑某一档: WEAVER_MODES=1 ./run_timecop.sh

@@ -1,6 +1,7 @@
 /*
- * Valgrind / Timecop-style harness for ConstantTimeRef.
+ * Valgrind / Timecop-style harness for weaverkem/ref.
  * Marks the full secret key as secret (poison) then runs decapsulation.
+ * Build with -DWEAVER_MODE=1|3|5 to match WEAVER-512 / 1024 / 2048.
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,28 +18,23 @@ int main(void)
   unsigned char ss[CRYPTO_BYTES];
   unsigned char ss_dec[CRYPTO_BYTES];
 
-  // 1. Generate keypair
   if (crypto_kem_keypair(pk, sk) != 0) {
     fprintf(stderr, "Keygen failed\n");
     return 1;
   }
 
-  // 2. Encapsulate
   if (crypto_kem_enc(ct, ss, pk) != 0) {
     fprintf(stderr, "Encaps failed\n");
     return 2;
   }
 
-  // 3. Poison the secret key
   poison(sk, CRYPTO_SECRETKEYBYTES);
 
-  // 4. Decapsulate (this is what TIMECOP monitors)
   if (crypto_kem_dec(ss_dec, ct, sk) != 0) {
     fprintf(stderr, "Decaps failed\n");
     return 3;
   }
 
-  // 5. Check correctness (optional, but good for sanity)
   unpoison(sk, CRYPTO_SECRETKEYBYTES);
   if (memcmp(ss, ss_dec, CRYPTO_BYTES) != 0) {
     fprintf(stderr, "SS mismatch!\n");

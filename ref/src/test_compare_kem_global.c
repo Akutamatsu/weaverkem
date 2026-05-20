@@ -111,7 +111,7 @@ static void bench_pk_decompress_ntt(void) {
 /* 阶段2b: 新方案 — PK 压缩域加载 + Inv_q随机提升 + NTT */
 static void bench_pk_invq_lift_ntt(void) {
     polyvec_fromcompressed_pk(&g_pkpv_new, pk_buf);       /* 加载压缩值 */
-    polyvec_invq(&g_pkpv_new, coins_buf, g_nonce++, &invq_pk_table); /* Inv_q提升 */
+    polyvec_invq(&g_pkpv_new, coins_buf, g_nonce++); /* Inv_q提升 */
 #ifdef PK_COMPRESS
     polyvec_ntt(&g_pkpv_new);
 #endif
@@ -290,7 +290,7 @@ static void print_row(const char *name,
     print_separator();
 }
 
-/* ====== main ====== */
+
 /* ====== main ====== */
 int main()
 {
@@ -308,7 +308,7 @@ int main()
     uint64_t dec_new_med, dec_new_avg; 
     uint64_t dec_old_med, dec_old_avg;
 
-    invq_global_init();
+    // invq_global_init();
 
     /* 准备测试数据 */
     randombytes(coins_buf, KYBER_SYMBYTES);

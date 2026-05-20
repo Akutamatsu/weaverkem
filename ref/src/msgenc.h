@@ -20,10 +20,12 @@
   #define D4_STEP_LEN 64
 
 #elif (WEAVER_MODE == 5)
-  #define ELL_BAR_BYTES      58 // 464 bits = 58 bytes
-  #define ELL_DDOT_BYTES     6  // 48 bits = 6 bytes
-  #define LOW_ECC_BYTES      5  // (127,92,5) BCH code; ceil(5*7 bits) = 5 bytes
-  #define LOW_CODEWORD_BYTES 11  // (ELL_DDOT_BYTES + LOW_ECC_BYTES) < 16 bytes = 128 bits
+  /* High: (511,*,6) shortened BCH — payload <= floor((511-54)/8)=57 bytes (matches bch511_456_6.h). */
+  #define ELL_BAR_BYTES      57
+  /* Low: (127,*,6) — payload <= floor((127-42)/8)=10 bytes; use 7 data + 6 ECC = 13 (64 - 57 = 7). */
+  #define ELL_DDOT_BYTES     7
+  #define LOW_ECC_BYTES      6  /* BCH_ECC_BYTES from bch127_56_6.h */
+  #define LOW_CODEWORD_BYTES 13  /* ELL_DDOT_BYTES + LOW_ECC_BYTES */
   #define D4_STEP_LEN 128
 
 #else

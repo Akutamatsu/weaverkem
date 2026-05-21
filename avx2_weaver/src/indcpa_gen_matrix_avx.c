@@ -221,7 +221,8 @@ void gen_matrix(polyvec *a, const uint8_t seed[KYBER_SYMBYTES], int transposed)
   _mm256_store_si256((__m256i *)buf[0], f);
   buf[0][KYBER_SYMBYTES+0] = 2;
   buf[0][KYBER_SYMBYTES+1] = 2;
-  shake128_absorb(&state1x, buf[0], KYBER_SYMBYTES+2);
+  /* One-shot absorb (Kyber-style); not incremental shake128_absorb. */
+  shake128_absorb_once(&state1x, buf[0], KYBER_SYMBYTES+2);
   shake128_squeezeblocks(buf[0], GEN_MATRIX_NBLOCKS, &state1x);
   ctr0 = rej_uniform_avx(a[2].vec[2].coeffs, buf[0]);
   while(ctr0 < KYBER_N) {

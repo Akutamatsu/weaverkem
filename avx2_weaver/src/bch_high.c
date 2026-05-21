@@ -5,15 +5,9 @@
 # include "params.h"  // <--- 引入我们自己架构的参数
 # include "bch.h"
 
-#if WEAVER_MODE == 1
-    #include "bch255_128_5.h"
-#elif WEAVER_MODE == 3
-    #include "bch255_223_4.h"
-#elif WEAVER_MODE == 5
-    #include "bch511_464_5.h"
-#else
-    #error "Invalid WEAVER_MODE for BCH configuration"
-#endif
+
+#include "bch255_220_4.h"
+
 
 // convert 32-bit ecc words to ecc bytes
 static void store_ecc8(uint8_t *dst, const uint32_t *src)
@@ -311,16 +305,16 @@ int decode_bch_high(uint8_t *data, unsigned int len, const uint8_t *recv_ecc)
     
     for (i = 0; i < bch.t; i++) 
     {
-        mask_err  = (i<err)? 0xff: 0x00;
-        errloc[i] = (nbits-1-errloc[i])&mask_err;
-        errloc[i] = ((errloc[i] & ~7)|(7-(errloc[i] & 7)))&mask_err;
-        data[errloc[i]/8] ^= ((1 << (errloc[i] % 8))&mask_err);
+        mask_err  = (unsigned char)(((int)(i - err) >> 31));
+        errloc[i] = (nbits-1-errloc[i]);
+        errloc[i] &= (unsigned int)mask_err * 0x01010101u;
+        data[errloc[i]/8] ^= ((1u << (7 - (errloc[i] % 8)))&mask_err);
     }
     
     return err;
 }
 
-#if WEAVER_MODE == 3
+
 void encode_bch_high_nibbles(const unsigned char *data, unsigned int nibbles, uint8_t *ecc)
 {
     int i;
@@ -429,12 +423,12 @@ int decode_bch_high_nibbles(uint8_t *data, unsigned int nibbles, const uint8_t *
     // 定位与翻转错误的逻辑天然是 bit 级的，完美向下兼容
     for (i = 0; i < bch.t; i++) 
     {
-        mask_err  = (i<err)? 0xff: 0x00;
-        errloc[i] = (nbits-1-errloc[i])&mask_err;
-        errloc[i] = ((errloc[i] & ~7)|(7-(errloc[i] & 7)))&mask_err;
+        mask_err  = (unsigned char)(((int)(i - err) >> 31));
+        errloc[i] = (nbits-1-errloc[i]);
+        errloc[i] = ((errloc[i] & ~7)|(7-(errloc[i] & 7)));
+        errloc[i] &= (unsigned int)mask_err * 0x01010101u;
         data[errloc[i]/8] ^= ((1 << (errloc[i] % 8))&mask_err);
     }
     
     return err;
 }
-#endif

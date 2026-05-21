@@ -1,4 +1,4 @@
-/* Segment timing for kem_keypair / indcpa_keypair (mode 5, Weaver-2048). */
+/* Segment timing for kem_keypair / indcpa_keypair (mode 5, Weaver-1024). */
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>

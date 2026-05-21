@@ -17,7 +17,8 @@ Requires **x86_64** with AVX2 (`-mavx2 -mbmi2 -mpopcnt`). On Linux, `gcc` or `cl
 cd avx2_weaver
 make all      # binaries in bin/
 make kat      # replay ../Test_Vectors/ (must match ref; all 3 security levels)
-make test     # make kat + extended ref/AVX cross-check vectors
+make test     # KAT + ref/AVX checks for WEAVER-512, 768, and 1024 (all three levels)
+make test-extended  # test + mode-5 gen_matrix diff + enc_derand buffer regression
 make bench    # keypair / encaps / decaps timing
 ```
 
@@ -30,11 +31,13 @@ Performance toggles:
 
 ## Parameter sets
 
-| Binary | WEAVER_MODE | Paper name | NTT in default build |
-|--------|-------------|------------|----------------------|
-| `weaver_avx_512` | 1 | WEAVER-512 | portable C (`src/ntt.c`) |
-| `weaver_avx_1024` | 3 | WEAVER-1024 | portable C (`src/ntt.c`) |
-| `weaver_avx_2048` | 5 | WEAVER-2048 | portable C (`src/ntt.c`, n=512) |
+| Binary | WEAVER_MODE | Parameter set | ICCS KAT file |
+|--------|-------------|---------------|---------------|
+| `weaver_avx_512` | 1 | WEAVER-512 | `KAT_KEM_WeaverKEM-128.txt` |
+| `weaver_avx_768` | 3 | WEAVER-768 | `KAT_KEM_WeaverKEM-256.txt` |
+| `weaver_avx_1024` | 5 | WEAVER-1024 | `KAT_KEM_WeaverKEM-512.txt` |
+
+All three use `n=256` and AVX2 NTT when `USE_AVX_NTT=1` (default).
 
 AVX2 assembly NTT (`src/avx/*.S`) can be enabled for modes 1/3 with `USE_AVX_NTT=1` (defines `WEAVER_USE_AVX_NTT`); keep it disabled unless `make test USE_AVX_NTT=1` is fully green.
 
@@ -42,9 +45,11 @@ Binaries are built with AVX2 flags for SIMD in `poly_avx.c` and future assembly 
 
 ## Correctness
 
-1. **ICCS KAT** — `make kat` replays all three `../Test_Vectors/KAT_KEM_WeaverKEM-*.txt` files (SM3-DRNG via `kat_iccs_128` / `kat_iccs_256` / `kat_iccs_512`). These files are byte-identical to `Implementations/Reference_Implementation` output (`make generate_kat`).
-2. **Reference cross-check** — `gen_vectors_ref_*` builds 100 vectors from `ref/`; `compare_ref_avx_*` checks byte-identical outputs from this tree.
-3. **Self-test** — `gen_vectors_*` + `verify_vectors_*` on extended seeds.
+1. **ICCS KAT** — replays all three `../Test_Vectors/KAT_KEM_WeaverKEM-*.txt` files (SM3-DRNG).
+2. **Reference cross-check** — 100 stored vectors per level; `compare_ref_avx_{512,768,1024}` vs `ref/`.
+3. **Random KEM derand** — 10 000 replay cases per level (`compare_ref_random_*`).
+4. **AVX self-check** — `verify_vectors_{512,768,1024}` regenerates and matches stored AVX vectors.
+5. **NTT primitives** — `compare_ntt_avx_{512,768,1024}` (scalar ref vs AVX assembly).
 
 ## Optimizations
 

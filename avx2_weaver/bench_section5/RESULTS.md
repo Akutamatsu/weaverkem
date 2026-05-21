@@ -21,8 +21,8 @@ Medians over 5 runs; N_test=1000 per run.
 | Weaver-512 | 256 | 2 | 128-bit | 22,060 | 28,680 | 30,580 |
 | ML-KEM-768 | 256 | 3 | 192-bit | 32,060 | 27,240 | 28,500 |
 | ML-KEM-1024 | 256 | 4 | 256-bit | 38,740 | 39,060 | 41,500 |
+| Weaver-768 | 256 | 3 | 192-bit | (see w768_avx.txt) | | |
 | Weaver-1024 | 256 | 4 | 256-bit | 38,600 | 59,820 | 57,720 |
-| Weaver-2048 | 512 | 4 | 512-bit | 145,900 | 147,160 | 163,380 |
 
 _Pre-`USE_GETRANDOM` Weaver AVX2 (NIST DRBG per 16-byte block): KeyGen 39,060 / 55,900 / 178,620 at (256,2), (256,4), (512,4)._
 
@@ -34,8 +34,8 @@ _Pre-`USE_GETRANDOM` Weaver AVX2 (NIST DRBG per 16-byte block): KeyGen 39,060 / 
 | Weaver-512 | 608 | 736 | 1344 |
 | ML-KEM-768 | 1184 | 1088 | 2272 |
 | ML-KEM-1024 | 1568 | 1568 | 3136 |
+| Weaver-768 | 896 | 992 | 1888 |
 | Weaver-1024 | 1184 | 1312 | 2496 |
-| Weaver-2048 | 2336 | 2688 | 5024 |
 
 ## Table 3 — Weaver / ML-KEM cycle ratio (AVX2)
 
@@ -52,11 +52,11 @@ _Pre-`USE_GETRANDOM` Weaver AVX2 (NIST DRBG per 16-byte block): KeyGen 39,060 / 
 | ML-KEM-1024 | 5.11× | 5.36× | 6.65× |
 | Weaver-512 | 1.70× | 1.88× | 2.41× |
 | Weaver-1024 | 2.65× | 2.30× | 2.95× |
-| Weaver-2048 | 1.84× | 2.18× | 2.30× |
+| Weaver-1024 | 1.84× | 2.18× | 2.30× |
 
 ## Table 5 — Weaver components (AVX2)
 
-| Component | W-512 | W-1024 | W-2048 |
+| Component | W-512 | W-768 | W-1024 |
 |-----------|-------|--------|--------|
 | poly_ntt | 120 | 120 | 780 |
 | poly_invntt | 120 | 120 | 1,160 |

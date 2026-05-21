@@ -5,18 +5,7 @@
 # include "params.h"  
 # include "bch.h"
 
-#if WEAVER_MODE == 3 || WEAVER_MODE == 5
-     
-    #if WEAVER_MODE == 3
-        // bch(255, 224, 3) 
-        #include "bch63_33_4.h"
-    #elif WEAVER_MODE == 5
-        // bch(511, 474, 4) 
-        #include "bch127_92_5.h"
-    #else
-        #error "Invalid WEAVER_MODE for BCH configuration"
-    #endif
-
+#include "bch63_36_4.h"
 
 
 // convert 32-bit ecc words to ecc bytes
@@ -285,9 +274,8 @@ int decode_bch_low(uint8_t *data, unsigned int len, const uint8_t *recv_ecc)
     unsigned int syn[2*BCH_T+1];
     unsigned int errloc[BCH_T];
 
-    // sanity check: make sure data length can be handled 
-    if (8*len > (bch.n-bch.ecc_bits))
-        printf("bch超出容量");
+    // sanity check: make sure data length can be handled
+    if (8 * len > (bch.n - bch.ecc_bits))
         return -1;
         
     //check data and ecc pointer
@@ -316,16 +304,16 @@ int decode_bch_low(uint8_t *data, unsigned int len, const uint8_t *recv_ecc)
     
     for (i = 0; i < bch.t; i++) 
     {
-        mask_err  = (i<err)? 0xff: 0x00;
-        errloc[i] = (nbits-1-errloc[i])&mask_err;
-        errloc[i] = ((errloc[i] & ~7)|(7-(errloc[i] & 7)))&mask_err;
-        data[errloc[i]/8] ^= ((1 << (errloc[i] % 8))&mask_err);
+        mask_err  = (unsigned char)(((int)(i - err) >> 31));
+        errloc[i] = (nbits-1-errloc[i]);
+        errloc[i] &= (unsigned int)mask_err * 0x01010101u;
+        data[errloc[i]/8] ^= ((1u << (7 - (errloc[i] % 8)))&mask_err);
     }
     
     return err;
 }
 
-#if WEAVER_MODE == 3
+
 void encode_bch_low_nibbles(const unsigned char *data, unsigned int nibbles, uint8_t *ecc)
 {
     int i;
@@ -431,17 +419,15 @@ int decode_bch_low_nibbles(uint8_t *data, unsigned int nibbles, const uint8_t *r
     
     unsigned char mask_err;
     
-    // 定位与翻转错误的逻辑天然是 bit 级的，完美向下兼容
     for (i = 0; i < bch.t; i++) 
     {
-        mask_err  = (i<err)? 0xff: 0x00;
-        errloc[i] = (nbits-1-errloc[i])&mask_err;
-        errloc[i] = ((errloc[i] & ~7)|(7-(errloc[i] & 7)))&mask_err;
+        mask_err  = (unsigned char)(((int)(i - err) >> 31));
+        errloc[i] = (nbits-1-errloc[i]);
+        errloc[i] = ((errloc[i] & ~7)|(7-(errloc[i] & 7)));
+        errloc[i] &= (unsigned int)mask_err * 0x01010101u;
         data[errloc[i]/8] ^= ((1 << (errloc[i] % 8))&mask_err);
     }
     
     return err;
 }
-#endif
 
-#endif

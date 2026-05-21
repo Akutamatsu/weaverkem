@@ -7,7 +7,7 @@
 #include "kem.h"
 
 #if WEAVER_MODE != 5
-#error "test_enc_derand_coins is for WEAVER-2048 (mode 5) only"
+#error "test_enc_derand_coins is for WEAVER-1024 (mode 5) only"
 #endif
 
 #if KYBER_KEM_DERAND_COINBYTES != KYBER_INDCPA_MSGBYTES

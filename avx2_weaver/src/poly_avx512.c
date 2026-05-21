@@ -1,4 +1,4 @@
-/* AVX2 NTT for Weaver n=512 (WEAVER-2048). Standard coefficient order (not Kyber shuffle).
+/* AVX2 NTT for Weaver n=512 (WEAVER-1024). Standard coefficient order (not Kyber shuffle).
  * All loops are secret-independent (fixed bounds, no branches on secret data). */
 #include <stdint.h>
 #include <immintrin.h>

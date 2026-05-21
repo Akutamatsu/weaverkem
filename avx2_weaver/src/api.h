@@ -8,32 +8,12 @@
 #define CRYPTO_CIPHERTEXTBYTES KYBER_CIPHERTEXTBYTES
 #define CRYPTO_BYTES           KYBER_SSBYTES
 
-// #if   (KYBER_K == 2)
-// #ifdef KYBER_90S
-// #define CRYPTO_ALGNAME "Kyber512-90s"
-// #else
-// #define CRYPTO_ALGNAME "Kyber512"
-// #endif
-// #elif (KYBER_K == 3)
-// #ifdef KYBER_90S
-// #define CRYPTO_ALGNAME "Kyber768-90s"
-// #else
-// #define CRYPTO_ALGNAME "Kyber768"
-// #endif
-// #elif (KYBER_K == 4)
-// #ifdef KYBER_90S
-// #define CRYPTO_ALGNAME "Kyber1024-90s"
-// #else
-// #define CRYPTO_ALGNAME "Kyber1024"
-// #endif
-// #endif
-
 #if   (WEAVER_MODE == 1)
   #define CRYPTO_ALGNAME "WEAVER-512"
 #elif (WEAVER_MODE == 3)
-  #define CRYPTO_ALGNAME "WEAVER-1024"
+  #define CRYPTO_ALGNAME "WEAVER-768"
 #elif (WEAVER_MODE == 5)
-  #define CRYPTO_ALGNAME "WEAVER-2048"
+  #define CRYPTO_ALGNAME "WEAVER-1024"
 #else
   #define CRYPTO_ALGNAME "WEAVER-UNKNOWN"
 #endif

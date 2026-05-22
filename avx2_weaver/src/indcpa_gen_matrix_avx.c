@@ -14,6 +14,8 @@
 #include "rejsample.h"
 
 #define GEN_MATRIX_NBLOCKS (AVX_REJ_UNIFORM_BUFLEN / XOF_BLOCKBYTES)
+/* rej_uniform_avx reads up to pos+55; pad beyond squeeze length (K==2 used 504 only). */
+#define GEN_MATRIX_BUFLEN (((GEN_MATRIX_NBLOCKS * XOF_BLOCKBYTES) + 31) / 32 * 32)
 
 static unsigned int rej_uniform(int16_t *r,
                                 unsigned int len,
@@ -43,11 +45,11 @@ void gen_matrix(polyvec *a, const uint8_t seed[KYBER_SYMBYTES], int transposed)
 {
   unsigned int ctr0, ctr1, ctr2, ctr3;
   __attribute__((aligned(32)))
-  uint8_t buf[4][AVX_REJ_UNIFORM_BUFLEN];
+  uint8_t buf[4][GEN_MATRIX_BUFLEN];
   __m256i f;
-  keccakx4_state state;
+  __attribute__((aligned(32))) keccakx4_state state;
 
-  f = _mm256_load_si256((__m256i *)seed);
+  f = _mm256_loadu_si256((__m256i *)seed);
   _mm256_store_si256((__m256i *)buf[0], f);
   _mm256_store_si256((__m256i *)buf[1], f);
   _mm256_store_si256((__m256i *)buf[2], f);
@@ -106,12 +108,12 @@ void gen_matrix(polyvec *a, const uint8_t seed[KYBER_SYMBYTES], int transposed)
 {
   unsigned int ctr0, ctr1, ctr2, ctr3;
   __attribute__((aligned(32)))
-  uint8_t buf[4][(GEN_MATRIX_NBLOCKS*XOF_BLOCKBYTES+31)/32*32];
+  uint8_t buf[4][GEN_MATRIX_BUFLEN];
   __m256i f;
-  keccakx4_state state;
-  keccak_state state1x;
+  __attribute__((aligned(32))) keccakx4_state state;
+  __attribute__((aligned(32))) keccak_state state1x;
 
-  f = _mm256_load_si256((__m256i *)seed);
+  f = _mm256_loadu_si256((__m256i *)seed);
   _mm256_store_si256((__m256i *)buf[0], f);
   _mm256_store_si256((__m256i *)buf[1], f);
   _mm256_store_si256((__m256i *)buf[2], f);
@@ -164,7 +166,7 @@ void gen_matrix(polyvec *a, const uint8_t seed[KYBER_SYMBYTES], int transposed)
   poly_nttunpack(&a[0].vec[2]);
   poly_nttunpack(&a[1].vec[0]);
 
-  f = _mm256_load_si256((__m256i *)seed);
+  f = _mm256_loadu_si256((__m256i *)seed);
   _mm256_store_si256((__m256i *)buf[0], f);
   _mm256_store_si256((__m256i *)buf[1], f);
   _mm256_store_si256((__m256i *)buf[2], f);
@@ -217,7 +219,7 @@ void gen_matrix(polyvec *a, const uint8_t seed[KYBER_SYMBYTES], int transposed)
   poly_nttunpack(&a[2].vec[0]);
   poly_nttunpack(&a[2].vec[1]);
 
-  f = _mm256_load_si256((__m256i *)seed);
+  f = _mm256_loadu_si256((__m256i *)seed);
   _mm256_store_si256((__m256i *)buf[0], f);
   buf[0][KYBER_SYMBYTES+0] = 2;
   buf[0][KYBER_SYMBYTES+1] = 2;
@@ -239,12 +241,12 @@ void gen_matrix(polyvec *a, const uint8_t seed[KYBER_SYMBYTES], int transposed)
 {
   unsigned int i, ctr0, ctr1, ctr2, ctr3;
   __attribute__((aligned(32)))
-  uint8_t buf[4][(GEN_MATRIX_NBLOCKS*XOF_BLOCKBYTES+31)/32*32];
+  uint8_t buf[4][GEN_MATRIX_BUFLEN];
   __m256i f;
-  keccakx4_state state;
+  __attribute__((aligned(32))) keccakx4_state state;
 
   for(i = 0; i < 4; i++) {
-    f = _mm256_load_si256((__m256i *)seed);
+    f = _mm256_loadu_si256((__m256i *)seed);
     _mm256_store_si256((__m256i *)buf[0], f);
     _mm256_store_si256((__m256i *)buf[1], f);
     _mm256_store_si256((__m256i *)buf[2], f);

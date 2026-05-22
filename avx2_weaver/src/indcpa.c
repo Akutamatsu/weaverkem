@@ -258,11 +258,13 @@ void indcpa_keypair_derand(uint8_t pk[KYBER_INDCPA_PUBLICKEYBYTES],
                            const uint8_t coins[KYBER_SYMBYTES])
 {
   unsigned int i;
+  __attribute__((aligned(32)))
   uint8_t buf[2*KYBER_SYMBYTES];
   const uint8_t *publicseed = buf;
   const uint8_t *noiseseed = buf+KYBER_SYMBYTES;
   uint8_t nonce = 0;
-  polyvec a[KYBER_K] = {0}, pkpv = {0}, skpv = {0};
+  polyvec a[KYBER_K] __attribute__((aligned(32))) = {0};
+  polyvec pkpv = {0}, skpv = {0};
 
   (void)i;
 
@@ -377,7 +379,8 @@ void indcpa_enc(uint8_t c[KYBER_INDCPA_BYTES],
   unsigned int i;
   uint8_t seed[KYBER_SYMBYTES];
   uint8_t nonce = 0;
-  polyvec sp = {0}, pkpv = {0}, at[KYBER_K] = {0}, b = {0};
+  polyvec sp = {0}, pkpv = {0}, b = {0};
+  polyvec at[KYBER_K] __attribute__((aligned(32))) = {0};
   poly v = {0}, k = {0};
 
   (void)i;
@@ -462,7 +465,7 @@ void indcpa_dec(uint8_t m[KYBER_INDCPA_MSGBYTES],
                 const uint8_t c[KYBER_INDCPA_BYTES],
                 const uint8_t sk[KYBER_INDCPA_SECRETKEYBYTES])
 {
-  polyvec b = {0}, skpv = {0};
+  polyvec b __attribute__((aligned(32))) = {0}, skpv = {0};
   poly v = {0}, mp = {0};
 
   unpack_ciphertext(&b, &v, c);

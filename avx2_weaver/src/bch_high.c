@@ -148,8 +148,8 @@ static int compute_error_locator_polynomial(const unsigned int *syn, struct gf_p
     uint16_t mask_d,mask_pelp;
     unsigned int mask_tmp,mask_deg,tmp_c,mask_tmp2;
     
-    memset(pelp.c, 0, (2*t+1)*sizeof(unsigned int));
-    memset(elp->c, 0,(2*t+1)*sizeof(unsigned int));
+    memset(pelp.c, 0, sizeof(pelp.c));
+    memset(elp->c, 0, sizeof(elp->c));
 
     pelp.deg = 0;
     pelp.c[0] = 1;

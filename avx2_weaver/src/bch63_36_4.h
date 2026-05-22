@@ -21,7 +21,10 @@ static struct bch_control bch = {
 #define BCH_ECC_WORDS 1
 #define BCH_ECC_BYTES 3
 
+/* BM elp->c[j+k] needs indices up to 3*t-2; 2*t+1 is too small. */
+#define BCH_ELP_COEFFS (3*BCH_T - 1)
+
 struct gf_poly {
 unsigned int deg;
-unsigned int c[2*BCH_T+1];
+unsigned int c[BCH_ELP_COEFFS];
 };

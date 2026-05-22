@@ -91,7 +91,8 @@ int crypto_kem_enc_derand(uint8_t *ct,
                           const uint8_t *pk,
                           const uint8_t coins[KYBER_KEM_DERAND_COINBYTES])
 {
-  uint8_t buf[KYBER_INDCPA_MSGBYTES + KYBER_SYMBYTES];
+  uint8_t buf[KYBER_INDCPA_MSGBYTES + KYBER_SYMBYTES]
+    __attribute__((aligned(32)));
   /* Will contain shared-key material || encryption coins */
   uint8_t kr[KYBER_SSBYTES + KYBER_SYMBYTES];
 

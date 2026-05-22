@@ -1,0 +1,41 @@
+﻿Algorithm,Operation,Scope,RowType,Component,Median_cycles,Avg_cycles,Valid_samples,Total_samples
+WEAVER-1024,META,,NTESTS,,1000,1000,1000,1000
+WEAVER-1024,META,,PK_path,Inv_q lifting,0,0,0,1000
+WEAVER-1024,Keypair,crypto_kem_keypair,API_total,crypto API,32867,33142,1000,1000
+WEAVER-1024,Keypair,crypto_kem_keypair,profiled_wall,profiled wall,32988,33763,1000,1000
+WEAVER-1024,Keypair,crypto_kem_keypair,component,memcpy pk + hash_h + z,3766,3766,1000,1000
+WEAVER-1024,Keypair,crypto_kem_keypair,component,randombytes,11104,11104,1000,1000
+WEAVER-1024,Keypair,crypto_kem_keypair,component,hash_g (seed expand),436,436,1000,1000
+WEAVER-1024,Keypair,crypto_kem_keypair,component,gen_matrix,10746,10746,1000,1000
+WEAVER-1024,Keypair,crypto_kem_keypair,component,poly_getnoise (CBD),2360,2360,1000,1000
+WEAVER-1024,Keypair,crypto_kem_keypair,component,polyvec_ntt (sk),424,424,1000,1000
+WEAVER-1024,Keypair,crypto_kem_keypair,component,NTT + basemul (pk),585,585,1000,1000
+WEAVER-1024,Keypair,crypto_kem_keypair,component,invntt + reduce (pk),421,421,1000,1000
+WEAVER-1024,Keypair,crypto_kem_keypair,component,"pack (pk, sk)",2762,2762,1000,1000
+WEAVER-1024,Keypair,crypto_kem_keypair,sum_components,SUM(components),32604,32604,1000,1000
+WEAVER-1024,Encapsulation,crypto_kem_enc,API_total,crypto API,38585,39674,1000,1000
+WEAVER-1024,Encapsulation,crypto_kem_enc,profiled_wall,profiled wall,38628,39377,1000,1000
+WEAVER-1024,Encapsulation,crypto_kem_enc,component,randombytes + hash_h + shake256,12145,12145,1000,1000
+WEAVER-1024,Encapsulation,crypto_kem_enc,component,Inv_q (+ parse pk),7665,7665,1000,1000
+WEAVER-1024,Encapsulation,crypto_kem_enc,component,BCH MsgEncode,226,226,1000,1000
+WEAVER-1024,Encapsulation,crypto_kem_enc,component,gen_matrix,9806,9806,1000,1000
+WEAVER-1024,Encapsulation,crypto_kem_enc,component,poly_getnoise (CBD),2357,2357,1000,1000
+WEAVER-1024,Encapsulation,crypto_kem_enc,component,NTT + basemul,1661,1661,1000,1000
+WEAVER-1024,Encapsulation,crypto_kem_enc,component,compress + pack,4644,4644,1000,1000
+WEAVER-1024,Encapsulation,crypto_kem_enc,sum_components,SUM(components),38504,38504,1000,1000
+WEAVER-1024,Decapsulation,crypto_kem_dec,API_total,crypto API,33079,35587,1000,1000
+WEAVER-1024,Decapsulation,crypto_kem_dec,profiled_wall,profiled wall,33115,35667,1000,1000
+WEAVER-1024,Decapsulation,crypto_kem_dec,component,decompress (ct + sk),1190,1190,1000,1000
+WEAVER-1024,Decapsulation,crypto_kem_dec,component,dec NTT + basemul,654,654,1000,1000
+WEAVER-1024,Decapsulation,crypto_kem_dec,component,poly_tomsg (BCH decode),3502,3502,1000,1000
+WEAVER-1024,Decapsulation,crypto_kem_dec,component,shake256 (reconstruct kr),540,540,1000,1000
+WEAVER-1024,Decapsulation,crypto_kem_dec,component,verify (ct vs re-enc),44,44,1000,1000
+WEAVER-1024,Decapsulation,crypto_kem_dec,component,rkprf (reject key),5061,5061,1000,1000
+WEAVER-1024,Decapsulation,crypto_kem_dec,component,cmov (select ss),17,17,1000,1000
+WEAVER-1024,Decapsulation,crypto_kem_dec,component,re-enc: Inv_q (+ parse pk),4076,4076,1000,1000
+WEAVER-1024,Decapsulation,crypto_kem_dec,component,re-enc: BCH MsgEncode,218,218,1000,1000
+WEAVER-1024,Decapsulation,crypto_kem_dec,component,re-enc: gen_matrix,9307,9307,1000,1000
+WEAVER-1024,Decapsulation,crypto_kem_dec,component,re-enc: poly_getnoise (CBD),2255,2255,1000,1000
+WEAVER-1024,Decapsulation,crypto_kem_dec,component,re-enc: NTT + basemul,1589,1589,1000,1000
+WEAVER-1024,Decapsulation,crypto_kem_dec,component,re-enc: compress + pack,4398,4398,1000,1000
+WEAVER-1024,Decapsulation,crypto_kem_dec,sum_components,SUM(components),32851,32851,1000,1000

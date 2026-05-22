@@ -43,8 +43,10 @@ ifeq ($(ENABLE_LTO),1)
   NO_LTO_C = src/fips202x4.c src/rejsample.c src/indcpa_gen_matrix_avx.c \
              src/poly_compress_avx.c src/poly_compress9.c \
              src/keccak4x/KeccakP-1600-times4-SIMD256.c
-  CFLAGS_NO_LTO = $(filter-out -flto,$(CFLAGS)) -fno-lto
 endif
+# -fno-lto for files that must not participate in LTO (also used for speed-breakdown all objs).
+CFLAGS_NO_LTO = $(filter-out -flto,$(CFLAGS)) -fno-lto
+ASMFLAGS_NO_LTO = $(filter-out -flto,$(ASMFLAGS))
 BD      = build
 
 ICCS256 = ../Implementations/Reference_Implementation/WeaverKEM-256
@@ -126,7 +128,7 @@ MODE5_GEN_MATRIX_C =
 endif
 MODE5_BUILD_C = $(MODE13_C_NTT) $(MODE5_GEN_MATRIX_C)
 
-.PHONY: all kat test bench bench-components gen_vectors ref_vectors clean test-san quick-check
+.PHONY: all kat test bench bench-components encap-breakdown speed-breakdown gen_vectors ref_vectors clean test-san quick-check
 
 quick-check: test test-extended bin/test_enc_derand_coins_1024 bin/test_compress9_512
 	@chmod +x tools/quick_check.sh
@@ -189,6 +191,20 @@ define compile_objs
 	@for f in $(5); do \
 	  obj=$$(echo $$f | sed 's#^\./##; s#^\.\./##; s#/#_#g; s/\.[^.]*$$/.o/'); \
 	  $(CC) $(ASMFLAGS) -DWEAVER_MODE=$(3) $(INC) $(4) -c $$f \
+	    -o $(BD)/$(1)/$$obj; \
+	done
+endef
+
+# speed-breakdown: compile every translation unit without LTO (LTO+O3 miscompiles keypair path).
+define compile_objs_no_lto
+	@rm -rf $(BD)/$(1) && mkdir -p $(BD)/$(1)
+	@for f in $(2); do \
+	  obj=$$(echo $$f | sed 's#^\./##; s#^\.\./##; s#/#_#g; s/\.[^.]*$$/.o/'); \
+	  $(CC) $(CFLAGS_NO_LTO) -DWEAVER_MODE=$(3) $(INC) $(4) -c $$f -o $(BD)/$(1)/$$obj; \
+	done
+	@for f in $(5); do \
+	  obj=$$(echo $$f | sed 's#^\./##; s#^\.\./##; s#/#_#g; s/\.[^.]*$$/.o/'); \
+	  $(CC) $(ASMFLAGS_NO_LTO) -DWEAVER_MODE=$(3) $(INC) $(4) -c $$f \
 	    -o $(BD)/$(1)/$$obj; \
 	done
 endef
@@ -503,6 +519,46 @@ bin/test_gen_matrix5_avx:
 test-gen-matrix-mode5: bin/test_gen_matrix5_scalar bin/test_gen_matrix5_avx
 	@chmod +x tools/compare_gen_matrix_mode5.sh
 	@tools/compare_gen_matrix_mode5.sh 50
+
+define link_encap_breakdown
+	@mkdir -p bin
+	$(call compile_objs,eb$(1),$(WEAVER_C) $(3),$(1),$(4),$(5))
+	@$(CC) $(CFLAGS) -DWEAVER_MODE=$(1) $(INC) $(4) -c bench/test_encap_breakdown.c \
+	  -o $(BD)/eb$(1)/test_encap_breakdown.o
+	@$(CC) $(CFLAGS) -DWEAVER_MODE=$(1) $(INC) -c bench/cpucycles.c -o $(BD)/eb$(1)/cpucycles.o
+	$(CC) $(filter-out -flto,$(LDFLAGS)) -o bin/encap_breakdown_$(2) $(BD)/eb$(1)/*.o
+endef
+
+bin/encap_breakdown_512:
+	$(call link_encap_breakdown,1,512,$(MODE13_C_NTT),$(MODE13_DEFS),$(MODE13_S_NTT))
+
+bin/encap_breakdown_768:
+	$(call link_encap_breakdown,3,768,$(MODE13_C_NTT),$(MODE13_DEFS),$(MODE13_S_NTT))
+
+bin/encap_breakdown_1024:
+	$(call link_encap_breakdown,5,1024,$(MODE5_BUILD_C),$(MODE5_DEFS),$(MODE5_S_FQ))
+
+encap-breakdown: bin/encap_breakdown_512 bin/encap_breakdown_768 bin/encap_breakdown_1024
+
+define link_speed_breakdown
+	@mkdir -p bin
+	$(call compile_objs_no_lto,sb$(1),$(WEAVER_C) $(3),$(1),$(4),$(5))
+	@$(CC) $(CFLAGS_NO_LTO) -DWEAVER_MODE=$(1) $(INC) $(4) -c bench/test_speed_breakdown.c \
+	  -o $(BD)/sb$(1)/test_speed_breakdown.o
+	@$(CC) $(CFLAGS_NO_LTO) -DWEAVER_MODE=$(1) $(INC) -c bench/cpucycles.c -o $(BD)/sb$(1)/cpucycles.o
+	$(CC) $(filter-out -flto,$(LDFLAGS)) -o bin/speed_breakdown_$(2) $(BD)/sb$(1)/*.o
+endef
+
+bin/speed_breakdown_512:
+	$(call link_speed_breakdown,1,512,$(MODE13_C_NTT),$(MODE13_DEFS),$(MODE13_S_NTT))
+
+bin/speed_breakdown_768:
+	$(call link_speed_breakdown,3,768,$(MODE13_C_NTT),$(MODE13_DEFS),$(MODE13_S_NTT))
+
+bin/speed_breakdown_1024:
+	$(call link_speed_breakdown,5,1024,$(MODE5_BUILD_C),$(MODE5_DEFS),$(MODE5_S_FQ))
+
+speed-breakdown: bin/speed_breakdown_512 bin/speed_breakdown_768 bin/speed_breakdown_1024
 
 bench-components: bin/bench_components_512 bin/bench_components_768 bin/bench_components_1024
 	@echo "========== component benchmarks (modes 1, 3, 5) =========="

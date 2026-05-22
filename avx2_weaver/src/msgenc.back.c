@@ -10,100 +10,6 @@
 #include "reduce.h"
 #include "bch.h"
 
-#if 0
-/*************************************************
-* Name:        poly_frommsg
-*
-* Description: Convert 32-byte message to polynomial
-*
-* Arguments:   - poly *r:            pointer to output polynomial
-*              - const uint8_t *msg: pointer to input message
-**************************************************/
-void poly_frommsg(poly * r,
-                  const uint8_t msg[KYBER_INDCPA_MSGBYTES])
-{
-#if (KYBER_INDCPA_MSGBYTES != 32)
-#error "KYBER_INDCPA_MSGBYTES must be equal to 32!"
-#endif
-  __m256i f, g0, g1, g2, g3, h0, h1, h2, h3;
-  const __m256i shift = _mm256_broadcastsi128_si256(_mm_set_epi32(0,1,2,3));
-  const __m256i idx = _mm256_broadcastsi128_si256(_mm_set_epi8(15,14,11,10,7,6,3,2,13,12,9,8,5,4,1,0));
-  const __m256i hqs = _mm256_set1_epi16((KYBER_Q+1)/2);
-
-#define FROMMSG64(i)						\
-  g3 = _mm256_shuffle_epi32(f,0x55*i);				\
-  g3 = _mm256_sllv_epi32(g3,shift);				\
-  g3 = _mm256_shuffle_epi8(g3,idx);				\
-  g0 = _mm256_slli_epi16(g3,12);				\
-  g1 = _mm256_slli_epi16(g3,8);					\
-  g2 = _mm256_slli_epi16(g3,4);					\
-  g0 = _mm256_srai_epi16(g0,15);				\
-  g1 = _mm256_srai_epi16(g1,15);				\
-  g2 = _mm256_srai_epi16(g2,15);				\
-  g3 = _mm256_srai_epi16(g3,15);				\
-  g0 = _mm256_and_si256(g0,hqs);  /* 19 18 17 16  3  2  1  0 */	\
-  g1 = _mm256_and_si256(g1,hqs);  /* 23 22 21 20  7  6  5  4 */	\
-  g2 = _mm256_and_si256(g2,hqs);  /* 27 26 25 24 11 10  9  8 */	\
-  g3 = _mm256_and_si256(g3,hqs);  /* 31 30 29 28 15 14 13 12 */	\
-  h0 = _mm256_unpacklo_epi64(g0,g1);				\
-  h2 = _mm256_unpackhi_epi64(g0,g1);				\
-  h1 = _mm256_unpacklo_epi64(g2,g3);				\
-  h3 = _mm256_unpackhi_epi64(g2,g3);				\
-  g0 = _mm256_permute2x128_si256(h0,h1,0x20);			\
-  g2 = _mm256_permute2x128_si256(h0,h1,0x31);			\
-  g1 = _mm256_permute2x128_si256(h2,h3,0x20);			\
-  g3 = _mm256_permute2x128_si256(h2,h3,0x31);			\
-  _mm256_store_si256((__m256i *)&r->coeffs[  0+32*i+ 0],g0);	\
-  _mm256_store_si256((__m256i *)&r->coeffs[  0+32*i+16],g1);	\
-  _mm256_store_si256((__m256i *)&r->coeffs[128+32*i+ 0],g2);	\
-  _mm256_store_si256((__m256i *)&r->coeffs[128+32*i+16],g3)
-
-  f = _mm256_loadu_si256((__m256i *)msg);
-  FROMMSG64(0);
-  FROMMSG64(1);
-  FROMMSG64(2);
-  FROMMSG64(3);
-}
-
-/*************************************************
-* Name:        poly_tomsg
-*
-* Description: Convert polynomial to 32-byte message
-*
-* Arguments:   - uint8_t *msg: pointer to output message
-*              - poly *a:      pointer to input polynomial
-**************************************************/
-void poly_tomsg(uint8_t msg[KYBER_INDCPA_MSGBYTES], const poly * a)
-{
-  unsigned int i;
-  uint32_t small;
-  __m256i f0, f1, g0, g1;
-  const __m256i hqs = _mm256_set1_epi16((KYBER_Q - 1)/2);
-  const __m256i hhqs = _mm256_set1_epi16((KYBER_Q - 5)/4);
-
-  for(i=0;i<KYBER_N/32;i++) {
-    f0 = _mm256_load_si256((__m256i *)&a->coeffs[32*i]);
-    f1 = _mm256_load_si256((__m256i *)&a->coeffs[32*i+16]);
-    f0 = _mm256_sub_epi16(hqs, f0);
-    f1 = _mm256_sub_epi16(hqs, f1);
-    g0 = _mm256_srai_epi16(f0, 15);
-    g1 = _mm256_srai_epi16(f1, 15);
-    f0 = _mm256_xor_si256(f0, g0);
-    f1 = _mm256_xor_si256(f1, g1);
-    f0 = _mm256_sub_epi16(hhqs, f0);
-    f1 = _mm256_sub_epi16(hhqs, f1);
-    f0 = _mm256_packs_epi16(f0, f1);
-    small = _mm256_movemask_epi8(f0);
-    small = ~small;
-    msg[4*i+0] = small;
-    msg[4*i+1] = small >> 16;
-    msg[4*i+2] = small >>  8;
-    msg[4*i+3] = small >> 24;
-  }
-}
-
-#else
-
 #if defined(__AVX2__) && defined(WEAVER_EXPERIMENTAL_MSGENC_AVX)
 static void frommsg_high_bits_avx(int16_t r[KYBER_N], const uint8_t *mu_tilde)
 {
@@ -321,4 +227,3 @@ void poly_tomsg(uint8_t msg[KYBER_INDCPA_MSGBYTES], const poly *a)
   msg[ELL_BAR_BYTES - 1] = (mu_tilde[ELL_BAR_BYTES - 1] & 0xF0) | ((mu_ddot_clean[KYBER_INDCPA_MSGBYTES - ELL_BAR_BYTES] >> 4) & 0xF);
   memcpy(msg + ELL_BAR_BYTES, mu_ddot_clean, KYBER_INDCPA_MSGBYTES - ELL_BAR_BYTES);
 }
-#endif

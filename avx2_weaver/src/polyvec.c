@@ -257,6 +257,10 @@ void polyvec_compress(uint8_t r[KYBER_POLYVECCOMPRESSEDBYTES], const polyvec *a)
   }
 #endif
 #elif (KYBER_POLYVECCOMPRESSEDBYTES == (KYBER_K * KYBER_N * 9 / 8))
+#if defined(WEAVER_USE_AVX_COMPRESS) && (KYBER_N == 256)
+  for(i = 0; i < KYBER_K; i++)
+    poly_compress9_avx(r + i * ((KYBER_N * 9) / 8), &a->vec[i]);
+#else
   uint16_t t[8];
   for(i=0;i<KYBER_K;i++) {
     for(j=0;j<KYBER_N/8;j++) {
@@ -278,6 +282,7 @@ void polyvec_compress(uint8_t r[KYBER_POLYVECCOMPRESSEDBYTES], const polyvec *a)
       r += 9;
     }
   }
+#endif
 #elif (KYBER_POLYVECCOMPRESSEDBYTES == (KYBER_K * KYBER_N * 8 / 8))
   for(i=0;i<KYBER_K;i++) {
     for(j=0;j<KYBER_N;j++) {

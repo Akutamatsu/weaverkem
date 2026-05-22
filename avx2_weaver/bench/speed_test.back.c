@@ -6,8 +6,6 @@
 #include "speed_print.h"
 #include "rng.h"
 
-#include "kem.h"
-
 #ifndef NTESTS
 #define NTESTS 1000
 #endif
@@ -20,29 +18,8 @@ int main(void)
   uint8_t sk[CRYPTO_SECRETKEYBYTES];
   uint8_t ct[CRYPTO_CIPHERTEXTBYTES];
   uint8_t key[CRYPTO_BYTES];
-  uint8_t kp_coins[2*KYBER_SYMBYTES];
-  uint8_t enc_coins[KYBER_KEM_DERAND_COINBYTES]
-    __attribute__((aligned(32)));
-
-  randombytes(kp_coins, sizeof(kp_coins));
-  randombytes(enc_coins, sizeof(enc_coins));
 
   printf("%s AVX2\n", CRYPTO_ALGNAME);
-
-  for(i = 0; i < NTESTS; i++) {
-    t[i] = cpucycles();
-    crypto_kem_keypair_derand(pk, sk, kp_coins);
-  }
-  print_results("keypair_derand: ", t, NTESTS);
-
-  /* enc_derand needs valid pk/sk and FO message coins (not keypair seed) */
-  crypto_kem_keypair_derand(pk, sk, kp_coins);
-
-  for(i = 0; i < NTESTS; i++) {
-    t[i] = cpucycles();
-    crypto_kem_enc_derand(ct, key, pk, enc_coins);
-  }
-  print_results("encaps_derand: ", t, NTESTS);
 
   for(i = 0; i < NTESTS; i++) {
     t[i] = cpucycles();

@@ -5,9 +5,13 @@
 #include "params.h"
 
 #if   (WEAVER_MODE == 1)
-  #define ELL_BAR_BYTES      16 // 128 bits = 16 bytes  
-  #define ELL_DDOT_BYTES     0
-  #define LOW_CODEWORD_BYTES 0
+  /* (255,215,5): 40 bits = 5 B ECC overhead */
+  #define ELL_BAR_BYTES        16 // 128 bits = 16 bytes
+  #define HIGH_ECC_BYTES       5
+  #define HIGH_CODEWORD_BITS   KYBER_POLYCUT_DIMENSION // 128 + 40
+  #define HIGH_CODEWORD_BYTES  (HIGH_CODEWORD_BITS >> 3)
+  #define ELL_DDOT_BYTES       0
+  #define LOW_CODEWORD_BYTES   0
 
 #elif (WEAVER_MODE == 3)
   #define ELL_BAR_BYTES        28 // ceil 220 bits = 28 bytes
@@ -36,5 +40,10 @@
 void poly_frommsg(poly *r, const uint8_t msg[KYBER_INDCPA_MSGBYTES]);
 #define poly_tomsg KYBER_NAMESPACE(_poly_tomsg)
 void poly_tomsg(uint8_t msg[KYBER_INDCPA_MSGBYTES], const poly *a);
+
+#define poly_compress KYBER_NAMESPACE(_poly_compress)
+void poly_compress(uint8_t r[KYBER_POLYCOMPRESSEDBYTES], const poly *a);
+#define poly_decompress KYBER_NAMESPACE(_poly_decompress)
+void poly_decompress(poly *r, const uint8_t a[KYBER_POLYCOMPRESSEDBYTES]);
 
 #endif

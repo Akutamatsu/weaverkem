@@ -2,7 +2,7 @@
 #define PARAMS_H
 
 #ifndef WEAVER_MODE
-#define WEAVER_MODE 3  /* 1: 512, 3: 1024, 5: 2048 */
+#define WEAVER_MODE 1  /* 1: 512, 3: 1024, 5: 2048 */
 #endif
 
 #define PK_COMPRESS
@@ -15,10 +15,10 @@
   // #define KYBER_ETA2 4  /* legacy setting */
   #define KYBER_ETA2 KYBER_ETA1
   #define KYBER_K 2
-  /* paper-aligned core: (n,k,q,eta1,dt,du,dv) = (256,2,3329,5,9,9,4) */
+  /* paper-aligned core: (n,k,q,eta1,dt,du,dv) = (256,2,3329,5,9,9,5) */
   #define KYBER_PK_POLYVECBYTES        (KYBER_K * ((KYBER_N * 9) / 8))
   #define KYBER_POLYVECCOMPRESSEDBYTES (KYBER_K * ((KYBER_N * 9) / 8))
-  #define KYBER_POLYCOMPRESSEDBYTES    ((KYBER_N * 4) / 8)
+  #define KYBER_POLYCOMPRESSEDBYTES    ((KYBER_N * 5) / 8)
 
 #elif (WEAVER_MODE == 3)
   #define KYBER_N 256
@@ -29,10 +29,10 @@
   #define KYBER_ETA2 KYBER_ETA1
   #define KYBER_K 4
   
-  /* ICCS KAT (Test_Vectors/KAT_KEM_WeaverKEM-256.txt): du=10 for pk & u, dv=4 for v */
-  #define KYBER_PK_POLYVECBYTES        (KYBER_K * ((KYBER_N * 10) / 8))
-  #define KYBER_POLYVECCOMPRESSEDBYTES (KYBER_K * ((KYBER_N * 10) / 8))
-  #define KYBER_POLYCOMPRESSEDBYTES    ((KYBER_N * 4) / 8)
+  /* paper-aligned core: (n,k,q,eta1,dt,du,dv) = (256,4,3329,2,9,9,5) */
+  #define KYBER_PK_POLYVECBYTES        (KYBER_K * ((KYBER_N * 9) / 8))
+  #define KYBER_POLYVECCOMPRESSEDBYTES (KYBER_K * ((KYBER_N * 9) / 8))
+  #define KYBER_POLYCOMPRESSEDBYTES    ((KYBER_N * 5) / 8)
 
 #elif (WEAVER_MODE == 5)
   #define KYBER_N 512

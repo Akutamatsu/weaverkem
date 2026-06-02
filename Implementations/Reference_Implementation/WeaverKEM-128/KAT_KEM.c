@@ -3,7 +3,7 @@ The software is provided by the Institute of Commercial Cryptography Standards
 (ICCS), and is used for algorithm submissions in the Next-generation Commercial
 Cryptographic Algorithms Program (NGCC).
 
-ICSS doesn't represent or warrant that the operation of the software will be
+ICCS doesn't represent or warrant that the operation of the software will be
 uninterrupted or error-free in all cases. ICCS will take no responsibility for
 the use of the software or the results thereof, if the software is used for any
 other purposes.
@@ -15,7 +15,7 @@ other purposes.
 #include <ctype.h>
 #include <errno.h>
 #include "drng.h"
-#include "KEM_WeaverKEM-128.h"
+#include "KEM_AlgorithmInstance.h"
 #if defined(_WIN32)
 #include <direct.h>
 #include <io.h>
@@ -41,7 +41,7 @@ static void fprintstr(FILE *file_output, char *identifier, unsigned char *msg, u
 // DRNG_ctx for generating pseudorandom numbers within the KEM scheme
 DRNG_ctx drng_algorithm;
 
-/****************output KAT_KEM_WeaverKEM-128.txt****************/
+/****************output KAT_KEM_AlgorithmInstance.txt****************/
 int main()
 {
 	unsigned char *nonce;
@@ -64,7 +64,7 @@ int main()
 		memcpy(nonce + 4 * i, "seed", 4);
 	}
 	init_random_number(&drng_seed, nonce, SEED_LEN_BYTES);
-	// open KAT_KEM_WeaverKEM-128.txt
+	// open KAT_KEM_AlgorithmInstance.txt
 	const char *dir_name = "output";
 	char file_path[128] = "";
 	sprintf(algoname_output, "KAT_KEM_%s.txt", ALGORITHM_INSTANCE);
@@ -153,7 +153,7 @@ int main()
 	free(sk);
 	free(pk);
 	free(nonce);
-	// close output file
+	// close KAT_KEM_AlgorithmInstance.txt
 	if (0 != fclose(file_output))
 	{
 		fprintf(stderr, "ERROR: Generate \"%s\" failed at %s, line %d. \n", algoname_output, __FILE__, __LINE__);

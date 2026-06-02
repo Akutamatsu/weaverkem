@@ -5,7 +5,6 @@
 # WEAVER_MODE=1 selects the 128-bit classical security parameter set
 add_compile_definitions(WEAVER_MODE=1)
 
-# Include local headers
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${REF_SRC}
@@ -29,8 +28,7 @@ set(SOURCES
     ${REF_SRC}/cbd.c
     ${REF_SRC}/reduce.c
     ${REF_SRC}/verify.c
-    ${REF_SRC}/fips202.c
-    ${REF_SRC}/symmetric-shake.c
+    symmetric-iccs.c
     ${REF_SRC}/msgenc.c
     ${REF_SRC}/aes256ctr.c
     ${REF_SRC}/bch_high.c
@@ -39,6 +37,11 @@ set(SOURCES
 )
 
 add_executable(KAT_KEM_WeaverKEM-128 ${SOURCES})
+
+# ref/src/*.c includes "symmetric.h" from the same directory; force ICCS layer first
+target_compile_options(KAT_KEM_WeaverKEM-128 PRIVATE
+    -include ${CMAKE_CURRENT_SOURCE_DIR}/symmetric.h
+)
 
 # Link math library on Linux
 if(UNIX)

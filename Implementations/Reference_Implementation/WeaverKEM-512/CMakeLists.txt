@@ -21,8 +21,7 @@ set(SOURCES
     ${REF_SRC}/cbd.c
     ${REF_SRC}/reduce.c
     ${REF_SRC}/verify.c
-    ${REF_SRC}/fips202.c
-    ${REF_SRC}/symmetric-shake.c
+    symmetric-iccs.c
     ${REF_SRC}/msgenc.c
     ${REF_SRC}/aes256ctr.c
     ${REF_SRC}/bch_high.c
@@ -31,6 +30,10 @@ set(SOURCES
 )
 
 add_executable(KAT_KEM_WeaverKEM-512 ${SOURCES})
+
+target_compile_options(KAT_KEM_WeaverKEM-512 PRIVATE
+    -include ${CMAKE_CURRENT_SOURCE_DIR}/symmetric.h
+)
 
 if(UNIX)
     target_link_libraries(KAT_KEM_WeaverKEM-512 m)

@@ -42,7 +42,7 @@ int main(int argc, char **argv)
   uint8_t ct_ref[CRYPTO_CIPHERTEXTBYTES], ss_ref[CRYPTO_BYTES];
   uint8_t pk[CRYPTO_PUBLICKEYBYTES], sk[CRYPTO_SECRETKEYBYTES];
   uint8_t ct[CRYPTO_CIPHERTEXTBYTES], ss[CRYPTO_BYTES], ss1[CRYPTO_BYTES];
-  uint8_t coins[2 * KYBER_SYMBYTES];
+  uint8_t coins[2 * WEAVER_SYMBYTES];
   const char *path = (argc > 1) ? argv[1] : "test_vectors/weaver_ref_mode3.vec";
 
   f = fopen(path, "r");
@@ -70,7 +70,7 @@ int main(int argc, char **argv)
       errors++;
     }
 
-    randombytes(coins, KYBER_SYMBYTES);
+    randombytes(coins, WEAVER_SYMBYTES);
     crypto_kem_enc_derand(ct, ss, pk, coins);
     if(memcmp(ct, ct_ref, CRYPTO_CIPHERTEXTBYTES) != 0 ||
        memcmp(ss, ss_ref, CRYPTO_BYTES) != 0) {

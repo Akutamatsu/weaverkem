@@ -207,22 +207,22 @@ static int test_cbd_param(const cbd_param *p)
 static int test_actual_cbd(void)
 {
   poly r;
-  uint8_t buf[KYBER_ETA1 * KYBER_N / 4];
+  uint8_t buf[WEAVER_ETA1 * WEAVER_N / 4];
   int i;
   int passed = 0;
 
   printf("\n--- Actual cbd_eta1 (WEAVER_MODE=%d, N=%d) ---\n",
-         WEAVER_MODE, KYBER_N);
+         WEAVER_MODE, WEAVER_N);
 
   /* eta1 */
   for(i = 0; i < (int)sizeof(buf); i++) buf[i] = (uint8_t)(i * 7 + 13);
   cbd_eta1(&r, buf);
   {
     int ok = 1;
-    for(i = 0; i < KYBER_N; i++) {
-      if(r.coeffs[i] < -KYBER_ETA1 || r.coeffs[i] > KYBER_ETA1) { ok = 0; break; }
+    for(i = 0; i < WEAVER_N; i++) {
+      if(r.coeffs[i] < -WEAVER_ETA1 || r.coeffs[i] > WEAVER_ETA1) { ok = 0; break; }
     }
-    printf("  cbd_eta1 (eta=%d): ", KYBER_ETA1);
+    printf("  cbd_eta1 (eta=%d): ", WEAVER_ETA1);
     if(ok) { printf("PASSED\n"); passed++; }
     else     printf("FAILED\n");
   }
@@ -240,7 +240,7 @@ int main(void)
   printf("========================================\n");
   printf("  CBD Sampling Tests (All 3 Parameter Sets)\n");
   printf("========================================\n");
-  printf("KYBER_Q = %d\n", KYBER_Q);
+  printf("WEAVER_Q = %d\n", WEAVER_Q);
 
   /* Table 1: all three parameter sets */
   cbd_param sets[3] = {

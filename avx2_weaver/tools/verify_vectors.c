@@ -44,7 +44,7 @@ int main(int argc, char **argv)
   uint8_t ct[CRYPTO_CIPHERTEXTBYTES], ss[CRYPTO_BYTES], ss1[CRYPTO_BYTES];
   uint8_t pk2[CRYPTO_PUBLICKEYBYTES], sk2[CRYPTO_SECRETKEYBYTES];
   uint8_t ct2[CRYPTO_CIPHERTEXTBYTES], ss2[CRYPTO_BYTES];
-  uint8_t coins[2 * KYBER_SYMBYTES];
+  uint8_t coins[2 * WEAVER_SYMBYTES];
   const char *path = (argc > 1) ? argv[1] : "test_vectors/weaver_avx_mode3.vec";
 
   f = fopen(path, "r");
@@ -70,7 +70,7 @@ int main(int argc, char **argv)
       errors++;
     }
 
-    randombytes(coins, KYBER_SYMBYTES);
+    randombytes(coins, WEAVER_SYMBYTES);
     crypto_kem_enc_derand(ct2, ss2, pk, coins);
     if(memcmp(ct, ct2, CRYPTO_CIPHERTEXTBYTES) != 0 ||
        memcmp(ss, ss2, CRYPTO_BYTES) != 0) {

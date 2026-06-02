@@ -27,25 +27,25 @@ static int16_t rand16(void)
 static void fill_polyvec(polyvec *v)
 {
   unsigned int i, j;
-  for(i = 0; i < KYBER_K; i++)
-    for(j = 0; j < KYBER_N; j++)
+  for(i = 0; i < WEAVER_K; i++)
+    for(j = 0; j < WEAVER_N; j++)
       v->vec[i].coeffs[j] = rand16();
 }
 
 static void ref_polyvec_basemul_acc(int16_t *r, const polyvec *a, const polyvec *b)
 {
   unsigned int i, j, k;
-  int16_t t[KYBER_N];
+  int16_t t[WEAVER_N];
 
-  memset(r, 0, KYBER_N * sizeof(int16_t));
-  for(i = 0; i < KYBER_K; i++) {
-    for(j = 0; j < KYBER_N / 8; j++) {
+  memset(r, 0, WEAVER_N * sizeof(int16_t));
+  for(i = 0; i < WEAVER_K; i++) {
+    for(j = 0; j < WEAVER_N / 8; j++) {
       basemul_degree4(t + 8 * j, a->vec[i].coeffs + 8 * j, b->vec[i].coeffs + 8 * j,
                       zetas[64 + j]);
       basemul_degree4(t + 8 * j + 4, a->vec[i].coeffs + 8 * j + 4,
                       b->vec[i].coeffs + 8 * j + 4, -zetas[64 + j]);
     }
-    for(k = 0; k < KYBER_N; k++)
+    for(k = 0; k < WEAVER_N; k++)
       r[k] += t[k];
   }
 }
@@ -53,8 +53,8 @@ static void ref_polyvec_basemul_acc(int16_t *r, const polyvec *a, const polyvec 
 static int barrett_diff(int16_t x, int16_t y)
 {
   int16_t d = barrett_reduce(x) - barrett_reduce(y);
-  if(d > KYBER_Q / 2) d -= KYBER_Q;
-  if(d < -KYBER_Q / 2) d += KYBER_Q;
+  if(d > WEAVER_Q / 2) d -= WEAVER_Q;
+  if(d < -WEAVER_Q / 2) d += WEAVER_Q;
   return d != 0;
 }
 
@@ -63,7 +63,7 @@ int main(void)
   unsigned int t;
   polyvec a, b;
   poly r_avx;
-  int16_t r_ref[KYBER_N];
+  int16_t r_ref[WEAVER_N];
   int errors = 0;
 
   for(t = 0; t < 2000; t++) {
@@ -71,7 +71,7 @@ int main(void)
     fill_polyvec(&b);
     ref_polyvec_basemul_acc(r_ref, &a, &b);
     polyvec_basemul_acc_montgomery(&r_avx, &a, &b);
-    for(unsigned int i = 0; i < KYBER_N; i++) {
+    for(unsigned int i = 0; i < WEAVER_N; i++) {
       if(barrett_diff(r_ref[i], r_avx.coeffs[i])) {
         printf("FAIL test %u idx %u ref=%d avx=%d\n",
                t, i, r_ref[i], r_avx.coeffs[i]);

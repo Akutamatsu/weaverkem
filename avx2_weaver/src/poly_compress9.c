@@ -8,9 +8,9 @@ uint16_t poly_compress9_coeff_scalar(int16_t a)
   int16_t u = a;
   uint32_t w;
 
-  u += ((int16_t)u >> 15) & KYBER_Q;
+  u += ((int16_t)u >> 15) & WEAVER_Q;
   w = (uint16_t)u;
-  return (uint16_t)((((w << 9) + KYBER_Q / 2) / KYBER_Q) & 0x1ff);
+  return (uint16_t)((((w << 9) + WEAVER_Q / 2) / WEAVER_Q) & 0x1ff);
 }
 
 void poly_compress9_pack8(uint8_t r[9], const uint16_t t[8])
@@ -26,12 +26,12 @@ void poly_compress9_pack8(uint8_t r[9], const uint16_t t[8])
   r[8] = (uint8_t)(t[7] >> 1);
 }
 
-void poly_compress9_scalar(uint8_t r[(KYBER_N * 9) / 8], const poly *a)
+void poly_compress9_scalar(uint8_t r[(WEAVER_N * 9) / 8], const poly *a)
 {
   unsigned int j, k;
   uint16_t t[8];
 
-  for(j = 0; j < KYBER_N / 8; j++) {
+  for(j = 0; j < WEAVER_N / 8; j++) {
     for(k = 0; k < 8; k++)
       t[k] = poly_compress9_coeff_scalar(a->coeffs[8 * j + k]);
     poly_compress9_pack8(r + 9 * j, t);

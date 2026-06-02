@@ -33,7 +33,7 @@ static uint32_t load32_littleendian(const uint8_t x[4])
 *
 * Returns 32-bit unsigned integer loaded from x (most significant byte is zero)
 **************************************************/
-#if KYBER_ETA1 == 3
+#if WEAVER_ETA1 == 3
 static uint32_t load24_littleendian(const uint8_t x[3])
 {
   uint32_t r;
@@ -55,13 +55,13 @@ static uint32_t load24_littleendian(const uint8_t x[3])
 * Arguments:   - poly *r:            pointer to output polynomial
 *              - const uint8_t *buf: pointer to input byte array
 **************************************************/
-static void cbd2(poly *r, const uint8_t buf[2*KYBER_N/4])
+static void cbd2(poly *r, const uint8_t buf[2*WEAVER_N/4])
 {
   unsigned int i,j;
   uint32_t t,d;
   int16_t a,b;
 
-  for(i=0;i<KYBER_N/8;i++) {
+  for(i=0;i<WEAVER_N/8;i++) {
     t  = load32_littleendian(buf+4*i);
     d  = t & 0x55555555;
     d += (t>>1) & 0x55555555;
@@ -85,14 +85,14 @@ static void cbd2(poly *r, const uint8_t buf[2*KYBER_N/4])
 * Arguments:   - poly *r:            pointer to output polynomial
 *              - const uint8_t *buf: pointer to input byte array
 **************************************************/
-#if KYBER_ETA1 == 3
-static void cbd3(poly *r, const uint8_t buf[3*KYBER_N/4])
+#if WEAVER_ETA1 == 3
+static void cbd3(poly *r, const uint8_t buf[3*WEAVER_N/4])
 {
   unsigned int i,j;
   uint32_t t,d;
   int16_t a,b;
 
-  for(i=0;i<KYBER_N/4;i++) {
+  for(i=0;i<WEAVER_N/4;i++) {
     t  = load24_littleendian(buf+3*i);
     d  = t & 0x00249249;
     d += (t>>1) & 0x00249249;
@@ -118,14 +118,14 @@ static void cbd3(poly *r, const uint8_t buf[3*KYBER_N/4])
 * Arguments:   - poly *r:            pointer to output polynomial
 *              - const uint8_t *buf: pointer to input byte array
 **************************************************/
-#if KYBER_ETA1 == 4
-static void cbd4(poly *r, const uint8_t buf[4*KYBER_N/4])
+#if WEAVER_ETA1 == 4
+static void cbd4(poly *r, const uint8_t buf[4*WEAVER_N/4])
 {
   unsigned int i,j;
   uint32_t t,d;
   int16_t a,b;
 
-  for(i=0;i<KYBER_N/4;i++) {
+  for(i=0;i<WEAVER_N/4;i++) {
     t  = load32_littleendian(buf+4*i);
     d  = t & 0x11111111;
     d += (t>>1) & 0x11111111;
@@ -142,14 +142,14 @@ static void cbd4(poly *r, const uint8_t buf[4*KYBER_N/4])
 #endif
 
 /* cbd1: eta=1, 1 bit per sample, 2 bits per coefficient */
-#if KYBER_ETA1 == 1
-static void cbd1(poly *r, const uint8_t buf[1*KYBER_N/4])
+#if WEAVER_ETA1 == 1
+static void cbd1(poly *r, const uint8_t buf[1*WEAVER_N/4])
 {
   unsigned int i,j;
   uint32_t t;
   int16_t a,b;
 
-  for(i=0;i<KYBER_N/16;i++) {
+  for(i=0;i<WEAVER_N/16;i++) {
     t = load32_littleendian(buf + 4*i);
     for(j=0;j<16;j++) {
       a = (t >> (2*j+0)) & 0x1;
@@ -160,18 +160,18 @@ static void cbd1(poly *r, const uint8_t buf[1*KYBER_N/4])
 }
 #endif
 
-#if KYBER_ETA1 == 5
+#if WEAVER_ETA1 == 5
 static unsigned int popcount5(uint16_t x)
 {
   x &= 0x1F;
   return (x & 1u) + ((x >> 1) & 1u) + ((x >> 2) & 1u) + ((x >> 3) & 1u) + ((x >> 4) & 1u);
 }
 
-static void cbd5(poly *r, const uint8_t buf[5*KYBER_N/4])
+static void cbd5(poly *r, const uint8_t buf[5*WEAVER_N/4])
 {
   unsigned int i, j;
 
-  for(i = 0; i < KYBER_N/4; i++) {
+  for(i = 0; i < WEAVER_N/4; i++) {
     uint64_t t = (uint64_t)buf[5*i + 0]
                | ((uint64_t)buf[5*i + 1] << 8)
                | ((uint64_t)buf[5*i + 2] << 16)
@@ -188,17 +188,17 @@ static void cbd5(poly *r, const uint8_t buf[5*KYBER_N/4])
 }
 #endif
 
-void cbd_eta1(poly *r, const uint8_t buf[KYBER_ETA1*KYBER_N/4])
+void cbd_eta1(poly *r, const uint8_t buf[WEAVER_ETA1*WEAVER_N/4])
 {
-#if KYBER_ETA1 == 1
+#if WEAVER_ETA1 == 1
   cbd1(r, buf);
-#elif KYBER_ETA1 == 2
+#elif WEAVER_ETA1 == 2
   cbd2(r, buf);
-#elif KYBER_ETA1 == 3
+#elif WEAVER_ETA1 == 3
   cbd3(r, buf);
-#elif KYBER_ETA1 == 4
+#elif WEAVER_ETA1 == 4
   cbd4(r, buf);
-#elif KYBER_ETA1 == 5
+#elif WEAVER_ETA1 == 5
   cbd5(r, buf);
 #else
 #error "This implementation requires eta1 in {1,2,3,4,5}"

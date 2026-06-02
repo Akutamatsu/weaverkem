@@ -13,11 +13,11 @@
 *              for CCA-secure Kyber key encapsulation mechanism
 *
 * Arguments:   - uint8_t *pk: pointer to output public key
-*                (an already allocated array of KYBER_PUBLICKEYBYTES bytes)
+*                (an already allocated array of WEAVER_PUBLICKEYBYTES bytes)
 *              - uint8_t *sk: pointer to output private key
-*                (an already allocated array of KYBER_SECRETKEYBYTES bytes)
+*                (an already allocated array of WEAVER_SECRETKEYBYTES bytes)
 *              - uint8_t *coins: pointer to input randomness
-*                (an already allocated array filled with 2*KYBER_SYMBYTES random bytes)
+*                (an already allocated array filled with 2*WEAVER_SYMBYTES random bytes)
 **
 * Returns 0 (success)
 **************************************************/
@@ -44,8 +44,8 @@ int crypto_kem_keypair_derand(uint8_t *pk,
 int crypto_kem_keypair(uint8_t *pk,
                        uint8_t *sk)
 {
-  uint8_t coins[2*KYBER_SYMBYTES];
-  randombytes(coins, 2*KYBER_SYMBYTES);
+  uint8_t coins[2*WEAVER_SYMBYTES];
+  randombytes(coins, 2*WEAVER_SYMBYTES);
   crypto_kem_keypair_derand(pk, sk, coins);
   return 0;
 }
@@ -57,13 +57,13 @@ int crypto_kem_keypair(uint8_t *pk,
 *              secret for given public key
 *
 * Arguments:   - uint8_t *ct: pointer to output cipher text
-*                (an already allocated array of KYBER_CIPHERTEXTBYTES bytes)
+*                (an already allocated array of WEAVER_CIPHERTEXTBYTES bytes)
 *              - uint8_t *ss: pointer to output shared secret
-*                (an already allocated array of KYBER_SSBYTES bytes)
+*                (an already allocated array of WEAVER_SSBYTES bytes)
 *              - const uint8_t *pk: pointer to input public key
-*                (an already allocated array of KYBER_PUBLICKEYBYTES bytes)
+*                (an already allocated array of WEAVER_PUBLICKEYBYTES bytes)
 *              - const uint8_t *coins: pointer to input randomness
-*                (an already allocated array filled with KYBER_SYMBYTES random bytes)
+*                (an already allocated array filled with WEAVER_SYMBYTES random bytes)
 **
 * Returns 0 (success)
 **************************************************/
@@ -72,13 +72,13 @@ int crypto_kem_enc_derand(uint8_t *ct,
                           const uint8_t *pk,
                           const uint8_t *coins)
 {
-  uint8_t buf[KYBER_INDCPA_MSGBYTES + KYBER_SYMBYTES];
+  uint8_t buf[WEAVER_INDCPA_MSGBYTES + WEAVER_SYMBYTES];
 
-  shake256(buf,KYBER_INDCPA_MSGBYTES + KYBER_SYMBYTES,coins,KYBER_SYMBYTES);
+  shake256(buf,WEAVER_INDCPA_MSGBYTES + WEAVER_SYMBYTES,coins,WEAVER_SYMBYTES);
 
-  indcpa_enc(ct, buf, pk, buf+KYBER_INDCPA_MSGBYTES);
+  indcpa_enc(ct, buf, pk, buf+WEAVER_INDCPA_MSGBYTES);
 
-  memcpy(ss, buf, KYBER_INDCPA_MSGBYTES);
+  memcpy(ss, buf, WEAVER_INDCPA_MSGBYTES);
   return 0;
 }
 
@@ -89,11 +89,11 @@ int crypto_kem_enc_derand(uint8_t *ct,
 *              secret for given public key
 *
 * Arguments:   - uint8_t *ct: pointer to output cipher text
-*                (an already allocated array of KYBER_CIPHERTEXTBYTES bytes)
+*                (an already allocated array of WEAVER_CIPHERTEXTBYTES bytes)
 *              - uint8_t *ss: pointer to output shared secret
-*                (an already allocated array of KYBER_SSBYTES bytes)
+*                (an already allocated array of WEAVER_SSBYTES bytes)
 *              - const uint8_t *pk: pointer to input public key
-*                (an already allocated array of KYBER_PUBLICKEYBYTES bytes)
+*                (an already allocated array of WEAVER_PUBLICKEYBYTES bytes)
 *
 * Returns 0 (success)
 **************************************************/
@@ -101,8 +101,8 @@ int crypto_kem_enc(uint8_t *ct,
                    uint8_t *ss,
                    const uint8_t *pk)
 {
-  uint8_t coins[KYBER_SYMBYTES];
-  randombytes(coins, KYBER_SYMBYTES);
+  uint8_t coins[WEAVER_SYMBYTES];
+  randombytes(coins, WEAVER_SYMBYTES);
   crypto_kem_enc_derand(ct, ss, pk, coins);
   return 0;
 }

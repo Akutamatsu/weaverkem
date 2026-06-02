@@ -280,7 +280,7 @@ unsigned int rej_uniform_avx(int16_t * restrict r,
 #ifdef BMI
   uint64_t idx0, idx1, idx2, idx3;
 #endif
-  const __m256i bound  = _mm256_set1_epi16(KYBER_Q);
+  const __m256i bound  = _mm256_set1_epi16(WEAVER_Q);
   const __m256i ones   = _mm256_set1_epi8(1);
   const __m256i mask  = _mm256_set1_epi16(0xFFF);
   const __m256i idx8  = _mm256_set_epi8(15,14,14,13,12,11,11,10,
@@ -291,7 +291,7 @@ unsigned int rej_uniform_avx(int16_t * restrict r,
   __m128i f, t, pilo, pihi;
 
   ctr = pos = 0;
-  while(ctr <= KYBER_N - 32 && pos <= AVX_REJ_UNIFORM_BUFLEN - 48) {
+  while(ctr <= WEAVER_N - 32 && pos <= AVX_REJ_UNIFORM_BUFLEN - 48) {
     f0 = _mm256_loadu_si256((__m256i *)&buf[pos]);
     f1 = _mm256_loadu_si256((__m256i *)&buf[pos+24]);
     f0 = _mm256_permute4x64_epi64(f0, 0x94);
@@ -355,7 +355,7 @@ unsigned int rej_uniform_avx(int16_t * restrict r,
     ctr += _mm_popcnt_u32((good >> 24) & 0xFF);
   }
 
-  while(ctr <= KYBER_N - 8 && pos <= AVX_REJ_UNIFORM_BUFLEN - 12) {
+  while(ctr <= WEAVER_N - 8 && pos <= AVX_REJ_UNIFORM_BUFLEN - 12) {
     f = _mm_loadu_si128((__m128i *)&buf[pos]);
     f = _mm_shuffle_epi8(f, _mm256_castsi256_si128(idx8));
     t = _mm_srli_epi16(f, 4);
@@ -384,14 +384,14 @@ unsigned int rej_uniform_avx(int16_t * restrict r,
     ctr += _mm_popcnt_u32(good);
   }
 
-  while(ctr < KYBER_N && pos <= AVX_REJ_UNIFORM_BUFLEN - 3) {
+  while(ctr < WEAVER_N && pos <= AVX_REJ_UNIFORM_BUFLEN - 3) {
     val0 = ((buf[pos+0] >> 0) | ((uint16_t)buf[pos+1] << 8)) & 0xFFF;
     val1 = ((buf[pos+1] >> 4) | ((uint16_t)buf[pos+2] << 4));
     pos += 3;
 
-    if(val0 < KYBER_Q)
+    if(val0 < WEAVER_Q)
       r[ctr++] = val0;
-    if(val1 < KYBER_Q && ctr < KYBER_N)
+    if(val1 < WEAVER_Q && ctr < WEAVER_N)
       r[ctr++] = val1;
   }
 

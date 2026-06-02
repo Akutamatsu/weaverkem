@@ -3,7 +3,7 @@
 #include "params.h"
 #include "avx/consts.h"
 
-#define Q KYBER_Q
+#define Q WEAVER_Q
 #define MONT -1044 // 2^16 mod q
 #define QINV -3327 // q^-1 mod 2^16
 #define V 20159 // floor(2^26/q + 0.5)
@@ -15,7 +15,7 @@
 #define SHIFT 32
 
 __attribute__((aligned(64)))
-const int16_t KYBER_NAMESPACE(_qdata)[] = {
+const int16_t WEAVER_NAMESPACE(_qdata)[] = {
 #define _16XQ 0
   Q, Q, Q, Q, Q, Q, Q, Q, Q, Q, Q, Q, Q, Q, Q, Q,
 

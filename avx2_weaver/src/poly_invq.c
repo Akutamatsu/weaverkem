@@ -13,7 +13,7 @@
 #include "invq.h"
 #include "symmetric.h"
 
-#if (KYBER_PK_POLYVECBYTES == (KYBER_K * KYBER_N * 10 / 8))
+#if (WEAVER_PK_POLYVECBYTES == (WEAVER_K * WEAVER_N * 10 / 8))
 #include "invq_table_d10.h"
 #define BUCKET_LO invq_d10_bucket_lo
 #define BUCKET_SZ invq_d10_bucket_size
@@ -111,39 +111,39 @@ static unsigned int rej_uniform(int16_t *r,
 }
 
 /* where (6/7) is the rejection rate (upper bound) */
-//#define GEN_INVQ_RAND_BYTES (3 *KYBER_N/8 * (7/6))
+//#define GEN_INVQ_RAND_BYTES (3 *WEAVER_N/8 * (7/6))
 
-#if KYBER_N == 256
+#if WEAVER_N == 256
 #define GEN_INVQ_RAND_BYTES SHAKE256_RATE
-#elif KYBER_N == 512
+#elif WEAVER_N == 512
 #define GEN_INVQ_RAND_BYTES (2*SHAKE256_RATE)
 #endif
 
-//void poly_invq(poly *r, const uint8_t seed[KYBER_SYMBYTES], uint8_t nonce)
+//void poly_invq(poly *r, const uint8_t seed[WEAVER_SYMBYTES], uint8_t nonce)
 //{
 //    uint8_t buf[GEN_INVQ_RAND_BYTES];
 //    unsigned int buflen = GEN_INVQ_RAND_BYTES;
 //    prf(buf, sizeof(buf), seed, nonce);
-//    rej_uniform(r->coeffs, KYBER_N, buf, buflen);
+//    rej_uniform(r->coeffs, WEAVER_N, buf, buflen);
 //}
 
 void polyvec_invq(polyvec *v,
-                  const uint8_t seed[KYBER_SYMBYTES],
+                  const uint8_t seed[WEAVER_SYMBYTES],
                   uint8_t nonce)
 {
     unsigned int ctr, i;
     unsigned int buflen;
     uint8_t buf[GEN_INVQ_RAND_BYTES];
 
-    for (i = 0; i < KYBER_K; i++) {
+    for (i = 0; i < WEAVER_K; i++) {
         prf(buf, GEN_INVQ_RAND_BYTES, seed, nonce);
         buflen = GEN_INVQ_RAND_BYTES;
-        ctr = rej_uniform(v->vec[i].coeffs, KYBER_N, buf, buflen);
+        ctr = rej_uniform(v->vec[i].coeffs, WEAVER_N, buf, buflen);
 
-        while (ctr < KYBER_N) {
+        while (ctr < WEAVER_N) {
             prf(buf, GEN_INVQ_RAND_BYTES, seed, nonce);
             buflen = GEN_INVQ_RAND_BYTES;
-            ctr += rej_uniform(v->vec[i].coeffs + ctr, KYBER_N - ctr, buf, buflen);
+            ctr += rej_uniform(v->vec[i].coeffs + ctr, WEAVER_N - ctr, buf, buflen);
         }
     }
 }

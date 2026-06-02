@@ -4,7 +4,7 @@
 #include <immintrin.h>
 #include "params.h"
 
-#if defined(WEAVER_USE_AVX_NTT512) && (KYBER_N == 512)
+#if defined(WEAVER_USE_AVX_NTT512) && (WEAVER_N == 512)
 #include "ntt.h"
 #include "reduce.h"
 #include "ntt_avx512.h"
@@ -17,7 +17,7 @@ extern const int16_t zetas_inv[128];
 static inline __m256i fqmul_avx2(__m256i a, __m256i b)
 {
   const __m256i qinv_vec = _mm256_set1_epi16((int16_t)QINV);
-  const __m256i q_vec = _mm256_set1_epi16(KYBER_Q);
+  const __m256i q_vec = _mm256_set1_epi16(WEAVER_Q);
   __m256i t = _mm256_mullo_epi16(a, b);
   __m256i u = _mm256_mullo_epi16(t, qinv_vec);
   __m256i v = _mm256_mulhi_epi16(u, q_vec);
@@ -36,7 +36,7 @@ static inline __m256i barrett_avx2(__m256i a)
 {
   const __m256i v32 = _mm256_set1_epi32(20159);
   const __m256i bias = _mm256_set1_epi32(1 << 25);
-  const __m256i q32 = _mm256_set1_epi32(KYBER_Q);
+  const __m256i q32 = _mm256_set1_epi32(WEAVER_Q);
   __m128i a_lo128 = _mm256_castsi256_si128(a);
   __m128i a_hi128 = _mm256_extracti128_si256(a, 1);
   __m256i a_lo32 = _mm256_cvtepi16_epi32(a_lo128);
@@ -60,7 +60,7 @@ static void ntt_layer8_avx(int16_t *r, unsigned int *k)
 {
   unsigned int start;
 
-  for(start = 0; start < KYBER_N; start += 16) {
+  for(start = 0; start < WEAVER_N; start += 16) {
     const __m256i zeta_vec = _mm256_set1_epi16(zetas[(*k)++]);
     __m256i uv = _mm256_load_si256((__m256i *)(r + start));
     __m128i u = _mm256_castsi256_si128(uv);
@@ -89,7 +89,7 @@ static void ntt_layer4_avx(int16_t *r, unsigned int *k)
 {
   unsigned int start;
 
-  for(start = 0; start < KYBER_N; start += 16) {
+  for(start = 0; start < WEAVER_N; start += 16) {
     ntt_layer4_block128(r + start, zetas[(*k)++]);
     ntt_layer4_block128(r + start + 8, zetas[(*k)++]);
   }
@@ -113,7 +113,7 @@ static void invntt_layer8_avx(int16_t *r, unsigned int *k)
 {
   unsigned int start;
 
-  for(start = 0; start < KYBER_N; start += 16) {
+  for(start = 0; start < WEAVER_N; start += 16) {
     const __m256i zeta_vec = _mm256_set1_epi16(zetas_inv[(*k)++]);
     __m256i uv = _mm256_load_si256((__m256i *)(r + start));
     __m128i u = _mm256_castsi256_si128(uv);
@@ -131,7 +131,7 @@ static void invntt_layer4_avx(int16_t *r, unsigned int *k)
 {
   unsigned int start;
 
-  for(start = 0; start < KYBER_N; start += 16) {
+  for(start = 0; start < WEAVER_N; start += 16) {
     invntt_layer4_block128(r + start, zetas_inv[(*k)++]);
     invntt_layer4_block128(r + start + 8, zetas_inv[(*k)++]);
   }
@@ -237,14 +237,14 @@ void polyvec_basemul_acc_avx512(poly *r, const polyvec *a, const polyvec *b)
   __m256i acc0, acc1, acc2, acc3;
   __m256i t0, t1, t2, t3;
 
-  for(i = 0; i < KYBER_N / 16; i++) {
+  for(i = 0; i < WEAVER_N / 16; i++) {
     const unsigned int off = 16 * i;
     const int16_t z_lo = zetas[64 + 2 * i];
     const int16_t z_hi = zetas[64 + 2 * i + 1];
 
     basemul_degree4_x4_compute(a->vec[0].coeffs + off, b->vec[0].coeffs + off,
                                z_lo, z_hi, &acc0, &acc1, &acc2, &acc3);
-    for(j = 1; j < KYBER_K; j++) {
+    for(j = 1; j < WEAVER_K; j++) {
       basemul_degree4_x4_compute(a->vec[j].coeffs + off, b->vec[j].coeffs + off,
                                  z_lo, z_hi, &t0, &t1, &t2, &t3);
       acc0 = _mm256_add_epi16(acc0, t0);
@@ -321,7 +321,7 @@ void ntt512_avx(int16_t *r)
 
   k = 1;
   for(len = 256; len >= 16; len >>= 1) {
-    for(start = 0; start < KYBER_N; start += 2 * len)
+    for(start = 0; start < WEAVER_N; start += 2 * len)
       butterfly_block(r, start, len, zetas[k++]);
   }
 
@@ -338,11 +338,11 @@ void invntt512_avx(int16_t *r)
   invntt_layer8_avx(r, &k);
 
   for(len = 16; len <= 256; len <<= 1) {
-    for(start = 0; start < KYBER_N; start += 2 * len)
+    for(start = 0; start < WEAVER_N; start += 2 * len)
       inv_butterfly_block(r, start, len, zetas_inv[k++]);
   }
 
-  for(i = 0; i < KYBER_N; i += 16) {
+  for(i = 0; i < WEAVER_N; i += 16) {
     __m256i v = _mm256_load_si256((__m256i *)&r[i]);
     _mm256_store_si256((__m256i *)&r[i], fqmul_zeta_ct(v, zetas_inv[127]));
   }
@@ -352,7 +352,7 @@ void basemul512_avx(int16_t *r, const int16_t *a, const int16_t *b)
 {
   unsigned int i;
 
-  for(i = 0; i < KYBER_N / 16; i++) {
+  for(i = 0; i < WEAVER_N / 16; i++) {
     basemul_degree4_x4_avx(&r[16 * i], &a[16 * i], &b[16 * i],
                            zetas[64 + 2 * i], zetas[64 + 2 * i + 1]);
   }
@@ -361,7 +361,7 @@ void basemul512_avx(int16_t *r, const int16_t *a, const int16_t *b)
 void poly_add512_avx(int16_t *r, const int16_t *a, const int16_t *b)
 {
   unsigned int i;
-  for(i = 0; i < KYBER_N; i += 16) {
+  for(i = 0; i < WEAVER_N; i += 16) {
     __m256i f0 = _mm256_load_si256((__m256i *)&a[i]);
     __m256i f1 = _mm256_load_si256((__m256i *)&b[i]);
     _mm256_store_si256((__m256i *)&r[i], _mm256_add_epi16(f0, f1));
@@ -371,7 +371,7 @@ void poly_add512_avx(int16_t *r, const int16_t *a, const int16_t *b)
 void poly_sub512_avx(int16_t *r, const int16_t *a, const int16_t *b)
 {
   unsigned int i;
-  for(i = 0; i < KYBER_N; i += 16) {
+  for(i = 0; i < WEAVER_N; i += 16) {
     __m256i f0 = _mm256_load_si256((__m256i *)&a[i]);
     __m256i f1 = _mm256_load_si256((__m256i *)&b[i]);
     _mm256_store_si256((__m256i *)&r[i], _mm256_sub_epi16(f0, f1));

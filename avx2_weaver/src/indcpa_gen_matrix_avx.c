@@ -1,9 +1,9 @@
-/* AVX2 gen_matrix: shake128x4 + rej_uniform_avx (pq-crystals kyber avx2). */
+/* AVX2 gen_matrix: shake128x4 + rej_uniform_avx (weaver avx2). */
 #include <stdint.h>
 #include <immintrin.h>
 #include "params.h"
 
-#if defined(WEAVER_AVX_GEN_MATRIX) && (KYBER_N == 256)
+#if defined(WEAVER_AVX_GEN_MATRIX) && (WEAVER_N == 256)
 
 #include "indcpa.h"
 #include "polyvec.h"
@@ -29,17 +29,17 @@ static unsigned int rej_uniform(int16_t *r,
     val1 = ((buf[pos+1] >> 4) | ((uint16_t)buf[pos+2] << 4));
     pos += 3;
 
-    if(val0 < KYBER_Q)
+    if(val0 < WEAVER_Q)
       r[ctr++] = val0;
-    if(ctr < len && val1 < KYBER_Q)
+    if(ctr < len && val1 < WEAVER_Q)
       r[ctr++] = val1;
   }
 
   return ctr;
 }
 
-#if KYBER_K == 2
-void gen_matrix(polyvec *a, const uint8_t seed[KYBER_SYMBYTES], int transposed)
+#if WEAVER_K == 2
+void gen_matrix(polyvec *a, const uint8_t seed[WEAVER_SYMBYTES], int transposed)
 {
   unsigned int ctr0, ctr1, ctr2, ctr3;
   __attribute__((aligned(32)))
@@ -54,26 +54,26 @@ void gen_matrix(polyvec *a, const uint8_t seed[KYBER_SYMBYTES], int transposed)
   _mm256_store_si256((__m256i *)buf[3], f);
 
   if(transposed) {
-    buf[0][KYBER_SYMBYTES+0] = 0;
-    buf[0][KYBER_SYMBYTES+1] = 0;
-    buf[1][KYBER_SYMBYTES+0] = 0;
-    buf[1][KYBER_SYMBYTES+1] = 1;
-    buf[2][KYBER_SYMBYTES+0] = 1;
-    buf[2][KYBER_SYMBYTES+1] = 0;
-    buf[3][KYBER_SYMBYTES+0] = 1;
-    buf[3][KYBER_SYMBYTES+1] = 1;
+    buf[0][WEAVER_SYMBYTES+0] = 0;
+    buf[0][WEAVER_SYMBYTES+1] = 0;
+    buf[1][WEAVER_SYMBYTES+0] = 0;
+    buf[1][WEAVER_SYMBYTES+1] = 1;
+    buf[2][WEAVER_SYMBYTES+0] = 1;
+    buf[2][WEAVER_SYMBYTES+1] = 0;
+    buf[3][WEAVER_SYMBYTES+0] = 1;
+    buf[3][WEAVER_SYMBYTES+1] = 1;
   } else {
-    buf[0][KYBER_SYMBYTES+0] = 0;
-    buf[0][KYBER_SYMBYTES+1] = 0;
-    buf[1][KYBER_SYMBYTES+0] = 1;
-    buf[1][KYBER_SYMBYTES+1] = 0;
-    buf[2][KYBER_SYMBYTES+0] = 0;
-    buf[2][KYBER_SYMBYTES+1] = 1;
-    buf[3][KYBER_SYMBYTES+0] = 1;
-    buf[3][KYBER_SYMBYTES+1] = 1;
+    buf[0][WEAVER_SYMBYTES+0] = 0;
+    buf[0][WEAVER_SYMBYTES+1] = 0;
+    buf[1][WEAVER_SYMBYTES+0] = 1;
+    buf[1][WEAVER_SYMBYTES+1] = 0;
+    buf[2][WEAVER_SYMBYTES+0] = 0;
+    buf[2][WEAVER_SYMBYTES+1] = 1;
+    buf[3][WEAVER_SYMBYTES+0] = 1;
+    buf[3][WEAVER_SYMBYTES+1] = 1;
   }
 
-  shake128x4_absorb(&state, buf[0], buf[1], buf[2], buf[3], KYBER_SYMBYTES+2);
+  shake128x4_absorb(&state, buf[0], buf[1], buf[2], buf[3], WEAVER_SYMBYTES+2);
   shake128x4_squeezeblocks(buf[0], buf[1], buf[2], buf[3], GEN_MATRIX_NBLOCKS,
                            &state);
 
@@ -82,16 +82,16 @@ void gen_matrix(polyvec *a, const uint8_t seed[KYBER_SYMBYTES], int transposed)
   ctr2 = rej_uniform_avx(a[1].vec[0].coeffs, buf[2]);
   ctr3 = rej_uniform_avx(a[1].vec[1].coeffs, buf[3]);
 
-  while(ctr0 < KYBER_N || ctr1 < KYBER_N || ctr2 < KYBER_N || ctr3 < KYBER_N) {
+  while(ctr0 < WEAVER_N || ctr1 < WEAVER_N || ctr2 < WEAVER_N || ctr3 < WEAVER_N) {
     shake128x4_squeezeblocks(buf[0], buf[1], buf[2], buf[3], 1, &state);
 
-    ctr0 += rej_uniform(a[0].vec[0].coeffs + ctr0, KYBER_N - ctr0, buf[0],
+    ctr0 += rej_uniform(a[0].vec[0].coeffs + ctr0, WEAVER_N - ctr0, buf[0],
                         XOF_BLOCKBYTES);
-    ctr1 += rej_uniform(a[0].vec[1].coeffs + ctr1, KYBER_N - ctr1, buf[1],
+    ctr1 += rej_uniform(a[0].vec[1].coeffs + ctr1, WEAVER_N - ctr1, buf[1],
                         XOF_BLOCKBYTES);
-    ctr2 += rej_uniform(a[1].vec[0].coeffs + ctr2, KYBER_N - ctr2, buf[2],
+    ctr2 += rej_uniform(a[1].vec[0].coeffs + ctr2, WEAVER_N - ctr2, buf[2],
                         XOF_BLOCKBYTES);
-    ctr3 += rej_uniform(a[1].vec[1].coeffs + ctr3, KYBER_N - ctr3, buf[3],
+    ctr3 += rej_uniform(a[1].vec[1].coeffs + ctr3, WEAVER_N - ctr3, buf[3],
                         XOF_BLOCKBYTES);
   }
 
@@ -101,8 +101,8 @@ void gen_matrix(polyvec *a, const uint8_t seed[KYBER_SYMBYTES], int transposed)
   poly_nttunpack(&a[1].vec[1]);
 }
 
-#elif KYBER_K == 3
-void gen_matrix(polyvec *a, const uint8_t seed[KYBER_SYMBYTES], int transposed)
+#elif WEAVER_K == 3
+void gen_matrix(polyvec *a, const uint8_t seed[WEAVER_SYMBYTES], int transposed)
 {
   unsigned int ctr0, ctr1, ctr2, ctr3;
   __attribute__((aligned(32)))
@@ -118,26 +118,26 @@ void gen_matrix(polyvec *a, const uint8_t seed[KYBER_SYMBYTES], int transposed)
   _mm256_store_si256((__m256i *)buf[3], f);
 
   if(transposed) {
-    buf[0][KYBER_SYMBYTES+0] = 0;
-    buf[0][KYBER_SYMBYTES+1] = 0;
-    buf[1][KYBER_SYMBYTES+0] = 0;
-    buf[1][KYBER_SYMBYTES+1] = 1;
-    buf[2][KYBER_SYMBYTES+0] = 0;
-    buf[2][KYBER_SYMBYTES+1] = 2;
-    buf[3][KYBER_SYMBYTES+0] = 1;
-    buf[3][KYBER_SYMBYTES+1] = 0;
+    buf[0][WEAVER_SYMBYTES+0] = 0;
+    buf[0][WEAVER_SYMBYTES+1] = 0;
+    buf[1][WEAVER_SYMBYTES+0] = 0;
+    buf[1][WEAVER_SYMBYTES+1] = 1;
+    buf[2][WEAVER_SYMBYTES+0] = 0;
+    buf[2][WEAVER_SYMBYTES+1] = 2;
+    buf[3][WEAVER_SYMBYTES+0] = 1;
+    buf[3][WEAVER_SYMBYTES+1] = 0;
   } else {
-    buf[0][KYBER_SYMBYTES+0] = 0;
-    buf[0][KYBER_SYMBYTES+1] = 0;
-    buf[1][KYBER_SYMBYTES+0] = 1;
-    buf[1][KYBER_SYMBYTES+1] = 0;
-    buf[2][KYBER_SYMBYTES+0] = 2;
-    buf[2][KYBER_SYMBYTES+1] = 0;
-    buf[3][KYBER_SYMBYTES+0] = 0;
-    buf[3][KYBER_SYMBYTES+1] = 1;
+    buf[0][WEAVER_SYMBYTES+0] = 0;
+    buf[0][WEAVER_SYMBYTES+1] = 0;
+    buf[1][WEAVER_SYMBYTES+0] = 1;
+    buf[1][WEAVER_SYMBYTES+1] = 0;
+    buf[2][WEAVER_SYMBYTES+0] = 2;
+    buf[2][WEAVER_SYMBYTES+1] = 0;
+    buf[3][WEAVER_SYMBYTES+0] = 0;
+    buf[3][WEAVER_SYMBYTES+1] = 1;
   }
 
-  shake128x4_absorb(&state, buf[0], buf[1], buf[2], buf[3], KYBER_SYMBYTES+2);
+  shake128x4_absorb(&state, buf[0], buf[1], buf[2], buf[3], WEAVER_SYMBYTES+2);
   shake128x4_squeezeblocks(buf[0], buf[1], buf[2], buf[3], GEN_MATRIX_NBLOCKS,
                            &state);
 
@@ -146,16 +146,16 @@ void gen_matrix(polyvec *a, const uint8_t seed[KYBER_SYMBYTES], int transposed)
   ctr2 = rej_uniform_avx(a[0].vec[2].coeffs, buf[2]);
   ctr3 = rej_uniform_avx(a[1].vec[0].coeffs, buf[3]);
 
-  while(ctr0 < KYBER_N || ctr1 < KYBER_N || ctr2 < KYBER_N || ctr3 < KYBER_N) {
+  while(ctr0 < WEAVER_N || ctr1 < WEAVER_N || ctr2 < WEAVER_N || ctr3 < WEAVER_N) {
     shake128x4_squeezeblocks(buf[0], buf[1], buf[2], buf[3], 1, &state);
 
-    ctr0 += rej_uniform(a[0].vec[0].coeffs + ctr0, KYBER_N - ctr0, buf[0],
+    ctr0 += rej_uniform(a[0].vec[0].coeffs + ctr0, WEAVER_N - ctr0, buf[0],
                         XOF_BLOCKBYTES);
-    ctr1 += rej_uniform(a[0].vec[1].coeffs + ctr1, KYBER_N - ctr1, buf[1],
+    ctr1 += rej_uniform(a[0].vec[1].coeffs + ctr1, WEAVER_N - ctr1, buf[1],
                         XOF_BLOCKBYTES);
-    ctr2 += rej_uniform(a[0].vec[2].coeffs + ctr2, KYBER_N - ctr2, buf[2],
+    ctr2 += rej_uniform(a[0].vec[2].coeffs + ctr2, WEAVER_N - ctr2, buf[2],
                         XOF_BLOCKBYTES);
-    ctr3 += rej_uniform(a[1].vec[0].coeffs + ctr3, KYBER_N - ctr3, buf[3],
+    ctr3 += rej_uniform(a[1].vec[0].coeffs + ctr3, WEAVER_N - ctr3, buf[3],
                         XOF_BLOCKBYTES);
   }
 
@@ -171,26 +171,26 @@ void gen_matrix(polyvec *a, const uint8_t seed[KYBER_SYMBYTES], int transposed)
   _mm256_store_si256((__m256i *)buf[3], f);
 
   if(transposed) {
-    buf[0][KYBER_SYMBYTES+0] = 1;
-    buf[0][KYBER_SYMBYTES+1] = 1;
-    buf[1][KYBER_SYMBYTES+0] = 1;
-    buf[1][KYBER_SYMBYTES+1] = 2;
-    buf[2][KYBER_SYMBYTES+0] = 2;
-    buf[2][KYBER_SYMBYTES+1] = 0;
-    buf[3][KYBER_SYMBYTES+0] = 2;
-    buf[3][KYBER_SYMBYTES+1] = 1;
+    buf[0][WEAVER_SYMBYTES+0] = 1;
+    buf[0][WEAVER_SYMBYTES+1] = 1;
+    buf[1][WEAVER_SYMBYTES+0] = 1;
+    buf[1][WEAVER_SYMBYTES+1] = 2;
+    buf[2][WEAVER_SYMBYTES+0] = 2;
+    buf[2][WEAVER_SYMBYTES+1] = 0;
+    buf[3][WEAVER_SYMBYTES+0] = 2;
+    buf[3][WEAVER_SYMBYTES+1] = 1;
   } else {
-    buf[0][KYBER_SYMBYTES+0] = 1;
-    buf[0][KYBER_SYMBYTES+1] = 1;
-    buf[1][KYBER_SYMBYTES+0] = 2;
-    buf[1][KYBER_SYMBYTES+1] = 1;
-    buf[2][KYBER_SYMBYTES+0] = 0;
-    buf[2][KYBER_SYMBYTES+1] = 2;
-    buf[3][KYBER_SYMBYTES+0] = 1;
-    buf[3][KYBER_SYMBYTES+1] = 2;
+    buf[0][WEAVER_SYMBYTES+0] = 1;
+    buf[0][WEAVER_SYMBYTES+1] = 1;
+    buf[1][WEAVER_SYMBYTES+0] = 2;
+    buf[1][WEAVER_SYMBYTES+1] = 1;
+    buf[2][WEAVER_SYMBYTES+0] = 0;
+    buf[2][WEAVER_SYMBYTES+1] = 2;
+    buf[3][WEAVER_SYMBYTES+0] = 1;
+    buf[3][WEAVER_SYMBYTES+1] = 2;
   }
 
-  shake128x4_absorb(&state, buf[0], buf[1], buf[2], buf[3], KYBER_SYMBYTES+2);
+  shake128x4_absorb(&state, buf[0], buf[1], buf[2], buf[3], WEAVER_SYMBYTES+2);
   shake128x4_squeezeblocks(buf[0], buf[1], buf[2], buf[3], GEN_MATRIX_NBLOCKS,
                            &state);
 
@@ -199,16 +199,16 @@ void gen_matrix(polyvec *a, const uint8_t seed[KYBER_SYMBYTES], int transposed)
   ctr2 = rej_uniform_avx(a[2].vec[0].coeffs, buf[2]);
   ctr3 = rej_uniform_avx(a[2].vec[1].coeffs, buf[3]);
 
-  while(ctr0 < KYBER_N || ctr1 < KYBER_N || ctr2 < KYBER_N || ctr3 < KYBER_N) {
+  while(ctr0 < WEAVER_N || ctr1 < WEAVER_N || ctr2 < WEAVER_N || ctr3 < WEAVER_N) {
     shake128x4_squeezeblocks(buf[0], buf[1], buf[2], buf[3], 1, &state);
 
-    ctr0 += rej_uniform(a[1].vec[1].coeffs + ctr0, KYBER_N - ctr0, buf[0],
+    ctr0 += rej_uniform(a[1].vec[1].coeffs + ctr0, WEAVER_N - ctr0, buf[0],
                         XOF_BLOCKBYTES);
-    ctr1 += rej_uniform(a[1].vec[2].coeffs + ctr1, KYBER_N - ctr1, buf[1],
+    ctr1 += rej_uniform(a[1].vec[2].coeffs + ctr1, WEAVER_N - ctr1, buf[1],
                         XOF_BLOCKBYTES);
-    ctr2 += rej_uniform(a[2].vec[0].coeffs + ctr2, KYBER_N - ctr2, buf[2],
+    ctr2 += rej_uniform(a[2].vec[0].coeffs + ctr2, WEAVER_N - ctr2, buf[2],
                         XOF_BLOCKBYTES);
-    ctr3 += rej_uniform(a[2].vec[1].coeffs + ctr3, KYBER_N - ctr3, buf[3],
+    ctr3 += rej_uniform(a[2].vec[1].coeffs + ctr3, WEAVER_N - ctr3, buf[3],
                         XOF_BLOCKBYTES);
   }
 
@@ -219,22 +219,22 @@ void gen_matrix(polyvec *a, const uint8_t seed[KYBER_SYMBYTES], int transposed)
 
   f = _mm256_load_si256((__m256i *)seed);
   _mm256_store_si256((__m256i *)buf[0], f);
-  buf[0][KYBER_SYMBYTES+0] = 2;
-  buf[0][KYBER_SYMBYTES+1] = 2;
-  shake128_absorb(&state1x, buf[0], KYBER_SYMBYTES+2);
+  buf[0][WEAVER_SYMBYTES+0] = 2;
+  buf[0][WEAVER_SYMBYTES+1] = 2;
+  shake128_absorb(&state1x, buf[0], WEAVER_SYMBYTES+2);
   shake128_squeezeblocks(buf[0], GEN_MATRIX_NBLOCKS, &state1x);
   ctr0 = rej_uniform_avx(a[2].vec[2].coeffs, buf[0]);
-  while(ctr0 < KYBER_N) {
+  while(ctr0 < WEAVER_N) {
     shake128_squeezeblocks(buf[0], 1, &state1x);
-    ctr0 += rej_uniform(a[2].vec[2].coeffs + ctr0, KYBER_N - ctr0, buf[0],
+    ctr0 += rej_uniform(a[2].vec[2].coeffs + ctr0, WEAVER_N - ctr0, buf[0],
                         XOF_BLOCKBYTES);
   }
 
   poly_nttunpack(&a[2].vec[2]);
 }
 
-#elif KYBER_K == 4
-void gen_matrix(polyvec *a, const uint8_t seed[KYBER_SYMBYTES], int transposed)
+#elif WEAVER_K == 4
+void gen_matrix(polyvec *a, const uint8_t seed[WEAVER_SYMBYTES], int transposed)
 {
   unsigned int i, ctr0, ctr1, ctr2, ctr3;
   __attribute__((aligned(32)))
@@ -250,26 +250,26 @@ void gen_matrix(polyvec *a, const uint8_t seed[KYBER_SYMBYTES], int transposed)
     _mm256_store_si256((__m256i *)buf[3], f);
 
     if(transposed) {
-      buf[0][KYBER_SYMBYTES+0] = i;
-      buf[0][KYBER_SYMBYTES+1] = 0;
-      buf[1][KYBER_SYMBYTES+0] = i;
-      buf[1][KYBER_SYMBYTES+1] = 1;
-      buf[2][KYBER_SYMBYTES+0] = i;
-      buf[2][KYBER_SYMBYTES+1] = 2;
-      buf[3][KYBER_SYMBYTES+0] = i;
-      buf[3][KYBER_SYMBYTES+1] = 3;
+      buf[0][WEAVER_SYMBYTES+0] = i;
+      buf[0][WEAVER_SYMBYTES+1] = 0;
+      buf[1][WEAVER_SYMBYTES+0] = i;
+      buf[1][WEAVER_SYMBYTES+1] = 1;
+      buf[2][WEAVER_SYMBYTES+0] = i;
+      buf[2][WEAVER_SYMBYTES+1] = 2;
+      buf[3][WEAVER_SYMBYTES+0] = i;
+      buf[3][WEAVER_SYMBYTES+1] = 3;
     } else {
-      buf[0][KYBER_SYMBYTES+0] = 0;
-      buf[0][KYBER_SYMBYTES+1] = i;
-      buf[1][KYBER_SYMBYTES+0] = 1;
-      buf[1][KYBER_SYMBYTES+1] = i;
-      buf[2][KYBER_SYMBYTES+0] = 2;
-      buf[2][KYBER_SYMBYTES+1] = i;
-      buf[3][KYBER_SYMBYTES+0] = 3;
-      buf[3][KYBER_SYMBYTES+1] = i;
+      buf[0][WEAVER_SYMBYTES+0] = 0;
+      buf[0][WEAVER_SYMBYTES+1] = i;
+      buf[1][WEAVER_SYMBYTES+0] = 1;
+      buf[1][WEAVER_SYMBYTES+1] = i;
+      buf[2][WEAVER_SYMBYTES+0] = 2;
+      buf[2][WEAVER_SYMBYTES+1] = i;
+      buf[3][WEAVER_SYMBYTES+0] = 3;
+      buf[3][WEAVER_SYMBYTES+1] = i;
     }
 
-    shake128x4_absorb(&state, buf[0], buf[1], buf[2], buf[3], KYBER_SYMBYTES+2);
+    shake128x4_absorb(&state, buf[0], buf[1], buf[2], buf[3], WEAVER_SYMBYTES+2);
     shake128x4_squeezeblocks(buf[0], buf[1], buf[2], buf[3],
                              GEN_MATRIX_NBLOCKS, &state);
 
@@ -278,16 +278,16 @@ void gen_matrix(polyvec *a, const uint8_t seed[KYBER_SYMBYTES], int transposed)
     ctr2 = rej_uniform_avx(a[i].vec[2].coeffs, buf[2]);
     ctr3 = rej_uniform_avx(a[i].vec[3].coeffs, buf[3]);
 
-    while(ctr0 < KYBER_N || ctr1 < KYBER_N || ctr2 < KYBER_N || ctr3 < KYBER_N) {
+    while(ctr0 < WEAVER_N || ctr1 < WEAVER_N || ctr2 < WEAVER_N || ctr3 < WEAVER_N) {
       shake128x4_squeezeblocks(buf[0], buf[1], buf[2], buf[3], 1, &state);
 
-      ctr0 += rej_uniform(a[i].vec[0].coeffs + ctr0, KYBER_N - ctr0, buf[0],
+      ctr0 += rej_uniform(a[i].vec[0].coeffs + ctr0, WEAVER_N - ctr0, buf[0],
                           XOF_BLOCKBYTES);
-      ctr1 += rej_uniform(a[i].vec[1].coeffs + ctr1, KYBER_N - ctr1, buf[1],
+      ctr1 += rej_uniform(a[i].vec[1].coeffs + ctr1, WEAVER_N - ctr1, buf[1],
                           XOF_BLOCKBYTES);
-      ctr2 += rej_uniform(a[i].vec[2].coeffs + ctr2, KYBER_N - ctr2, buf[2],
+      ctr2 += rej_uniform(a[i].vec[2].coeffs + ctr2, WEAVER_N - ctr2, buf[2],
                           XOF_BLOCKBYTES);
-      ctr3 += rej_uniform(a[i].vec[3].coeffs + ctr3, KYBER_N - ctr3, buf[3],
+      ctr3 += rej_uniform(a[i].vec[3].coeffs + ctr3, WEAVER_N - ctr3, buf[3],
                           XOF_BLOCKBYTES);
     }
 
@@ -299,4 +299,4 @@ void gen_matrix(polyvec *a, const uint8_t seed[KYBER_SYMBYTES], int transposed)
 }
 #endif
 
-#endif /* WEAVER_AVX_GEN_MATRIX && KYBER_N==256 */
+#endif /* WEAVER_AVX_GEN_MATRIX && WEAVER_N==256 */

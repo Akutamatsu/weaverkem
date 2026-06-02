@@ -32,12 +32,12 @@
 #define WEAVER_AVX_POST_NTT_REDUCE 0
 #endif
 
-void poly_tobytes(uint8_t r[KYBER_POLYBYTES], const poly *a)
+void poly_tobytes(uint8_t r[WEAVER_POLYBYTES], const poly *a)
 {
   ntttobytes_avx(r, a->coeffs, qdata);
 }
 
-void poly_frombytes(poly *r, const uint8_t a[KYBER_POLYBYTES])
+void poly_frombytes(poly *r, const uint8_t a[WEAVER_POLYBYTES])
 {
   nttfrombytes_avx(r->coeffs, a, qdata);
 }
@@ -75,7 +75,7 @@ void poly_basemul_montgomery(poly *r, const poly *a, const poly *b)
   basemul_avx(r->coeffs, a->coeffs, b->coeffs, qdata);
 #else
   unsigned int i;
-  for(i = 0; i < KYBER_N / 4; i++) {
+  for(i = 0; i < WEAVER_N / 4; i++) {
     basemul(&r->coeffs[4 * i], &a->coeffs[4 * i], &b->coeffs[4 * i], zetas[64 + i]);
     basemul(&r->coeffs[4 * i + 2], &a->coeffs[4 * i + 2], &b->coeffs[4 * i + 2], -zetas[64 + i]);
   }
@@ -88,8 +88,8 @@ void poly_tomont(poly *r)
   tomont_avx(r->coeffs, qdata);
 #else
   unsigned int i;
-  const int16_t f = (1ULL << 32) % KYBER_Q;
-  for(i = 0; i < KYBER_N; i++)
+  const int16_t f = (1ULL << 32) % WEAVER_Q;
+  for(i = 0; i < WEAVER_N; i++)
     r->coeffs[i] = montgomery_reduce((int32_t)r->coeffs[i] * f);
 #endif
 }
@@ -100,7 +100,7 @@ void poly_reduce(poly *r)
   reduce_avx(r->coeffs, qdata);
 #else
   unsigned int i;
-  for(i = 0; i < KYBER_N; i++)
+  for(i = 0; i < WEAVER_N; i++)
     r->coeffs[i] = barrett_reduce(r->coeffs[i]);
 #endif
 }
@@ -111,7 +111,7 @@ void poly_add(poly *r, const poly *a, const poly *b)
   unsigned int i;
   __m256i f0, f1;
 
-  for(i = 0; i < KYBER_N; i += 16) {
+  for(i = 0; i < WEAVER_N; i += 16) {
     f0 = _mm256_load_si256((__m256i *)&a->coeffs[i]);
     f1 = _mm256_load_si256((__m256i *)&b->coeffs[i]);
     f0 = _mm256_add_epi16(f0, f1);
@@ -119,7 +119,7 @@ void poly_add(poly *r, const poly *a, const poly *b)
   }
 #else
   unsigned int i;
-  for(i = 0; i < KYBER_N; i++)
+  for(i = 0; i < WEAVER_N; i++)
     r->coeffs[i] = a->coeffs[i] + b->coeffs[i];
 #endif
 }
@@ -130,7 +130,7 @@ void poly_sub(poly *r, const poly *a, const poly *b)
   unsigned int i;
   __m256i f0, f1;
 
-  for(i = 0; i < KYBER_N; i += 16) {
+  for(i = 0; i < WEAVER_N; i += 16) {
     f0 = _mm256_load_si256((__m256i *)&a->coeffs[i]);
     f1 = _mm256_load_si256((__m256i *)&b->coeffs[i]);
     f0 = _mm256_sub_epi16(f0, f1);
@@ -138,7 +138,7 @@ void poly_sub(poly *r, const poly *a, const poly *b)
   }
 #else
   unsigned int i;
-  for(i = 0; i < KYBER_N; i++)
+  for(i = 0; i < WEAVER_N; i++)
     r->coeffs[i] = a->coeffs[i] - b->coeffs[i];
 #endif
 }

@@ -50,8 +50,8 @@ int main(int argc, char **argv)
 {
   unsigned int i;
   unsigned int ncases = NCASES_DEFAULT;
-  uint8_t coins[2 * KYBER_SYMBYTES];
-  uint8_t enc_coins[KYBER_INDCPA_MSGBYTES];
+  uint8_t coins[2 * WEAVER_SYMBYTES];
+  uint8_t enc_coins[WEAVER_INDCPA_MSGBYTES];
   uint8_t pk[8192], sk[8192], ct[8192], ss[64], ss_dec[64];
   size_t pklen = CRYPTO_PUBLICKEYBYTES;
   size_t sklen = CRYPTO_SECRETKEYBYTES;

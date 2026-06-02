@@ -94,7 +94,7 @@ main()
     
     // Create the REQUEST file
 #ifdef LOG_FOR_DEBUG
-    sprintf(fn_rsp, "PQCkemKAT_%d.rsp", KYBER_SECRETKEYBYTES);
+    sprintf(fn_rsp, "PQCkemKAT_%d.rsp", WEAVER_SECRETKEYBYTES);
     if ( (fp_rsp = fopen(fn_rsp, "w")) == NULL ) {
         printf("Couldn't open <%s> for write\n", fn_rsp);
         return KAT_FILE_OPEN_ERROR;
@@ -150,7 +150,7 @@ main()
             fprintf(fp_rsp, "count = %lu\n", ctr);
             fprintBstr(fp_rsp, "seed = ", seed, 48);
             fprintBstr(fp_rsp, "pk = ", pk, CRYPTO_PUBLICKEYBYTES);
-            fprintBstr(fp_rsp, "sk = ", sk, KYBER_SECRETKEYBYTES);
+            fprintBstr(fp_rsp, "sk = ", sk, WEAVER_SECRETKEYBYTES);
             fprintBstr(fp_rsp, "ct = ", ct, CRYPTO_CIPHERTEXTBYTES);
             fprintBstr(fp_rsp, "ss = ", ss, CRYPTO_BYTES);
             fprintBstr(fp_rsp, "ss1 = ", ss1, CRYPTO_BYTES);

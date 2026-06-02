@@ -28,10 +28,10 @@ int randombytes(unsigned char *x, unsigned long long xlen)
     return get_random_number(&drng_algorithm, x, xlen * 8);
 }
 
-unsigned long long kem_get_pk_len_bytes() { return (unsigned long long)KYBER_PUBLICKEYBYTES; }
-unsigned long long kem_get_sk_len_bytes() { return (unsigned long long)KYBER_SECRETKEYBYTES; }
-unsigned long long kem_get_ss_len_bytes() { return (unsigned long long)KYBER_SSBYTES; }
-unsigned long long kem_get_ct_len_bytes() { return (unsigned long long)KYBER_CIPHERTEXTBYTES; }
+unsigned long long kem_get_pk_len_bytes() { return (unsigned long long)WEAVER_PUBLICKEYBYTES; }
+unsigned long long kem_get_sk_len_bytes() { return (unsigned long long)WEAVER_SECRETKEYBYTES; }
+unsigned long long kem_get_ss_len_bytes() { return (unsigned long long)WEAVER_SSBYTES; }
+unsigned long long kem_get_ct_len_bytes() { return (unsigned long long)WEAVER_CIPHERTEXTBYTES; }
 
 int kem_keygen(
     unsigned char *pk, unsigned long long *pk_len_bytes,
@@ -39,8 +39,8 @@ int kem_keygen(
 {
     int ret = crypto_kem_keypair(pk, sk);
     if (ret != 0) return ret;
-    *pk_len_bytes = (unsigned long long)KYBER_PUBLICKEYBYTES;
-    *sk_len_bytes = (unsigned long long)KYBER_SECRETKEYBYTES;
+    *pk_len_bytes = (unsigned long long)WEAVER_PUBLICKEYBYTES;
+    *sk_len_bytes = (unsigned long long)WEAVER_SECRETKEYBYTES;
     return 0;
 }
 
@@ -52,8 +52,8 @@ int kem_enc(
     (void)pk_len_bytes;
     int ret = crypto_kem_enc(ct, ss, pk);
     if (ret != 0) return ret;
-    *ss_len_bytes = (unsigned long long)KYBER_SSBYTES;
-    *ct_len_bytes = (unsigned long long)KYBER_CIPHERTEXTBYTES;
+    *ss_len_bytes = (unsigned long long)WEAVER_SSBYTES;
+    *ct_len_bytes = (unsigned long long)WEAVER_CIPHERTEXTBYTES;
     return 0;
 }
 
@@ -66,6 +66,6 @@ int kem_dec(
     (void)ct_len_bytes;
     int ret = crypto_kem_dec(ss, ct, sk);
     if (ret != 0) return -1;
-    *ss_len_bytes = (unsigned long long)KYBER_SSBYTES;
+    *ss_len_bytes = (unsigned long long)WEAVER_SSBYTES;
     return 0;
 }

@@ -22,8 +22,8 @@ static void dump_line(const char *name, const unsigned char *p, size_t n)
 
 int main(void)
 {
-    unsigned char kp_coins[2 * KYBER_SYMBYTES];
-    unsigned char enc_coins[KYBER_INDCPA_MSGBYTES];
+    unsigned char kp_coins[2 * WEAVER_SYMBYTES];
+    unsigned char enc_coins[WEAVER_INDCPA_MSGBYTES];
     unsigned char pk[CRYPTO_PUBLICKEYBYTES];
     unsigned char sk[CRYPTO_SECRETKEYBYTES];
     unsigned char ct[CRYPTO_CIPHERTEXTBYTES];

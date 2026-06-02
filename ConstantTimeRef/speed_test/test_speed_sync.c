@@ -18,10 +18,10 @@ static uint64_t t[NTESTS];
 static void fill_coins(uint8_t *kp_coins, uint8_t *enc_coins)
 {
     size_t i;
-    for (i = 0; i < 2u * KYBER_SYMBYTES; i++) {
+    for (i = 0; i < 2u * WEAVER_SYMBYTES; i++) {
         kp_coins[i] = (uint8_t)((i * 17u + 3u) ^ 0xA5u);
     }
-    for (i = 0; i < (size_t)KYBER_INDCPA_MSGBYTES; i++) {
+    for (i = 0; i < (size_t)WEAVER_INDCPA_MSGBYTES; i++) {
         enc_coins[i] = (uint8_t)((i * 131u + 7u) ^ 0x5Au);
     }
 }
@@ -29,8 +29,8 @@ static void fill_coins(uint8_t *kp_coins, uint8_t *enc_coins)
 int main(void)
 {
     unsigned int i;
-    uint8_t kp_coins[2 * KYBER_SYMBYTES];
-    uint8_t enc_coins[KYBER_INDCPA_MSGBYTES];
+    uint8_t kp_coins[2 * WEAVER_SYMBYTES];
+    uint8_t enc_coins[WEAVER_INDCPA_MSGBYTES];
     uint8_t pk[CRYPTO_PUBLICKEYBYTES] = {0};
     uint8_t sk[CRYPTO_SECRETKEYBYTES] = {0};
     uint8_t ct[CRYPTO_CIPHERTEXTBYTES] = {0};

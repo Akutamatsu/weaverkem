@@ -59,8 +59,8 @@ static void run_bench(bench_fn func, uint64_t *t, int ntests,
 /* ====== 全局测试数据 ====== */
 static uint8_t  pk_buf[CRYPTO_PUBLICKEYBYTES];
 static uint8_t  sk_buf[CRYPTO_SECRETKEYBYTES];
-static uint8_t  coins_buf[KYBER_SYMBYTES];
-static uint8_t  seed_buf[KYBER_SYMBYTES];
+static uint8_t  coins_buf[WEAVER_SYMBYTES];
+static uint8_t  seed_buf[WEAVER_SYMBYTES];
 static polyvec  g_pkpv_old, g_pkpv_new, g_pkpv_backup;
 static uint8_t  g_nonce;
 
@@ -113,8 +113,8 @@ int main()
     uint64_t s1_med, s1_avg, s2_med, s2_avg, s3_med, s3_avg;
 
     invq_global_init();
-    memset(seed_buf, 0x42, KYBER_SYMBYTES);
-    randombytes(coins_buf, KYBER_SYMBYTES);
+    memset(seed_buf, 0x42, WEAVER_SYMBYTES);
+    randombytes(coins_buf, WEAVER_SYMBYTES);
     g_nonce = 0;
 
     // 预准备数据

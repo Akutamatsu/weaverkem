@@ -3,12 +3,12 @@
 #include <immintrin.h>
 #include "params.h"
 
-#if defined(WEAVER_USE_AVX_COMPRESS) && (KYBER_N == 256)
+#if defined(WEAVER_USE_AVX_COMPRESS) && (WEAVER_N == 256)
 #include "poly.h"
 #include "poly_compress_avx.h"
 #include "avx/consts.h"
 
-void poly_compress10_avx(uint8_t r[(KYBER_N * 10) / 8], const poly * restrict a)
+void poly_compress10_avx(uint8_t r[(WEAVER_N * 10) / 8], const poly * restrict a)
 {
   unsigned int i;
   __m256i f0, f1, f2;
@@ -23,7 +23,7 @@ void poly_compress10_avx(uint8_t r[(KYBER_N * 10) / 8], const poly * restrict a)
   const __m256i shufbidx = _mm256_set_epi8( 8, 4, 3, 2, 1, 0,-1,-1,-1,-1,-1,-1,12,11,10, 9,
                                            -1,-1,-1,-1,-1,-1,12,11,10, 9, 8, 4, 3, 2, 1, 0);
 
-  for(i = 0; i < KYBER_N / 16; i++) {
+  for(i = 0; i < WEAVER_N / 16; i++) {
     f0 = _mm256_load_si256((__m256i *)&a->coeffs[16 * i]);
     f1 = _mm256_mullo_epi16(f0, v8);
     f2 = _mm256_add_epi16(f0, off);
@@ -47,11 +47,11 @@ void poly_compress10_avx(uint8_t r[(KYBER_N * 10) / 8], const poly * restrict a)
   }
 }
 
-void poly_decompress10_avx(poly * restrict r, const uint8_t a[(KYBER_N * 10) / 8])
+void poly_decompress10_avx(poly * restrict r, const uint8_t a[(WEAVER_N * 10) / 8])
 {
   unsigned int i;
   __m256i f;
-  const __m256i q = _mm256_set1_epi32((KYBER_Q << 16) + 4 * KYBER_Q);
+  const __m256i q = _mm256_set1_epi32((WEAVER_Q << 16) + 4 * WEAVER_Q);
   const __m256i shufbidx = _mm256_set_epi8(11,10,10, 9, 9, 8, 8, 7,
                                             6, 5, 5, 4, 4, 3, 3, 2,
                                             9, 8, 8, 7, 7, 6, 6, 5,
@@ -59,7 +59,7 @@ void poly_decompress10_avx(poly * restrict r, const uint8_t a[(KYBER_N * 10) / 8
   const __m256i sllvdidx = _mm256_set1_epi64x(4);
   const __m256i mask = _mm256_set1_epi32((32736 << 16) + 8184);
 
-  for(i = 0; i < KYBER_N / 16; i++) {
+  for(i = 0; i < WEAVER_N / 16; i++) {
     f = _mm256_loadu_si256((__m256i *)&a[20 * i]);
     f = _mm256_permute4x64_epi64(f, 0x94);
     f = _mm256_shuffle_epi8(f, shufbidx);
@@ -71,9 +71,9 @@ void poly_decompress10_avx(poly * restrict r, const uint8_t a[(KYBER_N * 10) / 8
   }
 }
 
-#if (KYBER_POLYCOMPRESSEDBYTES == (KYBER_N * 4 / 8))
+#if (WEAVER_POLYCOMPRESSEDBYTES == (WEAVER_N * 4 / 8))
 
-void poly_compress_d4_avx(uint8_t r[KYBER_POLYCOMPRESSEDBYTES], const poly * restrict a)
+void poly_compress_d4_avx(uint8_t r[WEAVER_POLYCOMPRESSEDBYTES], const poly * restrict a)
 {
   unsigned int i;
   __m256i f0, f1, f2, f3;
@@ -83,7 +83,7 @@ void poly_compress_d4_avx(uint8_t r[KYBER_POLYCOMPRESSEDBYTES], const poly * res
   const __m256i shift2 = _mm256_set1_epi16((16 << 8) + 1);
   const __m256i permdidx = _mm256_set_epi32(7, 3, 6, 2, 5, 1, 4, 0);
 
-  for(i = 0; i < KYBER_N / 64; i++) {
+  for(i = 0; i < WEAVER_N / 64; i++) {
     f0 = _mm256_load_si256((__m256i *)&a->coeffs[64 * i + 0]);
     f1 = _mm256_load_si256((__m256i *)&a->coeffs[64 * i + 16]);
     f2 = _mm256_load_si256((__m256i *)&a->coeffs[64 * i + 32]);
@@ -110,7 +110,7 @@ void poly_compress_d4_avx(uint8_t r[KYBER_POLYCOMPRESSEDBYTES], const poly * res
   }
 }
 
-void poly_decompress_d4_avx(poly * restrict r, const uint8_t a[KYBER_POLYCOMPRESSEDBYTES])
+void poly_decompress_d4_avx(poly * restrict r, const uint8_t a[WEAVER_POLYCOMPRESSEDBYTES])
 {
   unsigned int i;
   __m256i f;
@@ -120,7 +120,7 @@ void poly_decompress_d4_avx(poly * restrict r, const uint8_t a[KYBER_POLYCOMPRES
   const __m256i mask = _mm256_set1_epi32(0x00F0000F);
   const __m256i shift = _mm256_set1_epi32((128 << 16) + 2048);
 
-  for(i = 0; i < KYBER_N / 16; i++) {
+  for(i = 0; i < WEAVER_N / 16; i++) {
     f = _mm256_broadcastq_epi64(_mm_loadl_epi64((__m128i *)&a[8 * i]));
     f = _mm256_shuffle_epi8(f, shufbidx);
     f = _mm256_and_si256(f, mask);
@@ -132,7 +132,7 @@ void poly_decompress_d4_avx(poly * restrict r, const uint8_t a[KYBER_POLYCOMPRES
 
 #endif /* 4-bit v */
 
-#if (KYBER_PK_POLYVECBYTES == (KYBER_K * KYBER_N * 9 / 8))
+#if (WEAVER_PK_POLYVECBYTES == (WEAVER_K * WEAVER_N * 9 / 8))
 
 #include "poly_compress9.h"
 
@@ -166,8 +166,8 @@ static void poly_compress9_pack8_si128(uint8_t r[9], __m128i t)
 /* Exact 9-bit quant on eight lanes. */
 static __m128i poly_compress9_quant8_avx(__m128i f16)
 {
-  const __m256i qv = _mm256_set1_epi32(KYBER_Q);
-  const __m256i half = _mm256_set1_epi32(KYBER_Q / 2);
+  const __m256i qv = _mm256_set1_epi32(WEAVER_Q);
+  const __m256i half = _mm256_set1_epi32(WEAVER_Q / 2);
   const __m256i recip = _mm256_set1_epi64x(1290168ULL);
   __m256i u, neg, p0, p1;
   uint32_t q[8];
@@ -202,11 +202,11 @@ static __m256i poly_compress9_quant16_avx(__m256i f0)
   return _mm256_set_m128i(hi, lo);
 }
 
-void poly_compress9_quant_avx(uint16_t t[KYBER_N], const poly *a)
+void poly_compress9_quant_avx(uint16_t t[WEAVER_N], const poly *a)
 {
   unsigned int i;
 
-  for(i = 0; i < KYBER_N; i += 16) {
+  for(i = 0; i < WEAVER_N; i += 16) {
     __m256i q = poly_compress9_quant16_avx(
         _mm256_load_si256((__m256i *)&a->coeffs[i]));
     _mm_storeu_si128((__m128i *)&t[i + 0], _mm256_castsi256_si128(q));
@@ -214,11 +214,11 @@ void poly_compress9_quant_avx(uint16_t t[KYBER_N], const poly *a)
   }
 }
 
-void poly_compress9_avx(uint8_t r[(KYBER_N * 9) / 8], const poly *a)
+void poly_compress9_avx(uint8_t r[(WEAVER_N * 9) / 8], const poly *a)
 {
   unsigned int i;
 
-  for(i = 0; i < KYBER_N / 16; i++) {
+  for(i = 0; i < WEAVER_N / 16; i++) {
     __m256i q = poly_compress9_quant16_avx(
         _mm256_load_si256((__m256i *)&a->coeffs[16 * i]));
     poly_compress9_pack8_si128(r + 18 * i + 0, _mm256_castsi256_si128(q));

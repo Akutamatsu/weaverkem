@@ -38,7 +38,7 @@ int main(int argc, char **argv)
   FILE *out;
   unsigned int i;
   uint8_t seed[SEEDLEN];
-  uint8_t coins[2 * KYBER_SYMBYTES];
+  uint8_t coins[2 * WEAVER_SYMBYTES];
   uint8_t pk[CRYPTO_PUBLICKEYBYTES];
   uint8_t sk[CRYPTO_SECRETKEYBYTES];
   uint8_t ct[CRYPTO_CIPHERTEXTBYTES];
@@ -66,7 +66,7 @@ int main(int argc, char **argv)
     randombytes(coins, sizeof(coins));
     crypto_kem_keypair_derand(pk, sk, coins);
 
-    randombytes(coins, KYBER_SYMBYTES);
+    randombytes(coins, WEAVER_SYMBYTES);
     crypto_kem_enc_derand(ct, ss, pk, coins);
 
     if(crypto_kem_dec(ss1, ct, sk) != 0 || memcmp(ss, ss1, CRYPTO_BYTES) != 0) {

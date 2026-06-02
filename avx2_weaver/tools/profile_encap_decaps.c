@@ -79,9 +79,9 @@ static uint64_t median_col(int slot)
 static void profile_indcpa_keypair_segments(uint64_t overhead)
 {
   unsigned int run;
-  uint8_t coins[KYBER_SYMBYTES];
-  uint8_t pk[KYBER_INDCPA_PUBLICKEYBYTES];
-  uint8_t sk[KYBER_INDCPA_SECRETKEYBYTES];
+  uint8_t coins[WEAVER_SYMBYTES];
+  uint8_t pk[WEAVER_INDCPA_PUBLICKEYBYTES];
+  uint8_t sk[WEAVER_INDCPA_SECRETKEYBYTES];
   uint64_t t0, t1;
 
   kp_oh = overhead;
@@ -99,9 +99,9 @@ static void profile_indcpa_keypair_segments(uint64_t overhead)
   printf("\n=== indcpa_keypair_derand segments (median cycles, in-tree hooks) ===\n");
   printf("  [0] buf + hash_g:          %8llu\n", (unsigned long long)median_col(0));
   printf("  [1] gen_a (gen_matrix):    %8llu\n", (unsigned long long)median_col(1));
-  printf("  [2] poly_getnoise x%d:     %8llu\n", KYBER_K, (unsigned long long)median_col(2));
+  printf("  [2] poly_getnoise x%d:     %8llu\n", WEAVER_K, (unsigned long long)median_col(2));
   printf("  [3] polyvec_ntt(sk):       %8llu\n", (unsigned long long)median_col(3));
-  printf("  [4] matvec basemul x%d:    %8llu\n", KYBER_K, (unsigned long long)median_col(4));
+  printf("  [4] matvec basemul x%d:    %8llu\n", WEAVER_K, (unsigned long long)median_col(4));
   printf("  [5] polyvec_invntt_tomont: %8llu\n", (unsigned long long)median_col(5));
   printf("  [6] polyvec_reduce:        %8llu\n", (unsigned long long)median_col(6));
   printf("  [7] pack_sk + pack_pk:     %8llu\n", (unsigned long long)median_col(7));
@@ -124,14 +124,14 @@ static void profile_kem_keypair(uint64_t overhead)
 {
   unsigned int run;
   uint64_t t_rng[NRUNS], t_indcpa[NRUNS], t_cca[NRUNS], t_kem[NRUNS];
-  uint8_t coins[2 * KYBER_SYMBYTES];
+  uint8_t coins[2 * WEAVER_SYMBYTES];
   uint8_t pk[CRYPTO_PUBLICKEYBYTES];
   uint8_t sk[CRYPTO_SECRETKEYBYTES];
   uint64_t t0, t1, t2;
 
   for(run = 0; run < NWARM + NRUNS; run++) {
     t0 = cpucycles();
-    randombytes(coins, 2 * KYBER_SYMBYTES);
+    randombytes(coins, 2 * WEAVER_SYMBYTES);
     t1 = cpucycles();
     indcpa_keypair_derand(pk, sk, coins);
     t2 = cpucycles();
@@ -140,13 +140,13 @@ static void profile_kem_keypair(uint64_t overhead)
       t_indcpa[run - NWARM] = t2 - t1 - overhead;
     }
 
-    randombytes(coins, 2 * KYBER_SYMBYTES);
+    randombytes(coins, 2 * WEAVER_SYMBYTES);
     indcpa_keypair_derand(pk, sk, coins);
     t0 = cpucycles();
-    memcpy(sk + KYBER_INDCPA_SECRETKEYBYTES, pk, KYBER_PUBLICKEYBYTES);
-    hash_h(sk + KYBER_SECRETKEYBYTES - 2 * KYBER_SYMBYTES, pk, KYBER_PUBLICKEYBYTES);
-    memcpy(sk + KYBER_SECRETKEYBYTES - KYBER_SYMBYTES, coins + KYBER_SYMBYTES,
-           KYBER_SYMBYTES);
+    memcpy(sk + WEAVER_INDCPA_SECRETKEYBYTES, pk, WEAVER_PUBLICKEYBYTES);
+    hash_h(sk + WEAVER_SECRETKEYBYTES - 2 * WEAVER_SYMBYTES, pk, WEAVER_PUBLICKEYBYTES);
+    memcpy(sk + WEAVER_SECRETKEYBYTES - WEAVER_SYMBYTES, coins + WEAVER_SYMBYTES,
+           WEAVER_SYMBYTES);
     t1 = cpucycles();
     if(run >= NWARM)
       t_cca[run - NWARM] = t1 - t0 - overhead;
@@ -159,7 +159,7 @@ static void profile_kem_keypair(uint64_t overhead)
   }
 
   printf("\n=== crypto_kem_keypair (median cycles) ===\n");
-  printf("  randombytes(%d):           %8llu\n", 2 * KYBER_SYMBYTES,
+  printf("  randombytes(%d):           %8llu\n", 2 * WEAVER_SYMBYTES,
          (unsigned long long)median(t_rng, NRUNS));
   printf("  indcpa_keypair_derand:     %8llu\n", (unsigned long long)median(t_indcpa, NRUNS));
   printf("  rng + indcpa (medians):    %8llu\n",
@@ -173,19 +173,19 @@ static void profile_kem_keypair(uint64_t overhead)
 }
 
 static void profile_indcpa_enc(uint64_t overhead,
-                               const uint8_t m[KYBER_INDCPA_MSGBYTES],
-                               const uint8_t pk[KYBER_INDCPA_PUBLICKEYBYTES],
-                               const uint8_t coins[KYBER_SYMBYTES])
+                               const uint8_t m[WEAVER_INDCPA_MSGBYTES],
+                               const uint8_t pk[WEAVER_INDCPA_PUBLICKEYBYTES],
+                               const uint8_t coins[WEAVER_SYMBYTES])
 {
   unsigned int run, i;
   uint64_t t_parse[NRUNS], t_invq[NRUNS], t_pkntt[NRUNS], t_msg[NRUNS];
   uint64_t t_gen[NRUNS], t_noise[NRUNS], t_spntt[NRUNS], t_mat[NRUNS];
   uint64_t t_invntt[NRUNS], t_pack[NRUNS], t_total[NRUNS];
-  uint8_t seed[KYBER_SYMBYTES];
+  uint8_t seed[WEAVER_SYMBYTES];
   uint8_t nonce;
-  polyvec sp, pkpv, at[KYBER_K], b;
+  polyvec sp, pkpv, at[WEAVER_K], b;
   poly v, k;
-  uint8_t c[KYBER_INDCPA_BYTES];
+  uint8_t c[WEAVER_INDCPA_BYTES];
   uint64_t t0, t1;
 
   for(run = 0; run < NWARM + NRUNS; run++) {
@@ -193,7 +193,7 @@ static void profile_indcpa_enc(uint64_t overhead,
 
     t0 = cpucycles();
     polyvec_fromcompressed_pk(&pkpv, pk);
-    memcpy(seed, pk + KYBER_PK_POLYVECBYTES, KYBER_SYMBYTES);
+    memcpy(seed, pk + WEAVER_PK_POLYVECBYTES, WEAVER_SYMBYTES);
     t1 = cpucycles();
     if(run >= NWARM) t_parse[run - NWARM] = t1 - t0 - overhead;
 
@@ -219,7 +219,7 @@ static void profile_indcpa_enc(uint64_t overhead,
 
     memset(&sp, 0, sizeof(sp));
     t0 = cpucycles();
-    for(i = 0; i < KYBER_K; i++)
+    for(i = 0; i < WEAVER_K; i++)
       poly_getnoise_eta1(&sp.vec[i], coins, nonce++);
     t1 = cpucycles();
     if(run >= NWARM) t_noise[run - NWARM] = t1 - t0 - overhead;
@@ -232,7 +232,7 @@ static void profile_indcpa_enc(uint64_t overhead,
     memset(&b, 0, sizeof(b));
     memset(&v, 0, sizeof(v));
     t0 = cpucycles();
-    for(i = 0; i < KYBER_K; i++)
+    for(i = 0; i < WEAVER_K; i++)
       polyvec_basemul_acc_montgomery(&b.vec[i], &at[i], &sp);
     polyvec_basemul_acc_montgomery(&v, &pkpv, &sp);
     t1 = cpucycles();
@@ -249,7 +249,7 @@ static void profile_indcpa_enc(uint64_t overhead,
 
     t0 = cpucycles();
     polyvec_compress(c, &b);
-    poly_compress(c + KYBER_POLYVECCOMPRESSEDBYTES, &v);
+    poly_compress(c + WEAVER_POLYVECCOMPRESSEDBYTES, &v);
     t1 = cpucycles();
     if(run >= NWARM) t_pack[run - NWARM] = t1 - t0 - overhead;
 
@@ -265,7 +265,7 @@ static void profile_indcpa_enc(uint64_t overhead,
   printf("  polyvec_ntt(pk):           %8llu\n", (unsigned long long)median(t_pkntt, NRUNS));
   printf("  poly_frommsg (BCH encode): %8llu  <-- Weaver-only\n", (unsigned long long)median(t_msg, NRUNS));
   printf("  gen_matrix^T:              %8llu\n", (unsigned long long)median(t_gen, NRUNS));
-  printf("  poly_getnoise x%d:         %8llu\n", KYBER_K, (unsigned long long)median(t_noise, NRUNS));
+  printf("  poly_getnoise x%d:         %8llu\n", WEAVER_K, (unsigned long long)median(t_noise, NRUNS));
   printf("  polyvec_ntt(sp):           %8llu\n", (unsigned long long)median(t_spntt, NRUNS));
   printf("  basemul_acc (b+v):         %8llu\n", (unsigned long long)median(t_mat, NRUNS));
   printf("  invntt+add+reduce:         %8llu\n", (unsigned long long)median(t_invntt, NRUNS));
@@ -274,20 +274,20 @@ static void profile_indcpa_enc(uint64_t overhead,
 }
 
 static void profile_indcpa_dec(uint64_t overhead,
-                               const uint8_t c[KYBER_INDCPA_BYTES],
-                               const uint8_t sk[KYBER_INDCPA_SECRETKEYBYTES])
+                               const uint8_t c[WEAVER_INDCPA_BYTES],
+                               const uint8_t sk[WEAVER_INDCPA_SECRETKEYBYTES])
 {
   unsigned int run;
   uint64_t t_unpack[NRUNS], t_nttmul[NRUNS], t_msgdec[NRUNS], t_total[NRUNS];
   polyvec b, skpv;
   poly v, mp;
-  uint8_t m[KYBER_INDCPA_MSGBYTES];
+  uint8_t m[WEAVER_INDCPA_MSGBYTES];
   uint64_t t0, t1;
 
   for(run = 0; run < NWARM + NRUNS; run++) {
     t0 = cpucycles();
     polyvec_decompress(&b, c);
-    poly_decompress(&v, c + KYBER_POLYVECCOMPRESSEDBYTES);
+    poly_decompress(&v, c + WEAVER_POLYVECCOMPRESSEDBYTES);
     polyvec_frombytes(&skpv, sk);
     t1 = cpucycles();
     if(run >= NWARM) t_unpack[run - NWARM] = t1 - t0 - overhead;
@@ -325,40 +325,40 @@ static void profile_kem_enc(uint64_t overhead,
   unsigned int run;
   uint64_t t_rng[NRUNS], t_hashh[NRUNS], t_shake[NRUNS], t_pke[NRUNS];
   uint64_t t_derand[NRUNS], t_enc[NRUNS];
-  uint8_t coins[KYBER_INDCPA_MSGBYTES];
+  uint8_t coins[WEAVER_INDCPA_MSGBYTES];
   uint8_t ct[CRYPTO_CIPHERTEXTBYTES];
   uint8_t ss[CRYPTO_BYTES];
-  uint8_t buf[KYBER_INDCPA_MSGBYTES + KYBER_SYMBYTES];
-  uint8_t kr[KYBER_SSBYTES + KYBER_SYMBYTES];
+  uint8_t buf[WEAVER_INDCPA_MSGBYTES + WEAVER_SYMBYTES];
+  uint8_t kr[WEAVER_SSBYTES + WEAVER_SYMBYTES];
   uint64_t t0, t1;
 
   memset(coins, 0x11, sizeof(coins));
-  memcpy(buf, coins, KYBER_INDCPA_MSGBYTES);
+  memcpy(buf, coins, WEAVER_INDCPA_MSGBYTES);
 
   for(run = 0; run < NWARM + NRUNS; run++) {
     t0 = cpucycles();
-    randombytes(coins, KYBER_INDCPA_MSGBYTES);
+    randombytes(coins, WEAVER_INDCPA_MSGBYTES);
     t1 = cpucycles();
     if(run >= NWARM) t_rng[run - NWARM] = t1 - t0 - overhead;
 
-    memcpy(buf, coins, KYBER_INDCPA_MSGBYTES);
+    memcpy(buf, coins, WEAVER_INDCPA_MSGBYTES);
     t0 = cpucycles();
-    hash_h(buf + KYBER_INDCPA_MSGBYTES, pk, KYBER_PUBLICKEYBYTES);
+    hash_h(buf + WEAVER_INDCPA_MSGBYTES, pk, WEAVER_PUBLICKEYBYTES);
     t1 = cpucycles();
     if(run >= NWARM) t_hashh[run - NWARM] = t1 - t0 - overhead;
 
-    memcpy(buf, coins, KYBER_INDCPA_MSGBYTES);
-    hash_h(buf + KYBER_INDCPA_MSGBYTES, pk, KYBER_PUBLICKEYBYTES);
+    memcpy(buf, coins, WEAVER_INDCPA_MSGBYTES);
+    hash_h(buf + WEAVER_INDCPA_MSGBYTES, pk, WEAVER_PUBLICKEYBYTES);
     t0 = cpucycles();
     shake256(kr, sizeof(kr), buf, sizeof(buf));
     t1 = cpucycles();
     if(run >= NWARM) t_shake[run - NWARM] = t1 - t0 - overhead;
 
-    memcpy(buf, coins, KYBER_INDCPA_MSGBYTES);
-    hash_h(buf + KYBER_INDCPA_MSGBYTES, pk, KYBER_PUBLICKEYBYTES);
+    memcpy(buf, coins, WEAVER_INDCPA_MSGBYTES);
+    hash_h(buf + WEAVER_INDCPA_MSGBYTES, pk, WEAVER_PUBLICKEYBYTES);
     shake256(kr, sizeof(kr), buf, sizeof(buf));
     t0 = cpucycles();
-    indcpa_enc(ct, buf, pk, kr + KYBER_SSBYTES);
+    indcpa_enc(ct, buf, pk, kr + WEAVER_SSBYTES);
     t1 = cpucycles();
     if(run >= NWARM) t_pke[run - NWARM] = t1 - t0 - overhead;
 
@@ -375,7 +375,7 @@ static void profile_kem_enc(uint64_t overhead,
 
   printf("\n=== crypto_kem_enc segments (median cycles) ===\n");
   printf("  randombytes(%d):           %8llu  (only in kem_enc)\n",
-         KYBER_INDCPA_MSGBYTES, (unsigned long long)median(t_rng, NRUNS));
+         WEAVER_INDCPA_MSGBYTES, (unsigned long long)median(t_rng, NRUNS));
   printf("  hash_h(pk):                %8llu\n", (unsigned long long)median(t_hashh, NRUNS));
   printf("  shake256(G):               %8llu  (ML-KEM uses hash_g)\n",
          (unsigned long long)median(t_shake, NRUNS));
@@ -395,11 +395,11 @@ static void profile_kem_dec(uint64_t overhead,
   unsigned int run;
   uint64_t t_dec[NRUNS], t_shake[NRUNS], t_reenc[NRUNS], t_verify[NRUNS];
   uint64_t t_total[NRUNS];
-  uint8_t buf[KYBER_INDCPA_MSGBYTES + KYBER_SYMBYTES];
-  uint8_t kr[KYBER_SSBYTES + KYBER_SYMBYTES];
+  uint8_t buf[WEAVER_INDCPA_MSGBYTES + WEAVER_SYMBYTES];
+  uint8_t kr[WEAVER_SSBYTES + WEAVER_SYMBYTES];
   uint8_t cmp[CRYPTO_CIPHERTEXTBYTES];
   uint8_t ss[CRYPTO_BYTES];
-  const uint8_t *pk = sk + KYBER_INDCPA_SECRETKEYBYTES;
+  const uint8_t *pk = sk + WEAVER_INDCPA_SECRETKEYBYTES;
   int fail;
   uint64_t t0, t1;
 
@@ -410,31 +410,31 @@ static void profile_kem_dec(uint64_t overhead,
     if(run >= NWARM) t_dec[run - NWARM] = t1 - t0 - overhead;
 
     indcpa_dec(buf, ct, sk);
-    memcpy(buf + KYBER_INDCPA_MSGBYTES,
-           sk + KYBER_SECRETKEYBYTES - 2 * KYBER_SYMBYTES, KYBER_SYMBYTES);
+    memcpy(buf + WEAVER_INDCPA_MSGBYTES,
+           sk + WEAVER_SECRETKEYBYTES - 2 * WEAVER_SYMBYTES, WEAVER_SYMBYTES);
     t0 = cpucycles();
     shake256(kr, sizeof(kr), buf, sizeof(buf));
     t1 = cpucycles();
     if(run >= NWARM) t_shake[run - NWARM] = t1 - t0 - overhead;
 
     indcpa_dec(buf, ct, sk);
-    memcpy(buf + KYBER_INDCPA_MSGBYTES,
-           sk + KYBER_SECRETKEYBYTES - 2 * KYBER_SYMBYTES, KYBER_SYMBYTES);
+    memcpy(buf + WEAVER_INDCPA_MSGBYTES,
+           sk + WEAVER_SECRETKEYBYTES - 2 * WEAVER_SYMBYTES, WEAVER_SYMBYTES);
     shake256(kr, sizeof(kr), buf, sizeof(buf));
     t0 = cpucycles();
-    indcpa_enc(cmp, buf, pk, kr + KYBER_SSBYTES);
+    indcpa_enc(cmp, buf, pk, kr + WEAVER_SSBYTES);
     t1 = cpucycles();
     if(run >= NWARM) t_reenc[run - NWARM] = t1 - t0 - overhead;
 
     indcpa_dec(buf, ct, sk);
-    memcpy(buf + KYBER_INDCPA_MSGBYTES,
-           sk + KYBER_SECRETKEYBYTES - 2 * KYBER_SYMBYTES, KYBER_SYMBYTES);
+    memcpy(buf + WEAVER_INDCPA_MSGBYTES,
+           sk + WEAVER_SECRETKEYBYTES - 2 * WEAVER_SYMBYTES, WEAVER_SYMBYTES);
     shake256(kr, sizeof(kr), buf, sizeof(buf));
-    indcpa_enc(cmp, buf, pk, kr + KYBER_SSBYTES);
+    indcpa_enc(cmp, buf, pk, kr + WEAVER_SSBYTES);
     t0 = cpucycles();
-    fail = verify(ct, cmp, KYBER_CIPHERTEXTBYTES);
-    rkprf(ss, sk + KYBER_SECRETKEYBYTES - KYBER_SYMBYTES, ct);
-    cmov(ss, kr, KYBER_SSBYTES, !fail);
+    fail = verify(ct, cmp, WEAVER_CIPHERTEXTBYTES);
+    rkprf(ss, sk + WEAVER_SECRETKEYBYTES - WEAVER_SYMBYTES, ct);
+    cmov(ss, kr, WEAVER_SSBYTES, !fail);
     t1 = cpucycles();
     if(run >= NWARM) t_verify[run - NWARM] = t1 - t0 - overhead;
 
@@ -463,18 +463,18 @@ int main(void)
   uint8_t sk[CRYPTO_SECRETKEYBYTES];
   uint8_t ct[CRYPTO_CIPHERTEXTBYTES];
   uint8_t ss[CRYPTO_BYTES];
-  uint8_t coins[KYBER_SYMBYTES];
-  uint8_t m[KYBER_INDCPA_MSGBYTES];
+  uint8_t coins[WEAVER_SYMBYTES];
+  uint8_t m[WEAVER_INDCPA_MSGBYTES];
 
   printf("profile_encap_decaps WEAVER_MODE=%d (K=%d N=%d, NRUNS=%d)\n",
-         WEAVER_MODE, KYBER_K, KYBER_N, NRUNS);
+         WEAVER_MODE, WEAVER_K, WEAVER_N, NRUNS);
 
   profile_kem_keypair(overhead);
   profile_indcpa_keypair_segments(overhead);
 
   crypto_kem_keypair(pk, sk);
   randombytes(m, sizeof(m));
-  randombytes(coins, KYBER_SYMBYTES);
+  randombytes(coins, WEAVER_SYMBYTES);
   crypto_kem_enc(ct, ss, pk);
 
   profile_indcpa_enc(overhead, m, pk, coins);

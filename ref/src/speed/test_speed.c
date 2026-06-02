@@ -21,7 +21,7 @@
 #define NTESTS 10000
 
 uint64_t t[NTESTS];
-uint8_t seed[KYBER_SYMBYTES] = {0};
+uint8_t seed[WEAVER_SYMBYTES] = {0};
 
 // === [新增] CSV 后台引擎，排序算法 ===
 static int cmp_uint64(const void *a, const void *b) {
@@ -69,12 +69,12 @@ int main()
   unsigned char key[CRYPTO_BYTES] = {0};
   uint8_t garbage_buf[64] = {0};
   
-  polyvec matrix[KYBER_K], s, e;
+  polyvec matrix[WEAVER_K], s, e;
   poly ap;
-  uint8_t msg[KYBER_INDCPA_MSGBYTES] = {0};
+  uint8_t msg[WEAVER_INDCPA_MSGBYTES] = {0};
   uint8_t ecc_buf[128] = {0}; // BCH 校验位缓冲
-  uint8_t pcomp[KYBER_POLYCOMPRESSEDBYTES] = {0};
-  uint8_t pvcomp[KYBER_POLYVECCOMPRESSEDBYTES] = {0};
+  uint8_t pcomp[WEAVER_POLYCOMPRESSEDBYTES] = {0};
+  uint8_t pvcomp[WEAVER_POLYVECCOMPRESSEDBYTES] = {0};
 
   char filename[128];
   snprintf(filename, sizeof(filename), "%s_performance.csv", CRYPTO_ALGNAME);
@@ -91,21 +91,21 @@ int main()
   
   for(i=0;i<NTESTS;i++) {
     t[i] = cpucycles();
-    randombytes(key, KYBER_SYMBYTES);
+    randombytes(key, WEAVER_SYMBYTES);
   }
   PRINT_AND_CSV("randombytes: ", t, NTESTS);
 
   for(i=0;i<NTESTS;i++) {
     t[i] = cpucycles();
     // 模拟 KEM Encaps 中的 hash_h (对公钥进行 SHA3-256)
-    hash_h(garbage_buf, pk, KYBER_PUBLICKEYBYTES);
+    hash_h(garbage_buf, pk, WEAVER_PUBLICKEYBYTES);
   }
   PRINT_AND_CSV("hash_h (PK): ", t, NTESTS);
 
   for(i=0;i<NTESTS;i++) {
     t[i] = cpucycles();
     // 模拟 KEM Encaps 中的 hash_g (SHA3-512)
-    hash_g(garbage_buf, key, 2*KYBER_SYMBYTES);
+    hash_g(garbage_buf, key, 2*WEAVER_SYMBYTES);
   }
   PRINT_AND_CSV("hash_g: ", t, NTESTS);
   

@@ -81,15 +81,15 @@ static uint8_t  pk_buf[CRYPTO_PUBLICKEYBYTES];
 static uint8_t  sk_buf[CRYPTO_SECRETKEYBYTES];
 static uint8_t  ct_buf[CRYPTO_CIPHERTEXTBYTES];
 static uint8_t  key_buf[CRYPTO_BYTES];
-static uint8_t  coins_buf[KYBER_SYMBYTES];
-static uint8_t  seed_buf[KYBER_SYMBYTES];
-static uint8_t  msg_buf[KYBER_INDCPA_MSGBYTES];  /* 消息缓冲区 */
+static uint8_t  coins_buf[WEAVER_SYMBYTES];
+static uint8_t  seed_buf[WEAVER_SYMBYTES];
+static uint8_t  msg_buf[WEAVER_INDCPA_MSGBYTES];  /* 消息缓冲区 */
 
 static polyvec   g_pkpv_old;     /* 旧方案：decompress 后的 pk */
 static polyvec   g_pkpv_new;     /* 新方案：invq 提升后的 pk */
-static polyvec   g_matrix[KYBER_K];
+static polyvec   g_matrix[WEAVER_K];
 static poly      g_sp, g_ap;
-static polyvec   g_at[KYBER_K], g_b;
+static polyvec   g_at[WEAVER_K], g_b;
 static poly      g_v, g_k;
 static uint8_t   g_nonce;
 
@@ -133,9 +133,9 @@ static void bench_decaps(void) {
  */
 // static void bench_encaps_old_sim(void) {
 //     unsigned int i;
-//     uint8_t seed[KYBER_SYMBYTES];
+//     uint8_t seed[WEAVER_SYMBYTES];
 //     uint8_t nonce = 0;
-//     polyvec sp = {0}, pkpv = {0}, at[KYBER_K] = {0}, b = {0};
+//     polyvec sp = {0}, pkpv = {0}, at[WEAVER_K] = {0}, b = {0};
 //     poly v = {0}, k = {0};
 
 //     /* ★ 旧方案: unpack_pk → decompress_pk → NTT (不经过 Inv_q) */
@@ -148,12 +148,12 @@ static void bench_decaps(void) {
 
 //     gen_at(at, seed);
 
-//     for(i = 0; i < KYBER_K; i++)
+//     for(i = 0; i < WEAVER_K; i++)
 //         poly_getnoise_eta1(sp.vec + i, coins_buf, nonce++);
 
 //     polyvec_ntt(&sp);
 
-//     for(i = 0; i < KYBER_K; i++)
+//     for(i = 0; i < WEAVER_K; i++)
 //         polyvec_basemul_acc_montgomery(&b.vec[i], &at[i], &sp);
 
 //     polyvec_basemul_acc_montgomery(&v, &pkpv, &sp);
@@ -170,9 +170,9 @@ static void bench_decaps(void) {
 
 static void indcpa_enc_old_sim(uint8_t *c, const uint8_t *m, const uint8_t *pk, const uint8_t *coins) {
     unsigned int i;
-    uint8_t seed[KYBER_SYMBYTES];
+    uint8_t seed[WEAVER_SYMBYTES];
     uint8_t nonce = 0;
-    polyvec sp = {0}, pkpv = {0}, at[KYBER_K] = {0}, b = {0};
+    polyvec sp = {0}, pkpv = {0}, at[WEAVER_K] = {0}, b = {0};
     poly v = {0}, k = {0};
 
     /* ★ 核心：使用旧方案的解压公钥逻辑 */
@@ -184,12 +184,12 @@ static void indcpa_enc_old_sim(uint8_t *c, const uint8_t *m, const uint8_t *pk, 
     poly_frommsg(&k, m);
     gen_at(at, seed);
 
-    for(i = 0; i < KYBER_K; i++)
+    for(i = 0; i < WEAVER_K; i++)
         poly_getnoise_eta1(sp.vec + i, coins, nonce++);
 
     polyvec_ntt(&sp);
 
-    for(i = 0; i < KYBER_K; i++)
+    for(i = 0; i < WEAVER_K; i++)
         polyvec_basemul_acc_montgomery(&b.vec[i], &at[i], &sp);
 
     polyvec_basemul_acc_montgomery(&v, &pkpv, &sp);
@@ -205,25 +205,25 @@ static void indcpa_enc_old_sim(uint8_t *c, const uint8_t *m, const uint8_t *pk, 
 }
 
 static void bench_encaps_old_sim(void) {
-    uint8_t buf[KYBER_INDCPA_MSGBYTES + KYBER_SYMBYTES];
+    uint8_t buf[WEAVER_INDCPA_MSGBYTES + WEAVER_SYMBYTES];
     /* kr 包含 shared-key material || encryption coins */
-    uint8_t kr[KYBER_SSBYTES + KYBER_SYMBYTES];
+    uint8_t kr[WEAVER_SSBYTES + WEAVER_SYMBYTES];
 
     /* 1. 为了绝对的 A/B 测试控制变量，这里不调用 randombytes，
      * 而是直接使用全局提前准备好的明文数据 coins_buf */
-    randombytes(buf, KYBER_INDCPA_MSGBYTES);
+    randombytes(buf, WEAVER_INDCPA_MSGBYTES);
 
     /* 2. 附加公钥哈希 (多目标攻击防御) */
-    hash_h(buf + KYBER_INDCPA_MSGBYTES, pk_buf, KYBER_PUBLICKEYBYTES);
+    hash_h(buf + WEAVER_INDCPA_MSGBYTES, pk_buf, WEAVER_PUBLICKEYBYTES);
 
     /* 3. 使用定制的 shake256 派生 kr */
     shake256(kr, sizeof(kr), buf, sizeof(buf));
 
     /* 4. ★ 核心替换：调用我们手写的“旧方案”底层加密 */
-    indcpa_enc_old_sim(ct_buf, buf, pk_buf, kr + KYBER_SSBYTES);
+    indcpa_enc_old_sim(ct_buf, buf, pk_buf, kr + WEAVER_SSBYTES);
 
     /* 5. 提取最终的 shared secret */
-    memcpy(key_buf, kr, KYBER_SSBYTES);
+    memcpy(key_buf, kr, WEAVER_SSBYTES);
 }
 
 /* * 阶段4b: 旧方案完整解封装模拟 (Decaps_Old_Sim)
@@ -232,32 +232,32 @@ static void bench_encaps_old_sim(void) {
 static void bench_decaps_old_sim(void) {
     int fail;
     /* 100% 同步原函数的缓冲区大小 */
-    uint8_t buf[KYBER_INDCPA_MSGBYTES + KYBER_SYMBYTES];
-    uint8_t kr[KYBER_SSBYTES + KYBER_SYMBYTES];
-    uint8_t cmp[KYBER_CIPHERTEXTBYTES];
-    const uint8_t *pk = sk_buf + KYBER_INDCPA_SECRETKEYBYTES;
+    uint8_t buf[WEAVER_INDCPA_MSGBYTES + WEAVER_SYMBYTES];
+    uint8_t kr[WEAVER_SSBYTES + WEAVER_SYMBYTES];
+    uint8_t cmp[WEAVER_CIPHERTEXTBYTES];
+    const uint8_t *pk = sk_buf + WEAVER_INDCPA_SECRETKEYBYTES;
 
     /* 1. 底层解密，获得候选明文 */
     indcpa_dec(buf, ct_buf, sk_buf);
 
     /* 2. 附加公钥哈希 (多目标攻击防御) */
-    memcpy(buf + KYBER_INDCPA_MSGBYTES, sk_buf + KYBER_SECRETKEYBYTES - 2*KYBER_SYMBYTES, KYBER_SYMBYTES);
+    memcpy(buf + WEAVER_INDCPA_MSGBYTES, sk_buf + WEAVER_SECRETKEYBYTES - 2*WEAVER_SYMBYTES, WEAVER_SYMBYTES);
     
     /* 3. 使用定制的 shake256 派生 */
     shake256(kr, sizeof(kr), buf, sizeof(buf));
 
     /* 4. ★ 核心替换：调用我们手写的“旧方案”进行重加密 */
-    /* 注意：这里的随机数指针偏移量是 KYBER_SSBYTES，保持和原函数一致 */
-    indcpa_enc_old_sim(cmp, buf, pk, kr + KYBER_SSBYTES);
+    /* 注意：这里的随机数指针偏移量是 WEAVER_SSBYTES，保持和原函数一致 */
+    indcpa_enc_old_sim(cmp, buf, pk, kr + WEAVER_SSBYTES);
 
     /* 5. 密文比对验证 */
-    fail = verify(ct_buf, cmp, KYBER_CIPHERTEXTBYTES);
+    fail = verify(ct_buf, cmp, WEAVER_CIPHERTEXTBYTES);
 
     /* 6. 计算隐式拒绝密钥 (直接写入目标测试缓冲区 key_buf) */
-    rkprf(key_buf, sk_buf + KYBER_SECRETKEYBYTES - KYBER_SYMBYTES, ct_buf);
+    rkprf(key_buf, sk_buf + WEAVER_SECRETKEYBYTES - WEAVER_SYMBYTES, ct_buf);
 
     /* 7. 如果比对成功(没有fail)，则把真实的共享密钥拷贝给 key_buf */
-    cmov(key_buf, kr, KYBER_SSBYTES, !fail);
+    cmov(key_buf, kr, WEAVER_SSBYTES, !fail);
 }
 
 /* ====== 表格输出 ====== */
@@ -311,9 +311,9 @@ int main()
     invq_global_init();
 
     /* 准备测试数据 */
-    randombytes(coins_buf, KYBER_SYMBYTES);
-    memset(seed_buf, 0x42, KYBER_SYMBYTES);
-    memset(msg_buf, 0x01, KYBER_INDCPA_MSGBYTES);
+    randombytes(coins_buf, WEAVER_SYMBYTES);
+    memset(seed_buf, 0x42, WEAVER_SYMBYTES);
+    memset(msg_buf, 0x01, WEAVER_INDCPA_MSGBYTES);
     g_nonce = 0;
 
     /* 先生成一对有效密钥 */

@@ -4,19 +4,19 @@
 #include <stdint.h>
 #include "params.h"
 
-#define zetas KYBER_NAMESPACE(_zetas)
+#define zetas WEAVER_NAMESPACE(_zetas)
 extern const int16_t zetas[128];
 
-#define zetas_inv KYBER_NAMESPACE(_zetas_inv)
+#define zetas_inv WEAVER_NAMESPACE(_zetas_inv)
 extern const int16_t zetas_inv[128];
 
-#define ntt KYBER_NAMESPACE(_ntt)
-void ntt(int16_t poly[KYBER_N]);
+#define ntt WEAVER_NAMESPACE(_ntt)
+void ntt(int16_t poly[WEAVER_N]);
 
-#define invntt KYBER_NAMESPACE(_invntt)
-void invntt(int16_t poly[KYBER_N]);
+#define invntt WEAVER_NAMESPACE(_invntt)
+void invntt(int16_t poly[WEAVER_N]);
 
-#define basemul KYBER_NAMESPACE(_basemul)
+#define basemul WEAVER_NAMESPACE(_basemul)
 void basemul(int16_t r[2],
              const int16_t a[2],
              const int16_t b[2],

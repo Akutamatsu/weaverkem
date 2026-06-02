@@ -66,24 +66,24 @@ static void call_avx_basemul(int16_t *r, const int16_t *a, const int16_t *b)
 #endif
 
 #if WEAVER_MODE == 5
-#define ref_ntt KYBER_NAMESPACE(_ntt)
-#define ref_invntt KYBER_NAMESPACE(_invntt)
-#define ref_zetas KYBER_NAMESPACE(_zetas)
-#define ref_barrett_reduce KYBER_NAMESPACE(_barrett_reduce)
-#define ref_montgomery_reduce KYBER_NAMESPACE(_montgomery_reduce)
+#define ref_ntt WEAVER_NAMESPACE(_ntt)
+#define ref_invntt WEAVER_NAMESPACE(_invntt)
+#define ref_zetas WEAVER_NAMESPACE(_zetas)
+#define ref_barrett_reduce WEAVER_NAMESPACE(_barrett_reduce)
+#define ref_montgomery_reduce WEAVER_NAMESPACE(_montgomery_reduce)
 #else
 /* Build an in-process reference implementation under a separate namespace. */
-#undef KYBER_NAMESPACE
-#define KYBER_NAMESPACE(s) refcmp##s
+#undef WEAVER_NAMESPACE
+#define WEAVER_NAMESPACE(s) refcmp##s
 #include "reduce.c"
 #include "ntt.c"
 
-#define ref_ntt KYBER_NAMESPACE(_ntt)
-#define ref_invntt KYBER_NAMESPACE(_invntt)
-#define ref_basemul KYBER_NAMESPACE(_basemul)
-#define ref_zetas KYBER_NAMESPACE(_zetas)
-#define ref_barrett_reduce KYBER_NAMESPACE(_barrett_reduce)
-#define ref_montgomery_reduce KYBER_NAMESPACE(_montgomery_reduce)
+#define ref_ntt WEAVER_NAMESPACE(_ntt)
+#define ref_invntt WEAVER_NAMESPACE(_invntt)
+#define ref_basemul WEAVER_NAMESPACE(_basemul)
+#define ref_zetas WEAVER_NAMESPACE(_zetas)
+#define ref_barrett_reduce WEAVER_NAMESPACE(_barrett_reduce)
+#define ref_montgomery_reduce WEAVER_NAMESPACE(_montgomery_reduce)
 #endif
 
 static uint32_t rng_state = 1;
@@ -109,8 +109,8 @@ static int first_diff(const int16_t *a, const int16_t *b, size_t n)
 
 static int modq(int16_t x)
 {
-  int v = (int)x % KYBER_Q;
-  if(v < 0) v += KYBER_Q;
+  int v = (int)x % WEAVER_Q;
+  if(v < 0) v += WEAVER_Q;
   return v;
 }
 
@@ -126,8 +126,8 @@ static int first_diff_modq(const int16_t *a, const int16_t *b, size_t n)
 static void fill_poly(int16_t *r)
 {
   size_t i;
-  for(i = 0; i < KYBER_N; i++) {
-    r[i] = (int16_t)(xorshift32() % KYBER_Q);
+  for(i = 0; i < WEAVER_N; i++) {
+    r[i] = (int16_t)(xorshift32() % WEAVER_Q);
   }
 }
 
@@ -137,15 +137,15 @@ int main(void)
   int idx;
   int errors = 0;
   int fail_invntt = 0, fail_acc = 0, fail_fullmul = 0, fail_reduce = 0, fail_tomont = 0;
-  int16_t a_ref[KYBER_N] __attribute__((aligned(32)));
-  int16_t a_avx[KYBER_N] __attribute__((aligned(32)));
-  int16_t b_ref[KYBER_N] __attribute__((aligned(32)));
-  int16_t b_avx[KYBER_N] __attribute__((aligned(32)));
-  int16_t r_ref[KYBER_N] __attribute__((aligned(32)));
-  int16_t r_avx[KYBER_N] __attribute__((aligned(32)));
-  const int16_t f = (1ULL << 32) % KYBER_Q;
+  int16_t a_ref[WEAVER_N] __attribute__((aligned(32)));
+  int16_t a_avx[WEAVER_N] __attribute__((aligned(32)));
+  int16_t b_ref[WEAVER_N] __attribute__((aligned(32)));
+  int16_t b_avx[WEAVER_N] __attribute__((aligned(32)));
+  int16_t r_ref[WEAVER_N] __attribute__((aligned(32)));
+  int16_t r_avx[WEAVER_N] __attribute__((aligned(32)));
+  const int16_t f = (1ULL << 32) % WEAVER_Q;
 
-  printf("compare_ntt_avx: mode=%d n=%d k=%d\n", WEAVER_MODE, KYBER_N, KYBER_K);
+  printf("compare_ntt_avx: mode=%d n=%d k=%d\n", WEAVER_MODE, WEAVER_N, WEAVER_K);
 
 #if WEAVER_MODE != 5
   printf("SKIP ntt (per-coeff): AVX output is shuffled; use acc_montgomery / full_mul instead\n");
@@ -159,7 +159,7 @@ int main(void)
     call_avx_ntt(a_avx);
     ref_invntt(a_ref);
     call_avx_invntt(a_avx);
-    idx = first_diff_modq(a_ref, a_avx, KYBER_N);
+    idx = first_diff_modq(a_ref, a_avx, WEAVER_N);
     if(idx >= 0) {
       printf("FAIL invntt at test %u idx %d: ref=%d avx=%d\n", t, idx, a_ref[idx], a_avx[idx]);
       errors++;
@@ -182,7 +182,7 @@ int main(void)
     call_avx_ntt(b_avx);
     avx_nttunpack(a_avx, avx_qdata);
 
-    for(unsigned int i = 0; i < KYBER_N / 4; i++) {
+    for(unsigned int i = 0; i < WEAVER_N / 4; i++) {
       ref_basemul(&r_ref[4 * i], &a_ref[4 * i], &b_ref[4 * i], ref_zetas[64 + i]);
       ref_basemul(&r_ref[4 * i + 2], &a_ref[4 * i + 2], &b_ref[4 * i + 2], -ref_zetas[64 + i]);
     }
@@ -191,7 +191,7 @@ int main(void)
     call_avx_basemul(r_avx, a_avx, b_avx);
     call_avx_invntt(r_avx);
 
-    idx = first_diff_modq(r_ref, r_avx, KYBER_N);
+    idx = first_diff_modq(r_ref, r_avx, WEAVER_N);
     if(idx >= 0) {
       printf("FAIL acc_montgomery at test %u idx %d: ref=%d avx=%d\n",
              t, idx, r_ref[idx], r_avx[idx]);
@@ -214,12 +214,12 @@ int main(void)
     ref_ntt(a_ref);
     ref_ntt(b_ref);
 #if WEAVER_MODE == 5
-    for(unsigned int i = 0; i < KYBER_N / 8; i++) {
+    for(unsigned int i = 0; i < WEAVER_N / 8; i++) {
       basemul_degree4(&r_ref[8 * i], &a_ref[8 * i], &b_ref[8 * i], ref_zetas[64 + i]);
       basemul_degree4(&r_ref[8 * i + 4], &a_ref[8 * i + 4], &b_ref[8 * i + 4], -ref_zetas[64 + i]);
     }
 #else
-    for(unsigned int i = 0; i < KYBER_N / 4; i++) {
+    for(unsigned int i = 0; i < WEAVER_N / 4; i++) {
       ref_basemul(&r_ref[4 * i], &a_ref[4 * i], &b_ref[4 * i], ref_zetas[64 + i]);
       ref_basemul(&r_ref[4 * i + 2], &a_ref[4 * i + 2], &b_ref[4 * i + 2], -ref_zetas[64 + i]);
     }
@@ -231,7 +231,7 @@ int main(void)
     call_avx_basemul(r_avx, a_avx, b_avx);
     call_avx_invntt(r_avx);
 
-    idx = first_diff_modq(r_ref, r_avx, KYBER_N);
+    idx = first_diff_modq(r_ref, r_avx, WEAVER_N);
     if(idx >= 0) {
       printf("FAIL full_mul at test %u idx %d: ref=%d avx=%d\n",
              t, idx, r_ref[idx], r_avx[idx]);
@@ -245,10 +245,10 @@ int main(void)
   for(t = 0; t < 2000; t++) {
     fill_poly(a_ref);
     memcpy(a_avx, a_ref, sizeof(a_ref));
-    for(unsigned int i = 0; i < KYBER_N; i++)
+    for(unsigned int i = 0; i < WEAVER_N; i++)
       a_ref[i] = ref_barrett_reduce(a_ref[i]);
     avx_reduce(a_avx, avx_qdata);
-    idx = first_diff_modq(a_ref, a_avx, KYBER_N);
+    idx = first_diff_modq(a_ref, a_avx, WEAVER_N);
     if(idx >= 0) {
       printf("FAIL reduce at test %u idx %d: ref=%d avx=%d\n", t, idx, a_ref[idx], a_avx[idx]);
       errors++;
@@ -261,10 +261,10 @@ int main(void)
   for(t = 0; t < 2000; t++) {
     fill_poly(a_ref);
     memcpy(a_avx, a_ref, sizeof(a_ref));
-    for(unsigned int i = 0; i < KYBER_N; i++)
+    for(unsigned int i = 0; i < WEAVER_N; i++)
       a_ref[i] = ref_montgomery_reduce((int32_t)a_ref[i] * f);
     avx_tomont(a_avx, avx_qdata);
-    idx = first_diff_modq(a_ref, a_avx, KYBER_N);
+    idx = first_diff_modq(a_ref, a_avx, WEAVER_N);
     if(idx >= 0) {
       printf("FAIL tomont at test %u idx %d: ref=%d avx=%d\n", t, idx, a_ref[idx], a_avx[idx]);
       errors++;

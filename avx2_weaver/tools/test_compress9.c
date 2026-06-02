@@ -13,10 +13,10 @@
 static int test_exhaustive_quant(void)
 {
   int16_t x;
-  uint16_t t_ref, t_avx[KYBER_N];
+  uint16_t t_ref, t_avx[WEAVER_N];
   poly a;
 
-  for(x = 0; x < KYBER_Q; x++) {
+  for(x = 0; x < WEAVER_Q; x++) {
     t_ref = poly_compress9_coeff_scalar(x);
     memset(&a, 0, sizeof(a));
     a.coeffs[0] = x;
@@ -28,7 +28,7 @@ static int test_exhaustive_quant(void)
     }
   }
 
-  for(x = -KYBER_Q; x < 0; x++) {
+  for(x = -WEAVER_Q; x < 0; x++) {
     t_ref = poly_compress9_coeff_scalar(x);
     memset(&a, 0, sizeof(a));
     a.coeffs[0] = x;
@@ -45,14 +45,14 @@ static int test_exhaustive_quant(void)
 static int test_random_poly_compress(void)
 {
   unsigned int trial;
-  uint8_t r_ref[(KYBER_N * 9) / 8];
-  uint8_t r_avx[(KYBER_N * 9) / 8];
+  uint8_t r_ref[(WEAVER_N * 9) / 8];
+  uint8_t r_avx[(WEAVER_N * 9) / 8];
   poly a;
 
   for(trial = 0; trial < 5000; trial++) {
     unsigned int i;
-    for(i = 0; i < KYBER_N; i++)
-      a.coeffs[i] = (int16_t)((trial * 17 + i * 91) % (2 * KYBER_Q) - KYBER_Q);
+    for(i = 0; i < WEAVER_N; i++)
+      a.coeffs[i] = (int16_t)((trial * 17 + i * 91) % (2 * WEAVER_Q) - WEAVER_Q);
     poly_compress9_scalar(r_ref, &a);
     poly_compress9_avx(r_avx, &a);
     if(memcmp(r_ref, r_avx, sizeof(r_ref)) != 0) {

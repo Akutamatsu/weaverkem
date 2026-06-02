@@ -5,7 +5,7 @@
 
 /* Code to generate zetas and zetas_inv used in the number-theoretic transform:
 
-#define KYBER_ROOT_OF_UNITY 17
+#define WEAVER_ROOT_OF_UNITY 17
 
 static const uint16_t tree[128] = {
   0, 64, 32, 96, 16, 80, 48, 112, 8, 72, 40, 104, 24, 88, 56, 120,
@@ -24,7 +24,7 @@ void init_ntt() {
 
   tmp[0] = MONT;
   for(i = 1; i < 128; ++i)
-    tmp[i] = fqmul(tmp[i-1], KYBER_ROOT_OF_UNITY*MONT % KYBER_Q);
+    tmp[i] = fqmul(tmp[i-1], WEAVER_ROOT_OF_UNITY*MONT % WEAVER_Q);
 
   for(i = 0; i < 128; ++i)
     zetas[i] = tmp[tree[i]];
@@ -34,7 +34,7 @@ void init_ntt() {
     for(j = i; j < 2*i; ++j)
       zetas_inv[k++] = -tmp[128 - tree[j]];
 
-  zetas_inv[127] = MONT * (MONT * (KYBER_Q - 1) * ((KYBER_Q - 1)/128) % KYBER_Q) % KYBER_Q;
+  zetas_inv[127] = MONT * (MONT * (WEAVER_Q - 1) * ((WEAVER_Q - 1)/128) % WEAVER_Q) % WEAVER_Q;
 }
 
 */
@@ -105,26 +105,26 @@ static int16_t fqmul(int16_t a, int16_t b) {
 //   }
 // }
 
-void ntt(int16_t r[KYBER_N]) {
+void ntt(int16_t r[WEAVER_N]) {
   unsigned int len, start, j, k;
   int16_t t, zeta;
 
   k = 1;
   
-#if KYBER_N == 128
+#if WEAVER_N == 128
   // 128 维：7层，底度为 1 (len 从 64 到 1)
   for(len = 64; len >= 1; len >>= 1) {
-#elif KYBER_N == 256
+#elif WEAVER_N == 256
   // 256 维：7层，底度为 2 (len 从 128 到 2)
   for(len = 128; len >= 2; len >>= 1) {
-#elif KYBER_N == 512
+#elif WEAVER_N == 512
   // 512 维：7层，底度为 4 (len 从 256 到 4)
   for(len = 256; len >= 4; len >>= 1) {
 #else
-  #error "Unsupported KYBER_N"
+  #error "Unsupported WEAVER_N"
 #endif
 
-    for(start = 0; start < KYBER_N; start = j + len) {
+    for(start = 0; start < WEAVER_N; start = j + len) {
       zeta = zetas[k++];
       for(j = start; j < start + len; ++j) {
         t = fqmul(zeta, r[j + len]);
@@ -166,21 +166,21 @@ void ntt(int16_t r[KYBER_N]) {
 //     r[j] = fqmul(r[j], zetas_inv[127]);
 // }
 
-void invntt(int16_t r[KYBER_N]) {
+void invntt(int16_t r[WEAVER_N]) {
   unsigned int start, len, j, k;
   int16_t t, zeta;
 
   k = 0;
 
-#if KYBER_N == 128
+#if WEAVER_N == 128
   for(len = 1; len <= 64; len <<= 1) {
-#elif KYBER_N == 256
+#elif WEAVER_N == 256
   for(len = 2; len <= 128; len <<= 1) {
-#elif KYBER_N == 512
+#elif WEAVER_N == 512
   for(len = 4; len <= 256; len <<= 1) {
 #endif
 
-    for(start = 0; start < KYBER_N; start = j + len) {
+    for(start = 0; start < WEAVER_N; start = j + len) {
       zeta = zetas_inv[k++];
       for(j = start; j < start + len; ++j) {
         t = r[j];
@@ -192,7 +192,7 @@ void invntt(int16_t r[KYBER_N]) {
   }
 
   // 无论 N 是多少，只要是 7 层 NTT，归一化因子都是一样的 (128的逆元)
-  for(j = 0; j < KYBER_N; ++j)
+  for(j = 0; j < WEAVER_N; ++j)
     r[j] = fqmul(r[j], zetas_inv[127]);
 }
 

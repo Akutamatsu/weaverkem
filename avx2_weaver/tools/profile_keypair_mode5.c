@@ -40,24 +40,24 @@ static void profile_indcpa_keypair(uint64_t overhead)
   unsigned int run;
   uint64_t t_hash[NRUNS], t_gen[NRUNS], t_noise[NRUNS], t_ntt[NRUNS];
   uint64_t t_basemul[NRUNS], t_invntt[NRUNS], t_reduce[NRUNS], t_total[NRUNS];
-  uint8_t coins[KYBER_SYMBYTES];
-  uint8_t pk[KYBER_INDCPA_PUBLICKEYBYTES];
-  uint8_t sk[KYBER_INDCPA_SECRETKEYBYTES];
-  uint8_t buf[2 * KYBER_SYMBYTES];
+  uint8_t coins[WEAVER_SYMBYTES];
+  uint8_t pk[WEAVER_INDCPA_PUBLICKEYBYTES];
+  uint8_t sk[WEAVER_INDCPA_SECRETKEYBYTES];
+  uint8_t buf[2 * WEAVER_SYMBYTES];
   const uint8_t *publicseed = buf;
-  const uint8_t *noiseseed = buf + KYBER_SYMBYTES;
+  const uint8_t *noiseseed = buf + WEAVER_SYMBYTES;
   uint8_t nonce;
-  polyvec a[KYBER_K], pkpv, skpv;
+  polyvec a[WEAVER_K], pkpv, skpv;
   uint64_t t0, t1, sum, med;
 
   memset(coins, 0x42, sizeof(coins));
 
   for(run = 0; run < NWARM + NRUNS; run++) {
-    memcpy(buf, coins, KYBER_SYMBYTES);
-    buf[KYBER_SYMBYTES] = KYBER_K;
+    memcpy(buf, coins, WEAVER_SYMBYTES);
+    buf[WEAVER_SYMBYTES] = WEAVER_K;
 
     t0 = cpucycles();
-    hash_g(buf, buf, KYBER_SYMBYTES + 1);
+    hash_g(buf, buf, WEAVER_SYMBYTES + 1);
     t1 = cpucycles();
     if(run >= NWARM) t_hash[run - NWARM] = t1 - t0 - overhead;
 
@@ -137,30 +137,30 @@ static void profile_kem_keypair(uint64_t overhead)
 {
   unsigned int run;
   uint64_t t_rng[NRUNS], t_indcpa[NRUNS], t_cca[NRUNS], t_total[NRUNS];
-  uint8_t coins[2 * KYBER_SYMBYTES];
+  uint8_t coins[2 * WEAVER_SYMBYTES];
   uint8_t pk[CRYPTO_PUBLICKEYBYTES];
   uint8_t sk[CRYPTO_SECRETKEYBYTES];
   uint64_t t0, t1;
 
   for(run = 0; run < NWARM + NRUNS; run++) {
     t0 = cpucycles();
-    randombytes(coins, 2 * KYBER_SYMBYTES);
+    randombytes(coins, 2 * WEAVER_SYMBYTES);
     t1 = cpucycles();
     if(run >= NWARM) t_rng[run - NWARM] = t1 - t0 - overhead;
 
-    randombytes(coins, 2 * KYBER_SYMBYTES);
+    randombytes(coins, 2 * WEAVER_SYMBYTES);
     t0 = cpucycles();
     indcpa_keypair_derand(pk, sk, coins);
     t1 = cpucycles();
     if(run >= NWARM) t_indcpa[run - NWARM] = t1 - t0 - overhead;
 
-    randombytes(coins, 2 * KYBER_SYMBYTES);
+    randombytes(coins, 2 * WEAVER_SYMBYTES);
     indcpa_keypair_derand(pk, sk, coins);
     t0 = cpucycles();
-    memcpy(sk + KYBER_INDCPA_SECRETKEYBYTES, pk, KYBER_PUBLICKEYBYTES);
-    hash_h(sk + KYBER_SECRETKEYBYTES - 2 * KYBER_SYMBYTES, pk, KYBER_PUBLICKEYBYTES);
-    memcpy(sk + KYBER_SECRETKEYBYTES - KYBER_SYMBYTES, coins + KYBER_SYMBYTES,
-           KYBER_SYMBYTES);
+    memcpy(sk + WEAVER_INDCPA_SECRETKEYBYTES, pk, WEAVER_PUBLICKEYBYTES);
+    hash_h(sk + WEAVER_SECRETKEYBYTES - 2 * WEAVER_SYMBYTES, pk, WEAVER_PUBLICKEYBYTES);
+    memcpy(sk + WEAVER_SECRETKEYBYTES - WEAVER_SYMBYTES, coins + WEAVER_SYMBYTES,
+           WEAVER_SYMBYTES);
     t1 = cpucycles();
     if(run >= NWARM) t_cca[run - NWARM] = t1 - t0 - overhead;
 
@@ -180,8 +180,8 @@ static void profile_kem_keypair(uint64_t overhead)
 int main(void)
 {
   uint64_t overhead = cpucycles_overhead();
-  printf("profile_keypair_mode5 (KYBER_K=%d, KYBER_N=%d, PK_COMPRESS=1)\n",
-         KYBER_K, KYBER_N);
+  printf("profile_keypair_mode5 (WEAVER_K=%d, WEAVER_N=%d, PK_COMPRESS=1)\n",
+         WEAVER_K, WEAVER_N);
   profile_indcpa_keypair(overhead);
   profile_kem_keypair(overhead);
   return 0;

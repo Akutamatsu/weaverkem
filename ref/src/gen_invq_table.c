@@ -1,11 +1,11 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#define KYBER_Q 3329
+#define WEAVER_Q 3329
 
 static uint32_t compress_q(uint32_t x, int d) {
     uint32_t num_buckets = 1u << d;
-    return (uint32_t)(((uint64_t)x * num_buckets + KYBER_Q / 2) / KYBER_Q) & (num_buckets - 1);
+    return (uint32_t)(((uint64_t)x * num_buckets + WEAVER_Q / 2) / WEAVER_Q) & (num_buckets - 1);
 }
 
 int main() {
@@ -15,15 +15,15 @@ int main() {
     uint32_t first[4096];
     uint32_t lo0 = 0;
 
-    for(uint32_t y = 0; y < num_buckets; y++) first[y] = KYBER_Q;
+    for(uint32_t y = 0; y < num_buckets; y++) first[y] = WEAVER_Q;
 
-    for(uint32_t x = 0; x < KYBER_Q; x++) {
+    for(uint32_t x = 0; x < WEAVER_Q; x++) {
         uint32_t y = compress_q(x, d);
-        if(first[y] == KYBER_Q) first[y] = x;
+        if(first[y] == WEAVER_Q) first[y] = x;
         count[y]++;
     }
 
-    for(uint32_t x = KYBER_Q; x > 0; x--) {
+    for(uint32_t x = WEAVER_Q; x > 0; x--) {
         if(compress_q(x - 1, d) == 0) lo0 = x - 1;
         else break;
     }

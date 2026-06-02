@@ -5,7 +5,7 @@
 #include "params.h"
 #include "poly.h"
 
-#define cbd_eta1 KYBER_NAMESPACE(_cbd_eta1)
-void cbd_eta1(poly *r, const uint8_t buf[KYBER_ETA1*KYBER_N/4]);
+#define cbd_eta1 WEAVER_NAMESPACE(_cbd_eta1)
+void cbd_eta1(poly *r, const uint8_t buf[WEAVER_ETA1*WEAVER_N/4]);
 
 #endif

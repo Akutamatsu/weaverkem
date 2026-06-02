@@ -20,15 +20,15 @@
 #if defined(__WIN32__) || defined(__APPLE__)
 #define decorate(s) _##s
 #define cdecl2(s) decorate(s)
-#define cdecl(s) cdecl2(KYBER_NAMESPACE(_##s))
+#define cdecl(s) cdecl2(WEAVER_NAMESPACE(_##s))
 #else
-#define cdecl(s) KYBER_NAMESPACE(_##s)
+#define cdecl(s) WEAVER_NAMESPACE(_##s)
 #endif
 #endif
 
 #ifndef __ASSEMBLER__
 #include <stdint.h>
-#define qdata KYBER_NAMESPACE(_qdata)
+#define qdata WEAVER_NAMESPACE(_qdata)
 extern const int16_t qdata[];
 #endif
 

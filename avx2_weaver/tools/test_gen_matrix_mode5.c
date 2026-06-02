@@ -14,21 +14,21 @@
 #define NCASES_DEFAULT 50
 #endif
 
-static void write_matrix(FILE *out, const polyvec a[KYBER_K])
+static void write_matrix(FILE *out, const polyvec a[WEAVER_K])
 {
   unsigned int i, j, k;
 
-  for(i = 0; i < KYBER_K; i++)
-    for(j = 0; j < KYBER_K; j++)
-      for(k = 0; k < KYBER_N; k++)
+  for(i = 0; i < WEAVER_K; i++)
+    for(j = 0; j < WEAVER_K; j++)
+      for(k = 0; k < WEAVER_N; k++)
         if(fwrite(&a[i].vec[j].coeffs[k], sizeof(int16_t), 1, out) != 1)
           return;
 }
 
 int main(int argc, char **argv)
 {
-  uint8_t seed[KYBER_SYMBYTES];
-  polyvec a[KYBER_K], at[KYBER_K];
+  uint8_t seed[WEAVER_SYMBYTES];
+  polyvec a[WEAVER_K], at[WEAVER_K];
   unsigned int t;
   unsigned int ncases = NCASES_DEFAULT;
 

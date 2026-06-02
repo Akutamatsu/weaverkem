@@ -16,7 +16,7 @@
 #define NTESTS 10000
 
 uint64_t t[NTESTS];
-uint8_t seed[KYBER_SYMBYTES] = {0};
+uint8_t seed[WEAVER_SYMBYTES] = {0};
 
 int main()
 {
@@ -25,12 +25,12 @@ int main()
   unsigned char sk[CRYPTO_SECRETKEYBYTES] = {0};
   unsigned char ct[CRYPTO_CIPHERTEXTBYTES] = {0};
   unsigned char key[CRYPTO_BYTES] = {0};
-  polyvec matrix[KYBER_K];
+  polyvec matrix[WEAVER_K];
   polyvec sp, pkpv;
   poly ap;
   unsigned int nonce = 0;
-  uint8_t buf[2*KYBER_SYMBYTES];
-  uint8_t kr[2*KYBER_SYMBYTES];
+  uint8_t buf[2*WEAVER_SYMBYTES];
+  uint8_t kr[2*WEAVER_SYMBYTES];
 
   printf("%s start..\n", CRYPTO_ALGNAME);
   
@@ -65,7 +65,7 @@ int main()
   }
   print_results("INVNTT: ", t, NTESTS);
 
-  for(i=0;i<KYBER_K;i++)
+  for(i=0;i<WEAVER_K;i++)
     poly_getnoise_eta2(sp.vec+i, seed, nonce++);
 
   for(i=0;i<NTESTS;i++) {
@@ -90,19 +90,19 @@ int main()
 #ifdef ALL_TESTS
   for(i=0;i<NTESTS;i++) {
     t[i] = cpucycles();
-    randombytes(buf, KYBER_SYMBYTES);
+    randombytes(buf, WEAVER_SYMBYTES);
   }
   print_results("randombytes: ", t, NTESTS);
   
   for(i=0;i<NTESTS;i++) {
     t[i] = cpucycles();
-    hash_h(buf, pk, KYBER_PUBLICKEYBYTES);
+    hash_h(buf, pk, WEAVER_PUBLICKEYBYTES);
   }
   print_results("hash_h: ", t, NTESTS);
 
    for(i=0;i<NTESTS;i++) {
     t[i] = cpucycles();
-    hash_g(kr, buf, 2*KYBER_SYMBYTES);
+    hash_g(kr, buf, 2*WEAVER_SYMBYTES);
   }
   print_results("hash_g: ", t, NTESTS);
 

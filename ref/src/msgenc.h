@@ -5,10 +5,10 @@
 #include "params.h"
 
 #if   (WEAVER_MODE == 1)
-  /* (255,215,5): 40 bits = 5 B ECC overhead */
-  #define ELL_BAR_BYTES        16 // 128 bits = 16 bytes
-  #define HIGH_ECC_BYTES       5
-  #define HIGH_CODEWORD_BITS   WEAVER_POLYCUT_DIMENSION // 128 + 40
+  /* Level 1 uses n=128; two-layer BCH support is added separately. */
+  #define ELL_BAR_BYTES        16
+  #define HIGH_ECC_BYTES       0
+  #define HIGH_CODEWORD_BITS   WEAVER_N
   #define HIGH_CODEWORD_BYTES  (HIGH_CODEWORD_BITS >> 3)
   #define ELL_DDOT_BYTES       0
   #define LOW_CODEWORD_BYTES   0

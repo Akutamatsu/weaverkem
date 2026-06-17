@@ -326,10 +326,10 @@ void indcpa_enc(uint8_t c[WEAVER_INDCPA_BYTES],
 
 #ifdef INV_Q_LIFTING
   for(i=0;i<WEAVER_K;i++)
-    poly_getnoise_eta1(sp.vec+i, coins, nonce++);
+    poly_getnoise_eta2(sp.vec+i, coins, nonce++);
 #else
   for(i=0;i<WEAVER_K;i++)
-    poly_getnoise_eta1(sp.vec+i, coins, nonce++);
+    poly_getnoise_eta2(sp.vec+i, coins, nonce++);
 #endif
 
   polyvec_ntt(&sp);

@@ -8,18 +8,18 @@
 #define PK_COMPRESS
 
 #if   (WEAVER_MODE == 1)
-  #define WEAVER_N 256
+  #define WEAVER_N 128
   #define WEAVER_INDCPA_MSGBYTES 16
-  #define WEAVER_NAMESPACE(s) weaver512_ref##s
-  #define WEAVER_ETA1 5
-  #define WEAVER_ETA2 WEAVER_ETA1
-  #define WEAVER_K 2
-  #define WEAVER_DV 5
+  #define WEAVER_NAMESPACE(s) weaver640_ref##s
+  #define WEAVER_ETA1 3
+  #define WEAVER_ETA2 2
+  #define WEAVER_K 5
+  #define WEAVER_DV 6
 
-  /* paper-aligned core: (n,k,q,eta1,dt,du,dv) = (256,2,3329,5,9,9,5) */
+  /* Table 1 core: (n,k,q,eta1,eta2,dt,du,dv) = (128,5,3329,3,2,9,9,6). */
   #define WEAVER_PK_POLYVECBYTES        (WEAVER_K * ((WEAVER_N * 9) / 8))
   #define WEAVER_POLYVECCOMPRESSEDBYTES (WEAVER_K * ((WEAVER_N * 9) / 8))
-  #define WEAVER_POLYCUT_DIMENSION   168 /* 128 + 40 = HIGH_CODEWORD_BITS in "msgenc.h" */
+  #define WEAVER_POLYCUT_DIMENSION   WEAVER_N
 
 #elif (WEAVER_MODE == 3)
   #define WEAVER_N 256

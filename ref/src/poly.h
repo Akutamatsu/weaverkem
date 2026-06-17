@@ -19,6 +19,8 @@ void poly_frombytes(poly *r, const uint8_t a[WEAVER_POLYBYTES]);
 
 #define poly_getnoise_eta1 WEAVER_NAMESPACE(_poly_getnoise_eta1)
 void poly_getnoise_eta1(poly *r, const uint8_t seed[WEAVER_SYMBYTES], uint8_t nonce);
+#define poly_getnoise_eta2 WEAVER_NAMESPACE(_poly_getnoise_eta2)
+void poly_getnoise_eta2(poly *r, const uint8_t seed[WEAVER_SYMBYTES], uint8_t nonce);
 
 #define poly_ntt WEAVER_NAMESPACE(_poly_ntt)
 void poly_ntt(poly *r);

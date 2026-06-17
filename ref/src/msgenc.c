@@ -74,7 +74,6 @@ void poly_frommsg(poly *r, const uint8_t msg[WEAVER_INDCPA_MSGBYTES])
     // Step 1: Encode to Higher bits
     // ==========================================================
     memcpy(mu_tilde, msg, ELL_BAR_BYTES);
-    encode_bch_high(msg, ELL_BAR_BYTES, mu_tilde + ELL_BAR_BYTES);
 
     for (i = 0; i < HIGH_CODEWORD_BYTES; i++) {
         for (j = 0; j < 8; j++) {
@@ -108,8 +107,6 @@ void poly_tomsg(uint8_t msg[WEAVER_INDCPA_MSGBYTES], const poly *a)
         }
     }
 
-    // BCH 纠错高位，并存入输出区
-    decode_bch_high(mu_tilde, ELL_BAR_BYTES, mu_tilde + ELL_BAR_BYTES);
     memcpy(msg, mu_tilde, ELL_BAR_BYTES);
 }
 
@@ -329,8 +326,14 @@ void poly_compress(uint8_t r[WEAVER_POLYCOMPRESSEDBYTES], const poly *a)
         r[2] = (t[2] >> 4) | (t[3] << 2);
         r += 3;
     }
+#elif (WEAVER_DV == 8)
+    for (i = 0; i < WEAVER_POLYCUT_DIMENSION; i++) {
+        u = a->coeffs[i];
+        u += (u >> 15) & WEAVER_Q;
+        *r++ = ((((uint32_t)u << 8) + WEAVER_Q / 2) / WEAVER_Q) & 0xff;
+    }
 #else
-#error "WEAVER_DV needs to be 5 or 6"
+#error "WEAVER_DV needs to be 5, 6, or 8"
 #endif
 }
 
@@ -378,8 +381,11 @@ void poly_decompress(poly *r, const uint8_t a[WEAVER_POLYCOMPRESSEDBYTES])
         for (j = 0; j < 4; j++)
             r->coeffs[4 * i + j] = ((uint32_t)(t[j] & 63)*WEAVER_Q + 32) >> 6;
     }
+#elif (WEAVER_DV == 8)
+    for (i = 0; i < WEAVER_POLYCUT_DIMENSION; i++)
+        r->coeffs[i] = ((uint32_t)(*a++)*WEAVER_Q + 128) >> 8;
 #else
-#error "WEAVER_DV needs to be 5 or 6"
+#error "WEAVER_DV needs to be 5, 6, or 8"
 #endif
 }
 

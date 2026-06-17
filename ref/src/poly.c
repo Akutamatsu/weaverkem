@@ -72,6 +72,13 @@ void poly_getnoise_eta1(poly *r, const uint8_t seed[WEAVER_SYMBYTES], uint8_t no
   cbd_eta1(r, buf);
 }
 
+void poly_getnoise_eta2(poly *r, const uint8_t seed[WEAVER_SYMBYTES], uint8_t nonce)
+{
+  uint8_t buf[WEAVER_ETA2*WEAVER_N/4];
+  prf(buf, sizeof(buf), seed, nonce);
+  cbd_eta2(r, buf);
+}
+
 
 /*************************************************
 * Name:        poly_ntt

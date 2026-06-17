@@ -1,149 +1,94 @@
-/**
- * poly_invq.c — WEAVER-Inv: Randomized Lifting via Inv_q (8-bit Edition)
- *
- * 修复点：
- * 1) y=0 桶使用模 q 连续区间起点（环绕起点）
- * 2) 使用 bit masking 做拒绝采样
- */
-
 #include <stdint.h>
-#include <string.h>
 #include "params.h"
-#include "poly.h"
+#include "polyvec.h"
 #include "invq.h"
 #include "symmetric.h"
 
-#if (WEAVER_PK_POLYVECBYTES == (WEAVER_K * WEAVER_N * 10 / 8))
-#include "invq_table_d10.h"
-#define BUCKET_LO invq_d10_bucket_lo
-#define BUCKET_SZ invq_d10_bucket_size
+#if (WEAVER_PK_POLYVECBYTES == (WEAVER_K * WEAVER_N * 8 / 8))
+#define WEAVER_DT 8
+#elif (WEAVER_PK_POLYVECBYTES == (WEAVER_K * WEAVER_N * 9 / 8))
+#define WEAVER_DT 9
+#elif (WEAVER_PK_POLYVECBYTES == (WEAVER_K * WEAVER_N * 10 / 8))
+#define WEAVER_DT 10
+#elif (WEAVER_PK_POLYVECBYTES == (WEAVER_K * WEAVER_N * 11 / 8))
+#define WEAVER_DT 11
 #else
-static uint16_t bucket_lo[512] = {
-    3326,    4,   10,   17,   23,   30,   36,   43,   49,   56,   62,   69,   75,   82,   88,   95,
-     101,  108,  114,  121,  127,  134,  140,  147,  153,  160,  166,  173,  179,  186,  192,  199,
-     205,  212,  218,  225,  231,  238,  244,  251,  257,  264,  270,  277,  283,  290,  296,  303,
-     309,  316,  322,  329,  335,  342,  348,  355,  361,  368,  374,  381,  387,  394,  400,  407,
-     413,  420,  426,  433,  439,  446,  452,  459,  465,  472,  478,  485,  491,  498,  504,  511,
-     517,  524,  530,  537,  543,  550,  556,  563,  569,  576,  582,  589,  595,  602,  608,  615,
-     621,  628,  634,  641,  647,  654,  660,  667,  673,  680,  686,  693,  699,  706,  712,  719,
-     725,  732,  738,  745,  751,  758,  764,  771,  777,  784,  790,  797,  803,  810,  816,  823,
-     829,  836,  843,  849,  856,  862,  869,  875,  882,  888,  895,  901,  908,  914,  921,  927,
-     934,  940,  947,  953,  960,  966,  973,  979,  986,  992,  999, 1005, 1012, 1018, 1025, 1031,
-    1038, 1044, 1051, 1057, 1064, 1070, 1077, 1083, 1090, 1096, 1103, 1109, 1116, 1122, 1129, 1135,
-    1142, 1148, 1155, 1161, 1168, 1174, 1181, 1187, 1194, 1200, 1207, 1213, 1220, 1226, 1233, 1239,
-    1246, 1252, 1259, 1265, 1272, 1278, 1285, 1291, 1298, 1304, 1311, 1317, 1324, 1330, 1337, 1343,
-    1350, 1356, 1363, 1369, 1376, 1382, 1389, 1395, 1402, 1408, 1415, 1421, 1428, 1434, 1441, 1447,
-    1454, 1460, 1467, 1473, 1480, 1486, 1493, 1499, 1506, 1512, 1519, 1525, 1532, 1538, 1545, 1551,
-    1558, 1564, 1571, 1577, 1584, 1590, 1597, 1603, 1610, 1616, 1623, 1629, 1636, 1642, 1649, 1655,
-    1662, 1668, 1675, 1681, 1688, 1694, 1701, 1707, 1714, 1720, 1727, 1733, 1740, 1746, 1753, 1759,
-    1766, 1772, 1779, 1785, 1792, 1798, 1805, 1811, 1818, 1824, 1831, 1837, 1844, 1850, 1857, 1863,
-    1870, 1876, 1883, 1889, 1896, 1902, 1909, 1915, 1922, 1928, 1935, 1941, 1948, 1954, 1961, 1967,
-    1974, 1980, 1987, 1993, 2000, 2006, 2013, 2019, 2026, 2032, 2039, 2045, 2052, 2058, 2065, 2071,
-    2078, 2084, 2091, 2097, 2104, 2110, 2117, 2123, 2130, 2136, 2143, 2149, 2156, 2162, 2169, 2175,
-    2182, 2188, 2195, 2201, 2208, 2214, 2221, 2227, 2234, 2240, 2247, 2253, 2260, 2266, 2273, 2279,
-    2286, 2292, 2299, 2305, 2312, 2318, 2325, 2331, 2338, 2344, 2351, 2357, 2364, 2370, 2377, 2383,
-    2390, 2396, 2403, 2409, 2416, 2422, 2429, 2435, 2442, 2448, 2455, 2461, 2468, 2474, 2481, 2487,
-    2494, 2501, 2507, 2514, 2520, 2527, 2533, 2540, 2546, 2553, 2559, 2566, 2572, 2579, 2585, 2592,
-    2598, 2605, 2611, 2618, 2624, 2631, 2637, 2644, 2650, 2657, 2663, 2670, 2676, 2683, 2689, 2696,
-    2702, 2709, 2715, 2722, 2728, 2735, 2741, 2748, 2754, 2761, 2767, 2774, 2780, 2787, 2793, 2800,
-    2806, 2813, 2819, 2826, 2832, 2839, 2845, 2852, 2858, 2865, 2871, 2878, 2884, 2891, 2897, 2904,
-    2910, 2917, 2923, 2930, 2936, 2943, 2949, 2956, 2962, 2969, 2975, 2982, 2988, 2995, 3001, 3008,
-    3014, 3021, 3027, 3034, 3040, 3047, 3053, 3060, 3066, 3073, 3079, 3086, 3092, 3099, 3105, 3112,
-    3118, 3125, 3131, 3138, 3144, 3151, 3157, 3164, 3170, 3177, 3183, 3190, 3196, 3203, 3209, 3216,
-    3222, 3229, 3235, 3242, 3248, 3255, 3261, 3268, 3274, 3281, 3287, 3294, 3300, 3307, 3313, 3320,
-};
-static uint8_t bucket_size[512] = {
-    7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6,
-    7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6,
-    7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6,
-    7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6,
-    7, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7,
-    6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7,
-    6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7,
-    6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7,
-    6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7,
-    6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7,
-    6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7,
-    6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7,
-    7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6,
-    7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6,
-    7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6,
-    7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6,     7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6, 7, 6,
-};
-#define BUCKET_LO bucket_lo
-#define BUCKET_SZ bucket_size
+#error "Unsupported public-key compression width"
 #endif
 
-static unsigned int rej_uniform(int16_t *r,
-    unsigned int len,
-    const uint8_t *buf,
-    unsigned int buflen)
+#define INVQ_BUCKETS (1u << WEAVER_DT)
+#define INVQ_RAND_MASK ((WEAVER_Q <= 4096) ? 0x0FFFu : 0xFFFFu)
+#if WEAVER_N == 512
+#define GEN_INVQ_RAND_BYTES (2*SHAKE256_RATE)
+#else
+#define GEN_INVQ_RAND_BYTES SHAKE256_RATE
+#endif
+
+static uint16_t compress_q(uint16_t x)
 {
-    unsigned int ctr, pos, j;
-    uint8_t t[8];
-
-    ctr = pos = 0;
-    while (ctr < len && pos + 3 <= buflen) { // 3 bytes -> 8 x 3 bits
-        t[0] = (buf[pos + 0] >> 0) & 0x7;
-        t[1] = (buf[pos + 0] >> 3) & 0x7;
-        t[2] = ((buf[pos + 0] >> 6) | (buf[pos + 1] << 2)) & 0x7;
-        t[3] = (buf[pos + 1] >> 1) & 0x7;
-        t[4] = (buf[pos + 1] >> 4) & 0x7;
-        t[5] = ((buf[pos + 1] >> 7) | (buf[pos + 2] << 1)) & 0x7;
-        t[6] = (buf[pos + 2] >> 2) & 0x7;
-        t[7] = (buf[pos + 2] >> 5) & 0x7;
-        pos += 3;
-
-        for (j = 0; j < 8; j++) {
-            if (ctr >= len) {
-                break;
-            }
-            if (t[j] < BUCKET_SZ[r[ctr]]) {
-                unsigned int c = ctr;
-                int16_t bidx = r[c];
-                r[c] = BUCKET_LO[bidx] + t[j];
-                ctr = c + 1;
-            }
-        }
-    }
-
-    return ctr;
+  return (uint16_t)(((((uint32_t)x << WEAVER_DT) + WEAVER_Q / 2) / WEAVER_Q) & (INVQ_BUCKETS - 1));
 }
 
-/* where (6/7) is the rejection rate (upper bound) */
-//#define GEN_INVQ_RAND_BYTES (3 *WEAVER_N/8 * (7/6))
+static unsigned int rej_uniform_modq(uint16_t *r,
+                                     unsigned int len,
+                                     const uint8_t *buf,
+                                     unsigned int buflen)
+{
+  unsigned int ctr = 0;
+  unsigned int pos = 0;
 
-#if WEAVER_N == 256
-#define GEN_INVQ_RAND_BYTES SHAKE256_RATE
-#elif WEAVER_N == 512
-#define GEN_INVQ_RAND_BYTES (2*SHAKE256_RATE)
-#endif
+  while(ctr < len && pos + 3 <= buflen) {
+    uint16_t val0 = ((buf[pos + 0] >> 0) | ((uint16_t)buf[pos + 1] << 8)) & INVQ_RAND_MASK;
+    uint16_t val1 = ((buf[pos + 1] >> 4) | ((uint16_t)buf[pos + 2] << 4)) & INVQ_RAND_MASK;
+    pos += 3;
 
-//void poly_invq(poly *r, const uint8_t seed[WEAVER_SYMBYTES], uint8_t nonce)
-//{
-//    uint8_t buf[GEN_INVQ_RAND_BYTES];
-//    unsigned int buflen = GEN_INVQ_RAND_BYTES;
-//    prf(buf, sizeof(buf), seed, nonce);
-//    rej_uniform(r->coeffs, WEAVER_N, buf, buflen);
-//}
+    if(val0 < WEAVER_Q)
+      r[ctr++] = val0;
+    if(ctr < len && val1 < WEAVER_Q)
+      r[ctr++] = val1;
+  }
+
+  return ctr;
+}
+
+static void invq_poly(poly *r,
+                      const poly *bucket,
+                      const uint8_t seed[WEAVER_SYMBYTES],
+                      uint8_t nonce)
+{
+  unsigned int i, ctr;
+  uint8_t buf[GEN_INVQ_RAND_BYTES];
+  uint16_t candidates[WEAVER_N];
+
+  ctr = 0;
+  while(ctr < WEAVER_N) {
+    prf(buf, sizeof(buf), seed, nonce++);
+    ctr += rej_uniform_modq(candidates + ctr,
+                            WEAVER_N - ctr,
+                            buf,
+                            sizeof(buf));
+  }
+
+  for(i = 0; i < WEAVER_N; i++) {
+    uint16_t y = (uint16_t)bucket->coeffs[i] & (INVQ_BUCKETS - 1);
+    uint16_t x = candidates[i];
+
+    while(compress_q(x) != y) {
+      x++;
+      if(x == WEAVER_Q)
+        x = 0;
+    }
+
+    r->coeffs[i] = (int16_t)x;
+  }
+}
 
 void polyvec_invq(polyvec *v,
                   const uint8_t seed[WEAVER_SYMBYTES],
                   uint8_t nonce)
 {
-    unsigned int ctr, i;
-    unsigned int buflen;
-    uint8_t buf[GEN_INVQ_RAND_BYTES];
+  unsigned int i;
 
-    for (i = 0; i < WEAVER_K; i++) {
-        prf(buf, GEN_INVQ_RAND_BYTES, seed, nonce);
-        buflen = GEN_INVQ_RAND_BYTES;
-        ctr = rej_uniform(v->vec[i].coeffs, WEAVER_N, buf, buflen);
-
-        while (ctr < WEAVER_N) {
-            prf(buf, GEN_INVQ_RAND_BYTES, seed, nonce);
-            buflen = GEN_INVQ_RAND_BYTES;
-            ctr += rej_uniform(v->vec[i].coeffs + ctr, WEAVER_N - ctr, buf, buflen);
-        }
-    }
+  for(i = 0; i < WEAVER_K; i++)
+    invq_poly(&v->vec[i], &v->vec[i], seed, nonce++);
 }

@@ -5,15 +5,16 @@
 # include "params.h"  
 # include "bch.h"
 
-#if WEAVER_MODE == 3 || WEAVER_MODE == 5
-     
-    #if WEAVER_MODE == 3
-        #include "bch63_33_4.h"
-    #elif WEAVER_MODE == 5
-        #include "bch127_56_6.h"
-    #else
-        #error "Invalid WEAVER_MODE for BCH configuration"
-    #endif
+
+#if WEAVER_MODE == 1
+    #include "bch31_21_2.h"
+#elif WEAVER_MODE == 3
+    #include "bch63_36_4.h"
+#elif WEAVER_MODE == 5
+    #include "bch127_56_6.h"
+#else
+    #error "Invalid WEAVER_MODE for BCH configuration"
+#endif
 
 
 
@@ -441,4 +442,3 @@ int decode_bch_low_nibbles(uint8_t *data, unsigned int nibbles, const uint8_t *r
 }
 #endif
 
-#endif

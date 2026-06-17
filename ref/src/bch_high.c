@@ -6,9 +6,9 @@
 # include "bch.h"
 
 #if WEAVER_MODE == 1
-    #include "bch255_128_5.h"
+    #include "bch127_112_2.h"
 #elif WEAVER_MODE == 3
-    #include "bch255_223_4.h"
+    #include "bch255_220_4.h"
 #elif WEAVER_MODE == 5
     #include "bch511_456_6.h"
 #else

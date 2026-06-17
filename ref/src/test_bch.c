@@ -4,9 +4,9 @@
  * 补强：在「仅污染数据、校验按原文接收」时，译码后须满足
  *       encode(纠错后载荷) == recv_ecc（码字闭合），否则判 FAIL。
  *
- * WEAVER-512（仅高位）:
+ * WEAVER-128（高位 + 低位）:
  *   gcc -O2 -Wall -Wno-unused-variable -DWEAVER_MODE=1 -o test_bch \\
- *       test_bch.c bch_high.c
+ *       test_bch.c bch_high.c bch_low.c
  *
  * WEAVER-1024 / 2048（高位 + 低位，须同时链接 bch_low.c）:
  *   gcc -O2 -Wall -Wno-unused-variable -DWEAVER_MODE=3 -o test_bch \\
@@ -20,9 +20,12 @@
 #include "bch.h"
 
 #if WEAVER_MODE == 1
-#  define BCH_T_HIGH 5
-#  define DATA_LEN_HIGH 16
-#  define ECC_BYTES_HIGH 5
+#  define BCH_T_HIGH 2
+#  define DATA_LEN_HIGH 14
+#  define ECC_BYTES_HIGH 2
+#  define BCH_T_LOW 2
+#  define DATA_LEN_LOW 2
+#  define ECC_BYTES_LOW 2
 #elif WEAVER_MODE == 3
 #  define BCH_T_HIGH 4
 #  define DATA_LEN_HIGH 27
@@ -155,75 +158,14 @@ static int test_bch_high(void)
     return 0;
 }
 
-#if WEAVER_MODE == 3 || WEAVER_MODE == 5
+#if WEAVER_MODE == 1 || WEAVER_MODE == 3 || WEAVER_MODE == 5
 static int test_bch_low(void)
 {
     int e, r;
 
     printf("\n========== BCH low ==========\n");
 
-#  if WEAVER_MODE == 3
-    {
-        uint8_t gold[LOW_BUF_BYTES], data[LOW_BUF_BYTES];
-        uint8_t ecc[ECC_BYTES_LOW];
-        const unsigned msg_bits = LOW_NIBBLES * 4u;
-
-        for (unsigned i = 0; i < LOW_BUF_BYTES; i++)
-            gold[i] = (uint8_t)(0x5C ^ (i * 23));
-        gold[LOW_BUF_BYTES - 1] &= 0xf0u; /* 仅高半字节属于第 9 个 nibble */
-
-        print_hex("原始载荷 (9 nibbles): ", gold, LOW_BUF_BYTES);
-
-        for (e = 0; e <= BCH_T_LOW; e++) {
-            memcpy(data, gold, LOW_BUF_BYTES);
-            encode_bch_low_nibbles(data, LOW_NIBBLES, ecc);
-            for (int k = 0; k < e; k++)
-                flip_bit(data, (unsigned)((k * 11 + 5) % msg_bits));
-
-            printf("\n【低位 注入 %d 比特错】\n", e);
-            print_hex("  翻转后: ", data, LOW_BUF_BYTES);
-
-            r = decode_bch_low_nibbles(data, LOW_NIBBLES, ecc);
-            printf("  decode_bch_low_nibbles 返回: %d\n", r);
-            print_hex("  纠错后: ", data, LOW_BUF_BYTES);
-
-            if (r != e || !same_low_nibbles(data, gold, LOW_NIBBLES)) {
-                printf("FAIL low: %d err, ret=%d\n", e, r);
-                return 1;
-            }
-            {
-                uint8_t ecc_chk[ECC_BYTES_LOW];
-                encode_bch_low_nibbles(data, LOW_NIBBLES, ecc_chk);
-                if (memcmp(ecc_chk, ecc, sizeof ecc_chk) != 0) {
-                    printf("FAIL low: parity mismatch after decode (e=%d)\n", e);
-                    return 1;
-                }
-            }
-        }
-
-        memcpy(data, gold, LOW_BUF_BYTES);
-        encode_bch_low_nibbles(data, LOW_NIBBLES, ecc);
-        {
-            uint8_t ecc_rx[ECC_BYTES_LOW];
-            memcpy(ecc_rx, ecc, sizeof ecc_rx);
-            ecc_rx[0] ^= 1u; /* 校验区 1 比特错 */
-            for (int k = 0; k < BCH_T_LOW; k++)
-                flip_bit(data, (unsigned)((k * 9 + 2) % msg_bits));
-            printf("\n【低位 注入 t+1 = %d 比特错（t 数据 + 1 校验）】\n",
-                   BCH_T_LOW + 1);
-            print_hex("  翻转后: ", data, LOW_BUF_BYTES);
-            r = decode_bch_low_nibbles(data, LOW_NIBBLES, ecc_rx);
-            printf("  decode_bch_low_nibbles 返回: %d\n", r);
-            print_hex("  纠错后: ", data, LOW_BUF_BYTES);
-            printf("  与原始载荷一致: %s\n",
-                   same_low_nibbles(data, gold, LOW_NIBBLES) ? "是" : "否");
-            if (same_low_nibbles(data, gold, LOW_NIBBLES)) {
-                printf("FAIL low: t+1 restored payload (ret=%d)\n", r);
-                return 1;
-            }
-        }
-    }
-#  else /* WEAVER_MODE == 5 */
+#  if WEAVER_MODE == 1 || WEAVER_MODE == 5
     {
         uint8_t gold[DATA_LEN_LOW], data[DATA_LEN_LOW];
         uint8_t ecc[ECC_BYTES_LOW];
@@ -284,6 +226,68 @@ static int test_bch_low(void)
             }
         }
     }
+#  elif WEAVER_MODE == 3
+    {
+        uint8_t gold[LOW_BUF_BYTES], data[LOW_BUF_BYTES];
+        uint8_t ecc[ECC_BYTES_LOW];
+        const unsigned msg_bits = LOW_NIBBLES * 4u;
+
+        for (unsigned i = 0; i < LOW_BUF_BYTES; i++)
+            gold[i] = (uint8_t)(0x5C ^ (i * 23));
+        gold[LOW_BUF_BYTES - 1] &= 0xf0u;
+
+        printf("原始载荷 (%u nibbles): ", LOW_NIBBLES);
+        print_hex("", gold, LOW_BUF_BYTES);
+
+        for (e = 0; e <= BCH_T_LOW; e++) {
+            memcpy(data, gold, LOW_BUF_BYTES);
+            encode_bch_low_nibbles(data, LOW_NIBBLES, ecc);
+            for (int k = 0; k < e; k++)
+                flip_bit(data, (unsigned)((k * 11 + 5) % msg_bits));
+
+            printf("\n【低位 注入 %d 比特错】\n", e);
+            print_hex("  翻转后: ", data, LOW_BUF_BYTES);
+
+            r = decode_bch_low_nibbles(data, LOW_NIBBLES, ecc);
+            printf("  decode_bch_low_nibbles 返回: %d\n", r);
+            print_hex("  纠错后: ", data, LOW_BUF_BYTES);
+
+            if (r != e || !same_low_nibbles(data, gold, LOW_NIBBLES)) {
+                printf("FAIL low: %d err, ret=%d\n", e, r);
+                return 1;
+            }
+            {
+                uint8_t ecc_chk[ECC_BYTES_LOW];
+                encode_bch_low_nibbles(data, LOW_NIBBLES, ecc_chk);
+                if (memcmp(ecc_chk, ecc, sizeof ecc_chk) != 0) {
+                    printf("FAIL low: parity mismatch after decode (e=%d)\n", e);
+                    return 1;
+                }
+            }
+        }
+
+        memcpy(data, gold, LOW_BUF_BYTES);
+        encode_bch_low_nibbles(data, LOW_NIBBLES, ecc);
+        {
+            uint8_t ecc_rx[ECC_BYTES_LOW];
+            memcpy(ecc_rx, ecc, sizeof ecc_rx);
+            ecc_rx[0] ^= 1u; /* 校验区 1 比特错 */
+            for (int k = 0; k < BCH_T_LOW; k++)
+                flip_bit(data, (unsigned)((k * 9 + 2) % msg_bits));
+            printf("\n【低位 注入 t+1 = %d 比特错（t 数据 + 1 校验）】\n",
+                   BCH_T_LOW + 1);
+            print_hex("  翻转后: ", data, LOW_BUF_BYTES);
+            r = decode_bch_low_nibbles(data, LOW_NIBBLES, ecc_rx);
+            printf("  decode_bch_low_nibbles 返回: %d\n", r);
+            print_hex("  纠错后: ", data, LOW_BUF_BYTES);
+            printf("  与原始载荷一致: %s\n",
+                   same_low_nibbles(data, gold, LOW_NIBBLES) ? "是" : "否");
+            if (same_low_nibbles(data, gold, LOW_NIBBLES)) {
+                printf("FAIL low: t+1 restored payload (ret=%d)\n", r);
+                return 1;
+            }
+        }
+    }
 #  endif
 
     printf("OK low (WEAVER_MODE=%d)\n", WEAVER_MODE);
@@ -295,7 +299,7 @@ int main(void)
 {
     if (test_bch_high() != 0)
         return 1;
-#if WEAVER_MODE == 3 || WEAVER_MODE == 5
+#if WEAVER_MODE == 1 || WEAVER_MODE == 3 || WEAVER_MODE == 5
     if (test_bch_low() != 0)
         return 1;
 #endif

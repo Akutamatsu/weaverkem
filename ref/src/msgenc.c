@@ -54,63 +54,7 @@ void poly_tomsg(uint8_t msg[WEAVER_INDCPA_MSGBYTES], const poly *a)
 }
 #else
 
-#if WEAVER_MODE == 1 
-// Algorithm 3: MsgEncode
-/*************************************************
-* Name:        poly_frommsg
-* Description: Convert message to polynomial using WEAVER multi-level coding
-**************************************************/
-void poly_frommsg(poly *r, const uint8_t msg[WEAVER_INDCPA_MSGBYTES])
-{
-    unsigned int i, j;
-    int16_t mask;
-    uint8_t mu_tilde[HIGH_CODEWORD_BYTES] = { 0 };
-
-    for (i = 0; i < WEAVER_N; i++) {
-        r->coeffs[i] = 0;
-    }
-
-    // ==========================================================
-    // Step 1: Encode to Higher bits
-    // ==========================================================
-    memcpy(mu_tilde, msg, ELL_BAR_BYTES);
-
-    for (i = 0; i < HIGH_CODEWORD_BYTES; i++) {
-        for (j = 0; j < 8; j++) {
-            mask = -(int16_t)((mu_tilde[i] >> (7 - j)) & 1);
-            r->coeffs[8 * i + j] = mask & WEAVER_HALFQ;
-        }
-    }
-}
-// Algorithm 5: MsgDecode
-void poly_tomsg(uint8_t msg[WEAVER_INDCPA_MSGBYTES], const poly *a)
-{
-    unsigned int i, j;
-    int16_t w_bar[HIGH_CODEWORD_BITS];
-    uint8_t mu_tilde[HIGH_CODEWORD_BYTES] = { 0 };
-    memset(msg, 0, WEAVER_INDCPA_MSGBYTES);
-
-    for (i = 0; i < HIGH_CODEWORD_BITS; i++) { // COPY coeffs into w_bar
-        int16_t t = a->coeffs[i];
-        // map to positive standard representatives: [0, q-1]
-        w_bar[i] = t + ((t >> 15) & WEAVER_Q);
-    }
-    // ==========================================================
-    // Phase 3: Decode Higher bits
-    // ==========================================================
-    for (i = 0; i < HIGH_CODEWORD_BYTES; i++) {
-        for (j = 0; j < 8; j++) {
-            int16_t t = w_bar[8 * i + j];
-            t += ((int16_t)t >> 15) & WEAVER_Q; // map to positive
-            t = ((((uint32_t)t << 1) + WEAVER_Q / 2) / WEAVER_Q) & 1;
-            mu_tilde[i] |= t << (7 -j);
-        }
-    }
-
-    memcpy(msg, mu_tilde, ELL_BAR_BYTES);
-}
-
-#elif WEAVER_MODE == 3 || WEAVER_MODE == 5
+#if WEAVER_MODE == 1 || WEAVER_MODE == 3 || WEAVER_MODE == 5
 
 /*************************************************
 * Name:        flipabs
@@ -150,15 +94,15 @@ void poly_frommsg(poly *r, const uint8_t msg[WEAVER_INDCPA_MSGBYTES])
   // ==========================================================
   // Step 1: Encode to Higher bits (MSB-first)
   // ==========================================================
-#if WEAVER_MODE == 3 
+#if WEAVER_MODE == 1 || WEAVER_MODE == 5
+  memcpy(mu_tilde, msg, ELL_BAR_BYTES);
+  encode_bch_high(msg, ELL_BAR_BYTES, mu_tilde + ELL_BAR_BYTES);
+
+#elif WEAVER_MODE == 3
   /* mu_tilde = msg[0] || msg[1] || ... ||(msg[27] = 1111xxxx) */
   memcpy(mu_tilde, msg, 28);
   mu_tilde[27] &= 0xF0; // leave 4 bits empty (0)
   encode_bch_high_nibbles(mu_tilde, ELL_BAR_NIBBLES, mu_tilde + ELL_BAR_BYTES); // just fit in 32 Bytes
-
-#elif WEAVER_MODE == 5
-  memcpy(mu_tilde, msg, ELL_BAR_BYTES);
-  encode_bch_high(msg, ELL_BAR_BYTES, mu_tilde + ELL_BAR_BYTES);
 
 #endif
 
@@ -173,15 +117,14 @@ void poly_frommsg(poly *r, const uint8_t msg[WEAVER_INDCPA_MSGBYTES])
   // ==========================================================
   // Step 2: Encode to Lower bits
   // ==========================================================
-#if WEAVER_MODE == 3 
-  /* mu_ddot_buf = msg[28:31] || (msg[27] = xxxx1111 << 4) */
+#if WEAVER_MODE == 1 || WEAVER_MODE == 5
+  memcpy(mu_ddot_buf, msg + ELL_BAR_BYTES, ELL_DDOT_BYTES);
+  encode_bch_low(mu_ddot_buf, ELL_DDOT_BYTES, mu_ddot_buf + ELL_DDOT_BYTES);
+
+#elif WEAVER_MODE == 3
   memcpy(mu_ddot_buf, msg + 28, 4);
   mu_ddot_buf[4] = (msg[27] << 4);
   encode_bch_low_nibbles(mu_ddot_buf, ELL_DDOT_NIBBLES, mu_ddot_buf + ELL_DDOT_BYTES);
-
-#elif WEAVER_MODE == 5
-  memcpy(mu_ddot_buf, msg + ELL_BAR_BYTES, ELL_DDOT_BYTES);
-  encode_bch_low(mu_ddot_buf, ELL_DDOT_BYTES, mu_ddot_buf + ELL_DDOT_BYTES);
 
 #endif
   // D4 encoding
@@ -229,19 +172,19 @@ void poly_tomsg(uint8_t msg[WEAVER_INDCPA_MSGBYTES], const poly *a)
   // ==========================================================
   // Phase 2: Cancel Interference from Lower bits
   // ==========================================================
-#if WEAVER_MODE == 3 
-  decode_bch_low_nibbles(mu_ddot_noisy, 9, mu_ddot_noisy + 5);
-  memcpy(mu_ddot_clean, mu_ddot_noisy, ELL_DDOT_BYTES);
-  encode_bch_low_nibbles(mu_ddot_clean, ELL_DDOT_NIBBLES, mu_ddot_clean + ELL_DDOT_BYTES);
-
-#elif WEAVER_MODE == 5
+#if WEAVER_MODE == 1 || WEAVER_MODE == 5
   decode_bch_low(mu_ddot_noisy, ELL_DDOT_BYTES, mu_ddot_noisy + ELL_DDOT_BYTES);
   memcpy(mu_ddot_clean, mu_ddot_noisy, ELL_DDOT_BYTES);
   encode_bch_low(mu_ddot_clean, ELL_DDOT_BYTES, mu_ddot_clean + ELL_DDOT_BYTES);
 
+#elif WEAVER_MODE == 3
+  decode_bch_low_nibbles(mu_ddot_noisy, ELL_DDOT_NIBBLES, mu_ddot_noisy + ELL_DDOT_BYTES);
+  memcpy(mu_ddot_clean, mu_ddot_noisy, ELL_DDOT_BYTES);
+  encode_bch_low_nibbles(mu_ddot_clean, ELL_DDOT_NIBBLES, mu_ddot_clean + ELL_DDOT_BYTES);
+
 #endif
 
-  for(i = 0; i < LOW_CODEWORD_BYTES; i++) { // 不保证为正
+  for(i = 0; i < LOW_CODEWORD_BYTES; i++) {
     for(j = 0; j < 8; j++) {
         int16_t mask = -((mu_ddot_clean[i] >> (7 - j)) & 1); 
         w_bar[8*i + j + 0  ] -= (mask & (WEAVER_Q/4));
@@ -264,18 +207,17 @@ void poly_tomsg(uint8_t msg[WEAVER_INDCPA_MSGBYTES], const poly *a)
     }
   }
 
-#if WEAVER_MODE == 3 
-  decode_bch_high_nibbles(mu_tilde, ELL_BAR_NIBBLES, mu_tilde + ELL_BAR_BYTES);
+#if WEAVER_MODE == 1 || WEAVER_MODE == 5
+  decode_bch_high(mu_tilde, ELL_BAR_BYTES, mu_tilde + ELL_BAR_BYTES);
+  memcpy(msg, mu_tilde, ELL_BAR_BYTES);
+  memcpy(msg + ELL_BAR_BYTES, mu_ddot_clean, ELL_DDOT_BYTES);
+
+#elif WEAVER_MODE == 3
   // all high bits and 4 of low bits
   memcpy(msg, mu_tilde, 27);
   msg[27] = (mu_tilde[27] & 0xF0) | ((mu_ddot_clean[4] >> 4) & 0xF);
   // low bits
   memcpy(msg + ELL_BAR_BYTES, mu_ddot_clean, ELL_DDOT_BYTES - 1); /* mu_ddot_clean[0:3] */
-
-#elif WEAVER_MODE == 5
-  decode_bch_high(mu_tilde, ELL_BAR_BYTES, mu_tilde + ELL_BAR_BYTES);
-  memcpy(msg, mu_tilde, ELL_BAR_BYTES);
-  memcpy(msg + ELL_BAR_BYTES, mu_ddot_clean, ELL_DDOT_BYTES);
 
 #endif
 }

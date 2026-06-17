@@ -38,30 +38,31 @@ int main(void) {
     printf("\n>> [0] 无噪声闭环 OK\n");
 
     srand((unsigned)time(NULL));
+    int max_errors = 2;
+    for (int num_errors = 1; num_errors <= max_errors; num_errors++) {
+        poly_frommsg(&p, original_msg);
+        printf("\n>> [%d] poly_frommsg 编码完成.\n", num_errors);
+        printf(">> [%d] 正在向多项式注入 %d 个系数级 Q/2 噪声...\n",
+               num_errors, num_errors);
 
-    poly_frommsg(&p, original_msg);
-    printf("\n>> [1] poly_frommsg 编码完成.\n");
+        for (int i = 0; i < num_errors; i++) {
+            int err_idx = rand() % WEAVER_N;
+            int16_t before = p.coeffs[err_idx];
+            p.coeffs[err_idx] = (int16_t)(p.coeffs[err_idx] + (WEAVER_Q / 2));
+            printf("   - [破坏] 系数 @ 索引 %3d: %6d -> %6d\n",
+                   err_idx, before, p.coeffs[err_idx]);
+        }
 
-    const int num_errors = 4;
-    printf(">> [2] 正在向多项式注入 %d 个系数级 Q/2 噪声...\n", num_errors);
+        poly_tomsg(recovered_msg, &p);
+        printf("\n>> [%d] poly_tomsg 解码完成.\n", num_errors);
+        print_hex("[恢复消息]", recovered_msg, WEAVER_INDCPA_MSGBYTES);
 
-    for (int i = 0; i < num_errors; i++) {
-        int err_idx = rand() % WEAVER_N;
-        int16_t before = p.coeffs[err_idx];
-        p.coeffs[err_idx] = (int16_t)(p.coeffs[err_idx] + (WEAVER_Q / 2));
-        printf("   - [破坏] 系数 @ 索引 %3d: %6d -> %6d\n",
-               err_idx, before, p.coeffs[err_idx]);
-    }
-
-    poly_tomsg(recovered_msg, &p);
-    printf("\n>> [3] poly_tomsg 解码完成.\n");
-    print_hex("[恢复消息]", recovered_msg, WEAVER_INDCPA_MSGBYTES);
-
-    if (memcmp(original_msg, recovered_msg, WEAVER_INDCPA_MSGBYTES) == 0) {
-        printf("\n✅ 测试通过！纠错成功。\n");
-    } else {
-        printf("\n❌ 测试失败！\n");
-        fail = 1;
+        if (memcmp(original_msg, recovered_msg, WEAVER_INDCPA_MSGBYTES) == 0) {
+            printf("\n✅ %d 个错误：纠错成功。\n", num_errors);
+        } else {
+            printf("\n❌ %d 个错误：测试失败！\n", num_errors);
+            fail = 1;
+        }
     }
 
     return fail;

@@ -5,13 +5,11 @@
 #include "params.h"
 
 #if   (WEAVER_MODE == 1)
-  /* Level 1 uses n=128; two-layer BCH support is added separately. */
-  #define ELL_BAR_BYTES        16
-  #define HIGH_ECC_BYTES       0
-  #define HIGH_CODEWORD_BITS   WEAVER_N
-  #define HIGH_CODEWORD_BYTES  (HIGH_CODEWORD_BITS >> 3)
-  #define ELL_DDOT_BYTES       0
-  #define LOW_CODEWORD_BYTES   0
+  #define ELL_BAR_BYTES        14
+  #define ELL_DDOT_BYTES       2
+  #define LOW_ECC_BYTES        2
+  #define LOW_CODEWORD_BYTES   4
+  #define D4_STEP_LEN          32
 
 #elif (WEAVER_MODE == 3)
   #define ELL_BAR_BYTES        28 // ceil 220 bits = 28 bytes
@@ -20,7 +18,7 @@
   #define ELL_DDOT_NIBBLES     9  // ceil 36 bits = 9 NIBBLES
   #define LOW_ECC_NIBBLES      6  // (63,39,4) BCH code; ceil （4*6=24） = 6 NIBBLES 
   #define LOW_CODEWORD_NIBBLES 15  // (ELL_DDOT_NIBBLES + LOW_ECC_NIBBLES) < 16 NIBBLES = 64 bits
-  #define LOW_CODEWORD_BYTES 8
+  #define LOW_CODEWORD_BYTES   8
   #define D4_STEP_LEN 64
 
 #elif (WEAVER_MODE == 5)

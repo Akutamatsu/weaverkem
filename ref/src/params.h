@@ -15,6 +15,7 @@
   #define WEAVER_ETA2 2
   #define WEAVER_K 5
   #define WEAVER_DV 6
+  #define WEAVER_Q 3329
 
   /* Table 1 core: (n,k,q,eta1,eta2,dt,du,dv) = (128,5,3329,3,2,9,9,6). */
   #define WEAVER_PK_POLYVECBYTES        (WEAVER_K * ((WEAVER_N * 9) / 8))
@@ -25,28 +26,30 @@
   #define WEAVER_N 256
   #define WEAVER_INDCPA_MSGBYTES       (WEAVER_N / 8)
   #define WEAVER_NAMESPACE(s) weaver1024_ref##s
-  #define WEAVER_ETA1 2
-  #define WEAVER_ETA2 WEAVER_ETA1
+  #define WEAVER_ETA1 7
+  #define WEAVER_ETA2 7
   #define WEAVER_K 4
-  #define WEAVER_DV 5
+  #define WEAVER_DV 8
+  #define WEAVER_Q 7681
 
-  /* paper-aligned core: (n,k,q,eta1,dt,du,dv) = (256,4,3329,2,9,9,5) */
-  #define WEAVER_PK_POLYVECBYTES        (WEAVER_K * ((WEAVER_N * 9) / 8))
-  #define WEAVER_POLYVECCOMPRESSEDBYTES (WEAVER_K * ((WEAVER_N * 9) / 8))
+  /* Table 1 core: (n,k,q,eta1,eta2,dt,du,dv) = (256,4,7681,7,7,10,10,8). */
+  #define WEAVER_PK_POLYVECBYTES        (WEAVER_K * ((WEAVER_N * 10) / 8))
+  #define WEAVER_POLYVECCOMPRESSEDBYTES (WEAVER_K * ((WEAVER_N * 10) / 8))
   #define WEAVER_POLYCUT_DIMENSION   WEAVER_N
 
 #elif (WEAVER_MODE == 5)
   #define WEAVER_N 512
   #define WEAVER_INDCPA_MSGBYTES       (WEAVER_N / 8)
   #define WEAVER_NAMESPACE(s) weaver2048_ref##s
-  #define WEAVER_ETA1 1
-  #define WEAVER_ETA2 WEAVER_ETA1
+  #define WEAVER_ETA1 9
+  #define WEAVER_ETA2 9
   #define WEAVER_K 4
-  #define WEAVER_DV 6
+  #define WEAVER_DV 9
+  #define WEAVER_Q 7681
 
-  /* paper-aligned core: (n,k,q,eta1,dt,du,dv) = (512,4,3329,1,9,9,6) */
-  #define WEAVER_PK_POLYVECBYTES        (WEAVER_K * ((WEAVER_N * 9) / 8))
-  #define WEAVER_POLYVECCOMPRESSEDBYTES (WEAVER_K * ((WEAVER_N * 9) / 8))
+  /* Table 1 core: (n,k,q,eta1,eta2,dt,du,dv) = (512,4,7681,9,9,11,11,9). */
+  #define WEAVER_PK_POLYVECBYTES        (WEAVER_K * ((WEAVER_N * 11) / 8))
+  #define WEAVER_POLYVECCOMPRESSEDBYTES (WEAVER_K * ((WEAVER_N * 11) / 8))
   #define WEAVER_POLYCUT_DIMENSION   WEAVER_N
 
 #else
@@ -65,7 +68,6 @@
 /* ====================================================================
  * 全局共享参数区：以下参数根据上面决定的 N 自动计算，不需要修改
  * ==================================================================== */
-#define WEAVER_Q     3329
 #define WEAVER_HALFQ ((WEAVER_Q + 1) / 2)
 
 /* size in bytes of hashes, and seeds */

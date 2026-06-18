@@ -274,8 +274,27 @@ void poly_compress(uint8_t r[WEAVER_POLYCOMPRESSEDBYTES], const poly *a)
         u += (u >> 15) & WEAVER_Q;
         *r++ = ((((uint32_t)u << 8) + WEAVER_Q / 2) / WEAVER_Q) & 0xff;
     }
+#elif (WEAVER_DV == 9)
+    for (i = 0; i < WEAVER_POLYCUT_DIMENSION / 8; i++) {
+        for (j = 0; j < 8; j++) {
+            u = a->coeffs[8 * i + j];
+            u += (u >> 15) & WEAVER_Q;
+            t[j] = ((((uint32_t)u << 9) + WEAVER_Q / 2) / WEAVER_Q) & 0x1ff;
+        }
+
+        r[0] = (uint8_t)(t[0] >> 0);
+        r[1] = (uint8_t)((t[0] >> 8) | (t[1] << 1));
+        r[2] = (uint8_t)((t[1] >> 7) | (t[2] << 2));
+        r[3] = (uint8_t)((t[2] >> 6) | (t[3] << 3));
+        r[4] = (uint8_t)((t[3] >> 5) | (t[4] << 4));
+        r[5] = (uint8_t)((t[4] >> 4) | (t[5] << 5));
+        r[6] = (uint8_t)((t[5] >> 3) | (t[6] << 6));
+        r[7] = (uint8_t)((t[6] >> 2) | (t[7] << 7));
+        r[8] = (uint8_t)(t[7] >> 1);
+        r += 9;
+    }
 #else
-#error "WEAVER_DV needs to be 5, 6, or 8"
+#error "WEAVER_DV needs to be 5, 6, 8, or 9"
 #endif
 }
 
@@ -326,8 +345,25 @@ void poly_decompress(poly *r, const uint8_t a[WEAVER_POLYCOMPRESSEDBYTES])
 #elif (WEAVER_DV == 8)
     for (i = 0; i < WEAVER_POLYCUT_DIMENSION; i++)
         r->coeffs[i] = ((uint32_t)(*a++)*WEAVER_Q + 128) >> 8;
+#elif (WEAVER_DV == 9)
+    unsigned int j;
+    uint16_t t[8];
+    for (i = 0; i < WEAVER_POLYCUT_DIMENSION / 8; i++) {
+        t[0] = (uint16_t)((((uint16_t)a[0] >> 0) | ((uint16_t)a[1] << 8)) & 0x1ff);
+        t[1] = (uint16_t)((((uint16_t)a[1] >> 1) | ((uint16_t)a[2] << 7)) & 0x1ff);
+        t[2] = (uint16_t)((((uint16_t)a[2] >> 2) | ((uint16_t)a[3] << 6)) & 0x1ff);
+        t[3] = (uint16_t)((((uint16_t)a[3] >> 3) | ((uint16_t)a[4] << 5)) & 0x1ff);
+        t[4] = (uint16_t)((((uint16_t)a[4] >> 4) | ((uint16_t)a[5] << 4)) & 0x1ff);
+        t[5] = (uint16_t)((((uint16_t)a[5] >> 5) | ((uint16_t)a[6] << 3)) & 0x1ff);
+        t[6] = (uint16_t)((((uint16_t)a[6] >> 6) | ((uint16_t)a[7] << 2)) & 0x1ff);
+        t[7] = (uint16_t)((((uint16_t)a[7] >> 7) | ((uint16_t)a[8] << 1)) & 0x1ff);
+        a += 9;
+
+        for (j = 0; j < 8; j++)
+            r->coeffs[8 * i + j] = ((uint32_t)t[j] * WEAVER_Q + 256) >> 9;
+    }
 #else
-#error "WEAVER_DV needs to be 5, 6, or 8"
+#error "WEAVER_DV needs to be 5, 6, 8, or 9"
 #endif
 }
 

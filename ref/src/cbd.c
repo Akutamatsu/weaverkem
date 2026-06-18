@@ -151,6 +151,63 @@ static WEAVER_UNUSED void cbd6(poly *r, const uint8_t buf[6*WEAVER_N/4])
   }
 }
 
+static WEAVER_UNUSED void cbd7(poly *r, const uint8_t buf[7*WEAVER_N/4])
+{
+  unsigned int i, j;
+
+  for(i = 0; i < WEAVER_N/4; i++) {
+    uint64_t t = (uint64_t)buf[7*i + 0]
+               | ((uint64_t)buf[7*i + 1] << 8)
+               | ((uint64_t)buf[7*i + 2] << 16)
+               | ((uint64_t)buf[7*i + 3] << 24)
+               | ((uint64_t)buf[7*i + 4] << 32)
+               | ((uint64_t)buf[7*i + 5] << 40)
+               | ((uint64_t)buf[7*i + 6] << 48);
+
+    for(j = 0; j < 4; j++) {
+      uint32_t v = (uint32_t)((t >> (14*j)) & 0x3FFF);
+      int16_t a = (int16_t)popcount_u32(v & 0x7F);
+      int16_t b = (int16_t)popcount_u32((v >> 7) & 0x7F);
+      r->coeffs[4*i + j] = a - b;
+    }
+  }
+}
+
+static WEAVER_UNUSED void cbd9(poly *r, const uint8_t buf[9*WEAVER_N/4])
+{
+  unsigned int i, j;
+
+  for(i = 0; i < WEAVER_N/4; i++) {
+    uint64_t t0 = (uint64_t)buf[9*i + 0]
+                | ((uint64_t)buf[9*i + 1] << 8)
+                | ((uint64_t)buf[9*i + 2] << 16)
+                | ((uint64_t)buf[9*i + 3] << 24)
+                | ((uint64_t)buf[9*i + 4] << 32)
+                | ((uint64_t)buf[9*i + 5] << 40)
+                | ((uint64_t)buf[9*i + 6] << 48)
+                | ((uint64_t)buf[9*i + 7] << 56);
+    uint32_t t1 = (uint32_t)buf[9*i + 8];
+
+    for(j = 0; j < 4; j++) {
+      uint32_t lo_shift = 18*j;
+      uint32_t v;
+      if(lo_shift <= 14) {
+        v = (uint32_t)((t0 >> lo_shift) & 0x3FFFF);
+      } else {
+        uint32_t hi_shift = lo_shift - 18;
+        v = (uint32_t)((t0 >> lo_shift) | ((uint64_t)t1 << (64 - lo_shift)));
+        v &= 0x3FFFF;
+        (void)hi_shift;
+      }
+      {
+        int16_t a = (int16_t)popcount_u32(v & 0x1FF);
+        int16_t b = (int16_t)popcount_u32((v >> 9) & 0x1FF);
+        r->coeffs[4*i + j] = a - b;
+      }
+    }
+  }
+}
+
 void cbd_eta1(poly *r, const uint8_t buf[WEAVER_ETA1*WEAVER_N/4])
 {
 #if WEAVER_ETA1 == 1
@@ -165,8 +222,12 @@ void cbd_eta1(poly *r, const uint8_t buf[WEAVER_ETA1*WEAVER_N/4])
   cbd5(r, buf);
 #elif WEAVER_ETA1 == 6
   cbd6(r, buf);
+#elif WEAVER_ETA1 == 7
+  cbd7(r, buf);
+#elif WEAVER_ETA1 == 9
+  cbd9(r, buf);
 #else
-#error "This implementation requires eta1 in {1,2,3,4,5,6}"
+#error "This implementation requires eta1 in {1,2,3,4,5,6,7,9}"
 #endif
 }
 
@@ -184,7 +245,11 @@ void cbd_eta2(poly *r, const uint8_t buf[WEAVER_ETA2*WEAVER_N/4])
   cbd5(r, buf);
 #elif WEAVER_ETA2 == 6
   cbd6(r, buf);
+#elif WEAVER_ETA2 == 7
+  cbd7(r, buf);
+#elif WEAVER_ETA2 == 9
+  cbd9(r, buf);
 #else
-#error "This implementation requires eta2 in {1,2,3,4,5,6}"
+#error "This implementation requires eta2 in {1,2,3,4,5,6,7,9}"
 #endif
 }

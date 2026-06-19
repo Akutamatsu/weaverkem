@@ -19,46 +19,47 @@
 **************************************************/
 void poly_tobytes(uint8_t r[WEAVER_POLYBYTES], const poly *a)
 {
-  unsigned int i;
+    unsigned int i;
 
 #if WEAVER_POLYCOIN_BITS == 12
-  uint16_t t0, t1;
+    uint16_t t0, t1;
 
-  for(i=0;i<WEAVER_N/2;i++) {
-    t0  = a->coeffs[2*i];
-    t0 += ((int16_t)t0 >> 15) & WEAVER_Q;
-    t1  = a->coeffs[2*i+1];
-    t1 += ((int16_t)t1 >> 15) & WEAVER_Q;
-    r[3*i+0] = (t0 >> 0);
-    r[3*i+1] = (t0 >> 8) | (t1 << 4);
-    r[3*i+2] = (t1 >> 4);
-  }
-#elif WEAVER_POLYCOIN_BITS == 13
-  uint16_t t[8];
+    for (i = 0; i < WEAVER_N / 2; i++) {
 
-  for(i = 0; i < WEAVER_N/8; i++) {
-    unsigned int j;
-    for(j = 0; j < 8; j++) {
-      t[j]  = a->coeffs[8*i + j];
-      t[j] += ((int16_t)t[j] >> 15) & WEAVER_Q;
-      t[j] &= 0x1FFF;
+        t0 = a->coeffs[2 * i];
+        t0 += ((int16_t)t0 >> 15) & WEAVER_Q;
+        t1 = a->coeffs[2 * i + 1];
+        t1 += ((int16_t)t1 >> 15) & WEAVER_Q;
+        r[3 * i + 0] = (t0 >> 0);
+        r[3 * i + 1] = (t0 >> 8) | (t1 << 4);
+        r[3 * i + 2] = (t1 >> 4);
     }
+#elif WEAVER_POLYCOIN_BITS == 13
+    uint16_t t[8];
 
-    r[ 0] = (uint8_t)(t[0] >> 0);
-    r[ 1] = (uint8_t)((t[0] >> 8) | (t[1] << 5));
-    r[ 2] = (uint8_t)(t[1] >> 3);
-    r[ 3] = (uint8_t)((t[1] >> 11) | (t[2] << 2));
-    r[ 4] = (uint8_t)((t[2] >> 6) | (t[3] << 7));
-    r[ 5] = (uint8_t)(t[3] >> 1);
-    r[ 6] = (uint8_t)((t[3] >> 9) | (t[4] << 4));
-    r[ 7] = (uint8_t)(t[4] >> 4);
-    r[ 8] = (uint8_t)((t[4] >> 12) | (t[5] << 1));
-    r[ 9] = (uint8_t)((t[5] >> 7) | (t[6] << 6));
-    r[10] = (uint8_t)(t[6] >> 2);
-    r[11] = (uint8_t)((t[6] >> 10) | (t[7] << 3));
-    r[12] = (uint8_t)(t[7] >> 5);
-    r += 13;
-  }
+    for (i = 0; i < WEAVER_N / 8; i++) {
+        unsigned int j;
+        for (j = 0; j < 8; j++) {
+            t[j] = a->coeffs[8 * i + j];
+            t[j] += ((int16_t)t[j] >> 15) & WEAVER_Q;
+            t[j] &= 0x1FFF;
+        }
+
+        r[0] = (uint8_t)(t[0] >> 0);
+        r[1] = (uint8_t)((t[0] >> 8) | (t[1] << 5));
+        r[2] = (uint8_t)(t[1] >> 3);
+        r[3] = (uint8_t)((t[1] >> 11) | (t[2] << 2));
+        r[4] = (uint8_t)((t[2] >> 6) | (t[3] << 7));
+        r[5] = (uint8_t)(t[3] >> 1);
+        r[6] = (uint8_t)((t[3] >> 9) | (t[4] << 4));
+        r[7] = (uint8_t)(t[4] >> 4);
+        r[8] = (uint8_t)((t[4] >> 12) | (t[5] << 1));
+        r[9] = (uint8_t)((t[5] >> 7) | (t[6] << 6));
+        r[10] = (uint8_t)(t[6] >> 2);
+        r[11] = (uint8_t)((t[6] >> 10) | (t[7] << 3));
+        r[12] = (uint8_t)(t[7] >> 5);
+        r += 13;
+    }
 #else
 #error "Unsupported WEAVER_POLYCOIN_BITS"
 #endif
@@ -76,25 +77,25 @@ void poly_tobytes(uint8_t r[WEAVER_POLYBYTES], const poly *a)
 **************************************************/
 void poly_frombytes(poly *r, const uint8_t a[WEAVER_POLYBYTES])
 {
-  unsigned int i;
+    unsigned int i;
 
 #if WEAVER_POLYCOIN_BITS == 12
-  for(i=0;i<WEAVER_N/2;i++) {
-    r->coeffs[2*i]   = ((a[3*i+0] >> 0) | ((uint16_t)a[3*i+1] << 8)) & 0xFFF;
-    r->coeffs[2*i+1] = ((a[3*i+1] >> 4) | ((uint16_t)a[3*i+2] << 4)) & 0xFFF;
-  }
+    for (i = 0; i < WEAVER_N / 2; i++) {
+        r->coeffs[2 * i] = ((a[3 * i + 0] >> 0) | ((uint16_t)a[3 * i + 1] << 8)) & 0xFFF;
+        r->coeffs[2 * i + 1] = ((a[3 * i + 1] >> 4) | ((uint16_t)a[3 * i + 2] << 4)) & 0xFFF;
+    }
 #elif WEAVER_POLYCOIN_BITS == 13
-  for(i = 0; i < WEAVER_N/8; i++) {
-    r->coeffs[8*i + 0] = (int16_t)((((uint16_t)a[ 0] >> 0) | ((uint16_t)a[ 1] << 8)) & 0x1FFF);
-    r->coeffs[8*i + 1] = (int16_t)((((uint16_t)a[ 1] >> 5) | ((uint16_t)a[ 2] << 3) | ((uint16_t)a[ 3] << 11)) & 0x1FFF);
-    r->coeffs[8*i + 2] = (int16_t)((((uint16_t)a[ 3] >> 2) | ((uint16_t)a[ 4] << 6)) & 0x1FFF);
-    r->coeffs[8*i + 3] = (int16_t)((((uint16_t)a[ 4] >> 7) | ((uint16_t)a[ 5] << 1) | ((uint16_t)a[ 6] << 9)) & 0x1FFF);
-    r->coeffs[8*i + 4] = (int16_t)((((uint16_t)a[ 6] >> 4) | ((uint16_t)a[ 7] << 4) | ((uint16_t)a[ 8] << 12)) & 0x1FFF);
-    r->coeffs[8*i + 5] = (int16_t)((((uint16_t)a[ 8] >> 1) | ((uint16_t)a[ 9] << 7)) & 0x1FFF);
-    r->coeffs[8*i + 6] = (int16_t)((((uint16_t)a[ 9] >> 6) | ((uint16_t)a[10] << 2) | ((uint16_t)a[11] << 10)) & 0x1FFF);
-    r->coeffs[8*i + 7] = (int16_t)((((uint16_t)a[11] >> 3) | ((uint16_t)a[12] << 5)) & 0x1FFF);
-    a += 13;
-  }
+    for (i = 0; i < WEAVER_N / 8; i++) {
+        r->coeffs[8 * i + 0] = (int16_t)((((uint16_t)a[0] >> 0) | ((uint16_t)a[1] << 8)) & 0x1FFF);
+        r->coeffs[8 * i + 1] = (int16_t)((((uint16_t)a[1] >> 5) | ((uint16_t)a[2] << 3) | ((uint16_t)a[3] << 11)) & 0x1FFF);
+        r->coeffs[8 * i + 2] = (int16_t)((((uint16_t)a[3] >> 2) | ((uint16_t)a[4] << 6)) & 0x1FFF);
+        r->coeffs[8 * i + 3] = (int16_t)((((uint16_t)a[4] >> 7) | ((uint16_t)a[5] << 1) | ((uint16_t)a[6] << 9)) & 0x1FFF);
+        r->coeffs[8 * i + 4] = (int16_t)((((uint16_t)a[6] >> 4) | ((uint16_t)a[7] << 4) | ((uint16_t)a[8] << 12)) & 0x1FFF);
+        r->coeffs[8 * i + 5] = (int16_t)((((uint16_t)a[8] >> 1) | ((uint16_t)a[9] << 7)) & 0x1FFF);
+        r->coeffs[8 * i + 6] = (int16_t)((((uint16_t)a[9] >> 6) | ((uint16_t)a[10] << 2) | ((uint16_t)a[11] << 10)) & 0x1FFF);
+        r->coeffs[8 * i + 7] = (int16_t)((((uint16_t)a[11] >> 3) | ((uint16_t)a[12] << 5)) & 0x1FFF);
+        a += 13;
+    }
 #else
 #error "Unsupported WEAVER_POLYCOIN_BITS"
 #endif
@@ -178,29 +179,29 @@ void poly_invntt_tomont(poly *r)
 void poly_basemul_montgomery(poly *r, const poly *a, const poly *b) {
   unsigned int i;
 
-#if WEAVER_N == 128
-  // Level 1: 纯标量乘法 (彻底分解，无需 zeta)
+#if WEAVER_N == 128 || WEAVER_N == 256
+  // Level 1 / Level 2: 纯标量乘法 (彻底分解，无需 zeta)
   for(i = 0; i < WEAVER_N; ++i) {
     r->coeffs[i] = montgomery_reduce((int32_t)a->coeffs[i] * b->coeffs[i]);
   }
 
-#elif WEAVER_N == 256
-  // Level 2: 原版 Kyber 的 2 次多项式乘法
-  // 64 对 2 次多项式，分别模 (X^2 - zeta) 和 (X^2 + zeta)
+#elif WEAVER_N == 512
+  // Level 3: 原版 Kyber 的 2 次多项式乘法
+  // 128 对 2 次多项式，分别模 (X^2 - zeta) 和 (X^2 + zeta)
   // 所以步长是 4 个系数 (2*2)
   for(i = 0; i < WEAVER_N / 4; ++i) {
-    basemul(&r->coeffs[4*i],   &a->coeffs[4*i],   &b->coeffs[4*i],    zetas[64 + i]);
-    basemul(&r->coeffs[4*i+2], &a->coeffs[4*i+2], &b->coeffs[4*i+2], -zetas[64 + i]);
+    basemul(&r->coeffs[4*i],   &a->coeffs[4*i],   &b->coeffs[4*i],    zetas[128 + i]);
+    basemul(&r->coeffs[4*i+2], &a->coeffs[4*i+2], &b->coeffs[4*i+2], -zetas[128 + i]);
   }
 
-#elif WEAVER_N == 512
-  // Level 3: 4 次多项式乘法
-  // 64 对 4 次多项式，分别模 (X^4 - zeta) 和 (X^4 + zeta)
-  // 步长是 8 个系数 (4*2)
-  for(i = 0; i < WEAVER_N / 8; ++i) {
-    basemul_degree4(&r->coeffs[8*i],   &a->coeffs[8*i],   &b->coeffs[8*i],    zetas[64 + i]);
-    basemul_degree4(&r->coeffs[8*i+4], &a->coeffs[8*i+4], &b->coeffs[8*i+4], -zetas[64 + i]);
-  }
+//#elif WEAVER_N == 512
+//  // Level 3: 4 次多项式乘法
+//  // 64 对 4 次多项式，分别模 (X^4 - zeta) 和 (X^4 + zeta)
+//  // 步长是 8 个系数 (4*2)
+//  for(i = 0; i < WEAVER_N / 8; ++i) {
+//    basemul_degree4(&r->coeffs[8*i],   &a->coeffs[8*i],   &b->coeffs[8*i],    zetas[64 + i]);
+//    basemul_degree4(&r->coeffs[8*i+4], &a->coeffs[8*i+4], &b->coeffs[8*i+4], -zetas[64 + i]);
+//  }
 #endif
 }
 

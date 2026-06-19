@@ -223,6 +223,8 @@ void poly_tomsg(uint8_t msg[WEAVER_INDCPA_MSGBYTES], const poly *a)
 }
 #endif
 
+#endif
+
 /*************************************************
 * Name:        poly_compress
 *
@@ -236,8 +238,11 @@ void poly_compress(uint8_t r[WEAVER_POLYCOMPRESSEDBYTES], const poly *a)
 {
     unsigned int i, j;
     int16_t u;
+#if (WEAVER_DV <= 8)
     uint8_t t[8];
-
+#else
+    uint16_t t[8];
+#endif
 
 #if (WEAVER_DV == 5)
     for (i = 0; i < WEAVER_POLYCUT_DIMENSION / 8; i++) {
@@ -349,22 +354,20 @@ void poly_decompress(poly *r, const uint8_t a[WEAVER_POLYCOMPRESSEDBYTES])
     unsigned int j;
     uint16_t t[8];
     for (i = 0; i < WEAVER_POLYCUT_DIMENSION / 8; i++) {
-        t[0] = (uint16_t)((((uint16_t)a[0] >> 0) | ((uint16_t)a[1] << 8)) & 0x1ff);
-        t[1] = (uint16_t)((((uint16_t)a[1] >> 1) | ((uint16_t)a[2] << 7)) & 0x1ff);
-        t[2] = (uint16_t)((((uint16_t)a[2] >> 2) | ((uint16_t)a[3] << 6)) & 0x1ff);
-        t[3] = (uint16_t)((((uint16_t)a[3] >> 3) | ((uint16_t)a[4] << 5)) & 0x1ff);
-        t[4] = (uint16_t)((((uint16_t)a[4] >> 4) | ((uint16_t)a[5] << 4)) & 0x1ff);
-        t[5] = (uint16_t)((((uint16_t)a[5] >> 5) | ((uint16_t)a[6] << 3)) & 0x1ff);
-        t[6] = (uint16_t)((((uint16_t)a[6] >> 6) | ((uint16_t)a[7] << 2)) & 0x1ff);
-        t[7] = (uint16_t)((((uint16_t)a[7] >> 7) | ((uint16_t)a[8] << 1)) & 0x1ff);
+        t[0] = (a[0] >> 0) | ((uint16_t)a[1] << 8);
+        t[1] = (a[1] >> 1) | ((uint16_t)a[2] << 7);
+        t[2] = (a[2] >> 2) | ((uint16_t)a[3] << 6);
+        t[3] = (a[3] >> 3) | ((uint16_t)a[4] << 5);
+        t[4] = (a[4] >> 4) | ((uint16_t)a[5] << 4);
+        t[5] = (a[5] >> 5) | ((uint16_t)a[6] << 3);
+        t[6] = (a[6] >> 6) | ((uint16_t)a[7] << 2);
+        t[7] = (a[7] >> 7) | ((uint16_t)a[8] << 1);
         a += 9;
 
         for (j = 0; j < 8; j++)
-            r->coeffs[8 * i + j] = ((uint32_t)t[j] * WEAVER_Q + 256) >> 9;
+            r->coeffs[8 * i + j] = ((uint32_t)(t[j] & 0x1ff)* WEAVER_Q + 256) >> 9;
     }
 #else
 #error "WEAVER_DV needs to be 5, 6, 8, or 9"
 #endif
 }
-
-#endif

@@ -22,13 +22,13 @@
   #define D4_STEP_LEN 64
 
 #elif (WEAVER_MODE == 5)
-  /* High: (511,*,6) shortened BCH — payload <= floor((511-54)/8)=57 bytes (matches bch511_456_6.h). */
-  #define ELL_BAR_BYTES      57
-  /* Low: (127,*,6) — payload <= floor((127-42)/8)=10 bytes; use 7 data + 6 ECC = 13 (64 - 57 = 7). */
-  #define ELL_DDOT_BYTES     7
-  #define LOW_ECC_BYTES      6  /* BCH_ECC_BYTES from bch127_56_6.h */
-  #define LOW_CODEWORD_BYTES 13  /* ELL_DDOT_BYTES + LOW_ECC_BYTES */
-  #define D4_STEP_LEN 128
+  /* High: BCH(511,448,7) — 56 data + 8 ECC = 64 bytes (mu_tilde full). */
+  #define ELL_BAR_BYTES        56
+  /* Low: BCH(127,64,7) — 8 data + 7 ECC = 15 bytes D4 codeword. */
+  #define ELL_DDOT_BYTES       8
+  #define LOW_ECC_BYTES        7
+  #define LOW_CODEWORD_BYTES   15
+  #define D4_STEP_LEN          128
 
 #else
   #error "WEAVER_MODE must be in {1,3,5}"

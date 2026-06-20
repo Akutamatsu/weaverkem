@@ -38,7 +38,7 @@ int main(void) {
     printf("\n>> [0] 无噪声闭环 OK\n");
 
     srand((unsigned)time(NULL));
-    int max_errors = 2;
+    int max_errors = 5;
     for (int num_errors = 1; num_errors <= max_errors; num_errors++) {
         poly_frommsg(&p, original_msg);
         printf("\n>> [%d] poly_frommsg 编码完成.\n", num_errors);
@@ -68,7 +68,10 @@ int main(void) {
     return fail;
 }
 
+// WEAVER-2048 (mode 5) — 仅测 poly_frommsg / poly_tomsg，无需 poly_invq / indcpa 等：
+// gcc -O3 -march=native -DWEAVER_MODE=5 -I./src ./src/test_coding.c \
+//     ./src/bch_high.c ./src/bch_low.c ./src/msgenc.c ./src/reduce.c -o test_coding
+//
+// WEAVER-1024 (mode 3)：
 // gcc -O3 -march=native -DWEAVER_MODE=3 -I./src ./src/test_coding.c \
-//     ./src/indcpa.c ./src/poly.c ./src/ntt.c ./src/cbd.c ./src/reduce.c ./src/polyvec.c \
-//     ./src/bch_high.c ./src/bch_low.c ./src/msgenc.c ./src/fips202.c ./src/symmetric-shake.c \
-//     ./src/poly_invq.c ./src/rng.c -lcrypto -o test_coding
+//     ./src/bch_high.c ./src/bch_low.c ./src/msgenc.c ./src/reduce.c -o test_coding

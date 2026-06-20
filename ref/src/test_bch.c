@@ -35,12 +35,12 @@
 #  define LOW_BUF_BYTES ((LOW_NIBBLES + 1) / 2)
 #  define ECC_BYTES_LOW 3
 #elif WEAVER_MODE == 5
-#  define BCH_T_HIGH 6
-#  define DATA_LEN_HIGH 57
-#  define ECC_BYTES_HIGH 7
-#  define BCH_T_LOW 6
-#  define DATA_LEN_LOW 7  /* msgenc: ELL_DDOT_BYTES */
-#  define ECC_BYTES_LOW 6 /* msgenc: LOW_ECC_BYTES */
+#  define BCH_T_HIGH 7
+#  define DATA_LEN_HIGH 56
+#  define ECC_BYTES_HIGH 8
+#  define BCH_T_LOW 7
+#  define DATA_LEN_LOW 8  /* msgenc: ELL_DDOT_BYTES */
+#  define ECC_BYTES_LOW 7 /* msgenc: LOW_ECC_BYTES */
 #else
 #  error "WEAVER_MODE must be 1, 3, or 5"
 #endif
@@ -135,7 +135,7 @@ static int test_bch_high(void)
 
 #if WEAVER_MODE == 5
     {
-        static const unsigned stress_bits[] = {3, 250, 256, 300, 400, 436, 450, 0};
+        static const unsigned stress_bits[] = {3, 250, 400, 447, 0};
         printf("\n【高位 MSB 单比特压力测试 (mode 5)】\n");
         for (int k = 0; stress_bits[k] || k == 0; k++) {
             unsigned bi = stress_bits[k];

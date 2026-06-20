@@ -1,6 +1,14 @@
+/**
+ * poly_invq.c — WEAVER-Inv: Randomized Lifting via Inv_q
+ *
+ * Lemire 拒绝采样：coeffs 已由 polyvec_fromcompressed_pk 填入桶编号 y，
+ * 用 PRF 随机字节提升为 Z_q 代表元 bucket_lo[y] + t。
+ */
+
 #include <stdint.h>
+#include <string.h>
 #include "params.h"
-#include "polyvec.h"
+#include "poly.h"
 #include "invq.h"
 #include "symmetric.h"
 
@@ -16,79 +24,84 @@
 #error "Unsupported public-key compression width"
 #endif
 
-#define INVQ_BUCKETS (1u << WEAVER_DT)
-#define INVQ_RAND_MASK ((WEAVER_Q <= 4096) ? 0x0FFFu : 0xFFFFu)
-#if WEAVER_N == 512
-#define GEN_INVQ_RAND_BYTES (2*SHAKE256_RATE)
+#if WEAVER_DT == 9
+#include "invq_table_d9.h"
+#define BUCKET_LO invq_d9_bucket_lo
+#define BUCKET_SZ invq_d9_bucket_size
+#elif WEAVER_DT == 10
+#include "invq_table_d10.h"
+#define BUCKET_LO invq_d10_bucket_lo
+#define BUCKET_SZ invq_d10_bucket_size
+#elif WEAVER_DT == 11
+#include "invq_table_d11.h"
+#define BUCKET_LO invq_d11_bucket_lo
+#define BUCKET_SZ invq_d11_bucket_size
 #else
-#define GEN_INVQ_RAND_BYTES SHAKE256_RATE
+#error "Inv_q table not available for this compression width"
 #endif
 
-static uint16_t compress_q(uint16_t x)
+#if WEAVER_N == 128
+#define GEN_INVQ_RAND_BYTES SHAKE256_RATE
+#elif WEAVER_N == 256
+#define GEN_INVQ_RAND_BYTES SHAKE256_RATE
+#elif WEAVER_N == 512
+#define GEN_INVQ_RAND_BYTES (2 * SHAKE256_RATE)
+#else
+#error "Unsupported WEAVER_N for invq PRF buffer"
+#endif
+
+static unsigned int rej_uniform(int16_t *r,
+                                unsigned int len,
+                                const uint8_t *buf,
+                                unsigned int buflen)
 {
-  return (uint16_t)(((((uint32_t)x << WEAVER_DT) + WEAVER_Q / 2) / WEAVER_Q) & (INVQ_BUCKETS - 1));
-}
+    unsigned int ctr, pos, j;
+    uint8_t t[8];
 
-static unsigned int rej_uniform_modq(uint16_t *r,
-                                     unsigned int len,
-                                     const uint8_t *buf,
-                                     unsigned int buflen)
-{
-  unsigned int ctr = 0;
-  unsigned int pos = 0;
+    ctr = pos = 0;
+    while(ctr < len && pos + 3 <= buflen) {
+        t[0] = (buf[pos + 0] >> 0) & 0x7;
+        t[1] = (buf[pos + 0] >> 3) & 0x7;
+        t[2] = ((buf[pos + 0] >> 6) | (buf[pos + 1] << 2)) & 0x7;
+        t[3] = (buf[pos + 1] >> 1) & 0x7;
+        t[4] = (buf[pos + 1] >> 4) & 0x7;
+        t[5] = ((buf[pos + 1] >> 7) | (buf[pos + 2] << 1)) & 0x7;
+        t[6] = (buf[pos + 2] >> 2) & 0x7;
+        t[7] = (buf[pos + 2] >> 5) & 0x7;
+        pos += 3;
 
-  while(ctr < len && pos + 3 <= buflen) {
-    uint16_t val0 = ((buf[pos + 0] >> 0) | ((uint16_t)buf[pos + 1] << 8)) & INVQ_RAND_MASK;
-    uint16_t val1 = ((buf[pos + 1] >> 4) | ((uint16_t)buf[pos + 2] << 4)) & INVQ_RAND_MASK;
-    pos += 3;
-
-    if(val0 < WEAVER_Q)
-      r[ctr++] = val0;
-    if(ctr < len && val1 < WEAVER_Q)
-      r[ctr++] = val1;
-  }
-
-  return ctr;
-}
-
-static void invq_poly(poly *r,
-                      const poly *bucket,
-                      const uint8_t seed[WEAVER_SYMBYTES],
-                      uint8_t nonce)
-{
-  unsigned int i, ctr;
-  uint8_t buf[GEN_INVQ_RAND_BYTES];
-  uint16_t candidates[WEAVER_N];
-
-  ctr = 0;
-  while(ctr < WEAVER_N) {
-    prf(buf, sizeof(buf), seed, nonce++);
-    ctr += rej_uniform_modq(candidates + ctr,
-                            WEAVER_N - ctr,
-                            buf,
-                            sizeof(buf));
-  }
-
-  for(i = 0; i < WEAVER_N; i++) {
-    uint16_t y = (uint16_t)bucket->coeffs[i] & (INVQ_BUCKETS - 1);
-    uint16_t x = candidates[i];
-
-    while(compress_q(x) != y) {
-      x++;
-      if(x == WEAVER_Q)
-        x = 0;
+        for(j = 0; j < 8; j++) {
+            if(ctr >= len)
+                break;
+            if(t[j] < BUCKET_SZ[r[ctr]]) {
+                unsigned int c = ctr;
+                int16_t bidx = r[c];
+                r[c] = (int16_t)(BUCKET_LO[bidx] + t[j]);
+                ctr = c + 1;
+            }
+        }
     }
 
-    r->coeffs[i] = (int16_t)x;
-  }
+    return ctr;
 }
 
 void polyvec_invq(polyvec *v,
                   const uint8_t seed[WEAVER_SYMBYTES],
                   uint8_t nonce)
 {
-  unsigned int i;
+    unsigned int ctr, i;
+    unsigned int buflen;
+    uint8_t buf[GEN_INVQ_RAND_BYTES];
 
-  for(i = 0; i < WEAVER_K; i++)
-    invq_poly(&v->vec[i], &v->vec[i], seed, nonce++);
+    for(i = 0; i < WEAVER_K; i++) {
+        prf(buf, GEN_INVQ_RAND_BYTES, seed, nonce++);
+        buflen = GEN_INVQ_RAND_BYTES;
+        ctr = rej_uniform(v->vec[i].coeffs, WEAVER_N, buf, buflen);
+
+        while(ctr < WEAVER_N) {
+            prf(buf, GEN_INVQ_RAND_BYTES, seed, nonce++);
+            buflen = GEN_INVQ_RAND_BYTES;
+            ctr += rej_uniform(v->vec[i].coeffs + ctr, WEAVER_N - ctr, buf, buflen);
+        }
+    }
 }

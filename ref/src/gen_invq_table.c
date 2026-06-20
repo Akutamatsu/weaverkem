@@ -1,55 +1,153 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 
-#define WEAVER_Q 3329
+static uint32_t weaver_q;
+static int dt;
 
-static uint32_t compress_q(uint32_t x, int d) {
-    uint32_t num_buckets = 1u << d;
-    return (uint32_t)(((uint64_t)x * num_buckets + WEAVER_Q / 2) / WEAVER_Q) & (num_buckets - 1);
+static uint32_t compress_q(uint32_t x)
+{
+    uint32_t num_buckets = 1u << dt;
+    return (uint32_t)(((uint64_t)x * num_buckets + weaver_q / 2) / weaver_q) & (num_buckets - 1);
 }
 
-int main() {
-    int d = 9;
-    uint32_t num_buckets = 1u << d;
-    uint16_t count[4096] = {0};
-    uint32_t first[4096];
-    uint32_t lo0 = 0;
+static int parse_args(int argc, char **argv, const char **out_path)
+{
+    int i;
+    int have_q = 0;
+    int have_d = 0;
 
-    for(uint32_t y = 0; y < num_buckets; y++) first[y] = WEAVER_Q;
-
-    for(uint32_t x = 0; x < WEAVER_Q; x++) {
-        uint32_t y = compress_q(x, d);
-        if(first[y] == WEAVER_Q) first[y] = x;
-        count[y]++;
+    for(i = 1; i < argc; i++) {
+        if(strcmp(argv[i], "-q") == 0 && i + 1 < argc) {
+            weaver_q = (uint32_t)strtoul(argv[++i], NULL, 10);
+            have_q = 1;
+        } else if(strcmp(argv[i], "-d") == 0 && i + 1 < argc) {
+            dt = (int)strtol(argv[++i], NULL, 10);
+            have_d = 1;
+        } else if(strcmp(argv[i], "-o") == 0 && i + 1 < argc) {
+            *out_path = argv[++i];
+        } else {
+            fprintf(stderr, "Usage: %s -q <modulus> -d <dt> -o <output.h>\n", argv[0]);
+            return 1;
+        }
     }
 
-    for(uint32_t x = WEAVER_Q; x > 0; x--) {
-        if(compress_q(x - 1, d) == 0) lo0 = x - 1;
-        else break;
+    if(!have_q || !have_d || !*out_path) {
+        fprintf(stderr, "Usage: %s -q <modulus> -d <dt> -o <output.h>\n", argv[0]);
+        return 1;
     }
-    first[0] = lo0;
 
-    printf("/* \n * 自动生成的 WEAVER-Inv 静态查找表 (d=%d) \n", d);
-    printf(" * 仅包含 Lemire 拒绝采样所需的核心数据 \n */\n\n");
-    
-    printf("const invq_table_t invq_pk_table = {\n");
-    
-    printf("  .bucket_lo = {\n    ");
-    for(uint32_t y = 0; y < num_buckets; y++) {
-        printf("%4u", first[y]);
-        if (y < num_buckets - 1) printf(",");
-        if ((y + 1) % 16 == 0 && y < num_buckets - 1) printf("\n    ");
+    if(dt < 1 || dt > 12) {
+        fprintf(stderr, "dt must be in [1,12]\n");
+        return 1;
     }
-    printf("\n  },\n");
 
-    printf("  .bucket_size = {\n    ");
-    for(uint32_t y = 0; y < num_buckets; y++) {
-        printf("%3u", count[y]);
-        if (y < num_buckets - 1) printf(",");
-        if ((y + 1) % 16 == 0 && y < num_buckets - 1) printf("\n    ");
+    return 0;
+}
+
+static uint32_t find_bucket_lo(uint32_t y, uint32_t sz)
+{
+    uint32_t lo, t;
+
+    for(lo = 0; lo < weaver_q; lo++) {
+        for(t = 0; t < sz; t++) {
+            if(compress_q(lo + t) != y)
+                break;
+        }
+        if(t == sz)
+            return lo;
     }
-    printf("\n  }\n");
-    printf("};\n");
 
+    fprintf(stderr, "ERROR: no bucket_lo for bucket %u size %u\n", y, sz);
+    exit(1);
+    return 0;
+}
+
+static void emit_header(FILE *out)
+{
+    uint32_t num_buckets = 1u << dt;
+    uint16_t count[4096];
+    uint32_t bucket_lo[4096];
+    uint32_t y;
+    uint32_t x;
+    uint32_t sum = 0;
+    uint8_t max_size = 0;
+    char guard[64];
+
+    memset(count, 0, sizeof(count));
+
+    for(x = 0; x < weaver_q; x++)
+        count[compress_q(x)]++;
+
+    for(y = 0; y < num_buckets; y++) {
+        bucket_lo[y] = find_bucket_lo(y, count[y]);
+        sum += count[y];
+        if(count[y] > max_size)
+            max_size = (uint8_t)count[y];
+    }
+
+    if(sum != weaver_q) {
+        fprintf(stderr, "ERROR: bucket sizes sum to %u, expected %u\n", sum, weaver_q);
+        exit(1);
+    }
+
+    if(max_size > 8) {
+        fprintf(stderr, "ERROR: max bucket_size %u > 8 (3-bit Lemire sampling)\n", max_size);
+        exit(1);
+    }
+
+    fprintf(stderr, "q=%u d=%d buckets=%u max_bucket_size=%u sum=%u\n",
+            weaver_q, dt, num_buckets, max_size, sum);
+
+    snprintf(guard, sizeof(guard), "INVQ_TABLE_D%d_H", dt);
+
+    fprintf(out, "/* Auto-generated: q=%u, d=%d. Do not edit. */\n", weaver_q, dt);
+    fprintf(out, "#ifndef %s\n", guard);
+    fprintf(out, "#define %s\n", guard);
+    fprintf(out, "#include <stdint.h>\n");
+    fprintf(out, "static const uint16_t invq_d%d_bucket_lo[%u] = {\n", dt, num_buckets);
+
+    for(y = 0; y < num_buckets; y++) {
+        fprintf(out, "%s%4u", (y % 16 == 0) ? "    " : " ", bucket_lo[y]);
+        if(y < num_buckets - 1)
+            fprintf(out, ",");
+        if((y + 1) % 16 == 0)
+            fprintf(out, "\n");
+    }
+    if(num_buckets % 16 != 0)
+        fprintf(out, "\n");
+    fprintf(out, "};\n");
+
+    fprintf(out, "static const uint8_t invq_d%d_bucket_size[%u] = {\n", dt, num_buckets);
+    for(y = 0; y < num_buckets; y++) {
+        fprintf(out, "%s%3u", (y % 16 == 0) ? "    " : " ", count[y]);
+        if(y < num_buckets - 1)
+            fprintf(out, ",");
+        if((y + 1) % 16 == 0)
+            fprintf(out, "\n");
+    }
+    if(num_buckets % 16 != 0)
+        fprintf(out, "\n");
+    fprintf(out, "};\n");
+    fprintf(out, "#endif\n");
+}
+
+int main(int argc, char **argv)
+{
+    const char *out_path = NULL;
+    FILE *out;
+
+    if(parse_args(argc, argv, &out_path) != 0)
+        return 1;
+
+    out = fopen(out_path, "w");
+    if(!out) {
+        perror(out_path);
+        return 1;
+    }
+
+    emit_header(out);
+    fclose(out);
     return 0;
 }

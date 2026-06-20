@@ -11,7 +11,7 @@
 #elif WEAVER_MODE == 3
     #include "bch63_36_4.h"
 #elif WEAVER_MODE == 5
-    #include "bch127_56_6.h"
+    #include "bch127_64_7.h"
 #else
     #error "Invalid WEAVER_MODE for BCH configuration"
 #endif

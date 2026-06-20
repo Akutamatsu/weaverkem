@@ -5,10 +5,10 @@
 #define WEAVER_MODE 5  /* 1: 512, 3: 1024, 5: 2048 */
 #endif
 
-//#define PK_COMPRESS
+#define PK_COMPRESS
 
 // For Debug:
-#define NO_INV_Q_LIFTING
+//#define NO_INV_Q_LIFTING
 
 #if   (WEAVER_MODE == 1)
   #define WEAVER_N 128

@@ -120,7 +120,7 @@ static int16_t fqmul(int16_t a, int16_t b) {
 // }
 
 void ntt(int16_t r[WEAVER_N]) {
-  unsigned int len, start, j, k;
+  unsigned int len, start, i, j, k;
   int16_t t, zeta;
 
   k = 1;
@@ -137,24 +137,51 @@ void ntt(int16_t r[WEAVER_N]) {
       }
     }
   }
-#else
-#if WEAVER_N == 256
+#elif WEAVER_N == 256
   // 256 维：8层，底度为 1 (len 从 128 到 1)
-  for(len = 128; len >= 1; len >>= 1) {
+  for (i = 8; i > 0; i -= 2)
+  {
+      len = 1 << (i-1);
+      for (start = 0; start < WEAVER_N; start = j + len) { // lazy reduction
+          zeta = zetas[k++];
+          for (j = start; j < start + len; ++j) {
+              t = fqmul(zeta, r[j + len]);
+              r[j + len] = r[j] - t;
+              r[j] = r[j] + t;
+          }
+      }
+      len >>= 1;
+      for (start = 0; start < WEAVER_N; start = j + len) { // full reduction
+          zeta = zetas[k++];
+          for (j = start; j < start + len; ++j) {
+              t = fqmul(zeta, r[j + len]);
+              r[j + len] = barrett_reduce(r[j] - t);
+              r[j] = barrett_reduce(r[j] + t);
+          }
+      }
+  }
 #elif WEAVER_N == 512
   // 512 维：8层，底度为 2 (len 从 256 到 2)
-  for(len = 256; len >= 2; len >>= 1) {
-#else
-  #error "Unsupported WEAVER_N"
-#endif
-    for(start = 0; start < WEAVER_N; start = j + len) { // full reduction
-      zeta = zetas[k++];
-      for(j = start; j < start + len; ++j) {
-        t = fqmul(zeta, r[j + len]);
-        r[j + len] = barrett_reduce(r[j] - t);
-        r[j] = barrett_reduce(r[j] + t);
+  for (i = 9; i > 1; i -= 2)
+  {
+      len = 1 << (i - 1);
+      for (start = 0; start < WEAVER_N; start = j + len) { // lazy reduction
+          zeta = zetas[k++];
+          for (j = start; j < start + len; ++j) {
+              t = fqmul(zeta, r[j + len]);
+              r[j + len] = r[j] - t;
+              r[j] = r[j] + t;
+          }
       }
-    }
+      len >>= 1;
+      for (start = 0; start < WEAVER_N; start = j + len) { // full reduction
+          zeta = zetas[k++];
+          for (j = start; j < start + len; ++j) {
+              t = fqmul(zeta, r[j + len]);
+              r[j + len] = barrett_reduce(r[j] - t);
+              r[j] = barrett_reduce(r[j] + t);
+          }
+      }
   }
 #endif
 }
@@ -194,7 +221,7 @@ void ntt(int16_t r[WEAVER_N]) {
 #if 1
 // New:
 void invntt(int16_t r[256]) {
-    unsigned int start, len, j, k;
+    unsigned int start, len, i, j, k;
     int16_t t, zeta;
 #if WEAVER_N == 128
     const int16_t f = 1441; // mont^2/128
@@ -216,12 +243,42 @@ void invntt(int16_t r[256]) {
             }
         }
     }
-#else
-#if WEAVER_N == 256
-    for (len = 1; len <= 128; len <<= 1) {
+#elif WEAVER_N == 256
+    for (i = 0; i < 8; i += 2) {
+        len = 1 << i;
+        for (start = 0; start < WEAVER_N; start = j + len) { // lazy reduction
+            zeta = zetas[k--];
+            for (j = start; j < start + len; j++) {
+                t = r[j];
+                r[j] = t + r[j + len];
+                r[j + len] = r[j + len] - t;
+                r[j + len] = fqmul(zeta, r[j + len]);
+            }
+        }
+        len <<= 1;
+        for (start = 0; start < WEAVER_N; start = j + len) { // full reduction
+            zeta = zetas[k--];
+            for (j = start; j < start + len; j++) {
+                t = r[j];
+                r[j] = barrett_reduce(t + r[j + len]);
+                r[j + len] = barrett_reduce(r[j + len] - t);
+                r[j + len] = fqmul(zeta, r[j + len]);
+            }
+        }
+    }
 #elif WEAVER_N == 512
-    for (len = 2; len <= 256; len <<= 1) {
-#endif
+    for (i = 1; i < 9; i += 2) {
+        len = 1 << i;
+        for (start = 0; start < WEAVER_N; start = j + len) { // lazy reduction
+            zeta = zetas[k--];
+            for (j = start; j < start + len; j++) {
+                t = r[j];
+                r[j] = t + r[j + len];
+                r[j + len] = r[j + len] - t;
+                r[j + len] = fqmul(zeta, r[j + len]);
+            }
+        }
+        len <<= 1;
         for (start = 0; start < WEAVER_N; start = j + len) { // full reduction
             zeta = zetas[k--];
             for (j = start; j < start + len; j++) {

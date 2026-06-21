@@ -29,13 +29,13 @@
 // #endif
 
 #if   (WEAVER_MODE == 1)
-  #define CRYPTO_ALGNAME "WEAVER-512"
+  #define CRYPTO_ALGNAME "WEAVER-640"
 #elif (WEAVER_MODE == 3)
   #define CRYPTO_ALGNAME "WEAVER-1024"
 #elif (WEAVER_MODE == 5)
   #define CRYPTO_ALGNAME "WEAVER-2048"
 #else
-  #define CRYPTO_ALGNAME "WEAVER-UNKNOWN"
+  #error "WEAVER_MODE must be in {1,3,5}"
 #endif
 
 #define crypto_kem_keypair WEAVER_NAMESPACE(_keypair)

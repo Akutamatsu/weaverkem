@@ -6,8 +6,8 @@ LDFLAGS=-lcrypto
 SRC= correct_test.c cbd.c fips202.c indcpa.c kem_cca.c ntt.c poly.c polyvec.c reduce.c rng.c verify.c symmetric-shake.c bch_high.c bch_low.c msgenc.c poly_invq.c
 INC= api.h cbd.h fips202.h indcpa.h ntt.h params.h poly.h polyvec.h reduce.h rng.h verify.h symmetric.h bch.h invq.h
 
-# 输出文件名改为适配 WEAVER 论文的三个实例 (512, 1024, 2048)
-BIN1= 512-failure
+# 输出文件名改为适配 WEAVER 论文的三个实例 (640, 1024, 2048)
+BIN1= 640-failure
 BIN2= 1024-failure
 BIN3= 2048-failure
 BIN= $(BIN1) $(BIN2) $(BIN3)

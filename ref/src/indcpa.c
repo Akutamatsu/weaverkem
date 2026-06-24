@@ -146,6 +146,19 @@ static void unpack_ciphertext(polyvec *b,
 *
 * Returns number of sampled 16-bit integers (at most len)
 **************************************************/
+
+#if WEAVER_Q == 3329
+#define REJ_UNIFORM_BITS 12
+#define REJ_UNIFORM_MASK 0xFFF
+#define GEN_MATRIX_NBLOCKS ((REJ_UNIFORM_BITS*WEAVER_N/8*(1 << REJ_UNIFORM_BITS)/WEAVER_Q + XOF_BLOCKBYTES)/XOF_BLOCKBYTES)
+#elif WEAVER_Q == 7681
+#define LEMIRE_REJ_THRESHOLD ((uint32_t)((1ULL << 16) % WEAVER_Q))
+#define GEN_MATRIX_NBLOCKS ((((uint32_t)2 * WEAVER_N * 65536u + (65536u - LEMIRE_REJ_THRESHOLD - 1)) / (65536u - LEMIRE_REJ_THRESHOLD) + XOF_BLOCKBYTES - 1) / XOF_BLOCKBYTES)
+#else
+#error "Unsupported WEAVER_Q for gen_matrix rejection sampling"
+#endif
+
+#if WEAVER_Q == 3329
 static unsigned int rej_uniform(int16_t *r,
                                 unsigned int len,
                                 const uint8_t *buf,
@@ -168,6 +181,32 @@ static unsigned int rej_uniform(int16_t *r,
 
   return ctr;
 }
+#elif WEAVER_Q == 7681
+// Lemire's method for rejection sampling
+static unsigned int rej_uniform(int16_t *r,
+                                unsigned int len,
+                                const uint8_t *buf,
+                                unsigned int buflen)
+{
+  const uint32_t threshold = LEMIRE_REJ_THRESHOLD;
+  unsigned int ctr = 0;
+  unsigned int pos = 0;
+
+  while (ctr < len && pos + 1 < buflen) {
+    uint32_t val = (uint32_t)buf[pos] | ((uint32_t)buf[pos + 1] << 8);
+    pos += 2;
+    uint32_t prod = val * (uint32_t)WEAVER_Q;
+    uint16_t low = (uint16_t)prod;
+
+    if (low < threshold)
+      continue;
+
+    r[ctr++] = (int16_t)(prod >> 16);
+  }
+
+  return ctr;
+}
+#endif
 
 #define gen_a(A,B)  gen_matrix(A,B,0)
 #define gen_at(A,B) gen_matrix(A,B,1)
@@ -189,7 +228,6 @@ static unsigned int rej_uniform(int16_t *r,
 #error "Implementation of gen_matrix assumes that XOF_BLOCKBYTES is a multiple of 3"
 #endif
 
-#define GEN_MATRIX_NBLOCKS ((12*WEAVER_N/8*(1 << 12)/WEAVER_Q + XOF_BLOCKBYTES)/XOF_BLOCKBYTES)
 // Not static for benchmarking
 void gen_matrix(polyvec *a, const uint8_t seed[WEAVER_SYMBYTES], int transposed)
 {

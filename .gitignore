@@ -2,5 +2,8 @@ ref/correct/*-failure
 ref/correct/*.rsp
 ref/speed_test/*-speed*
 ref/tools/
+ref/vs_proj
 Implementations/Reference_Implementation/build
 *__pycache__*
+ref/speed_test/*.csv
+ref/src/*.o

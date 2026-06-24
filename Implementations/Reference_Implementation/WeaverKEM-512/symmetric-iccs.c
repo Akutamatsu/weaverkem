@@ -44,12 +44,25 @@ void weaver_iccs_xof_squeezeblocks(uint8_t *out, size_t nblocks, xof_state *stat
 
 void weaver_iccs_hash_h(uint8_t *out, const uint8_t *in, size_t inlen)
 {
+#if WEAVER_HBYTES == 32
   sm3hash(256, in, (unsigned long long)inlen * 8, out);
+#elif WEAVER_HBYTES == 64
+  pseudohash(512, in, (unsigned long long)inlen * 8, out);
+#elif WEAVER_HBYTES == 128
+  pseudohash(1024, in, (unsigned long long)inlen * 8, out);
+#else
+#error "Unsupported WEAVER_HBYTES"
+#endif
 }
 
 void weaver_iccs_hash_g(uint8_t *out, const uint8_t *in, size_t inlen)
 {
-  pseudohash(512, in, (unsigned long long)inlen * 8, out);
+  pseudoXOF((unsigned long long)WEAVER_GBYTES * 8, in, (unsigned long long)inlen * 8, out);
+}
+
+void weaver_iccs_expand_keypair_seeds(uint8_t *out, const uint8_t *in, size_t inlen)
+{
+  pseudoXOF((unsigned long long)(2 * WEAVER_SYMBYTES) * 8, in, (unsigned long long)inlen * 8, out);
 }
 
 void weaver_iccs_hash_kr(uint8_t *out, size_t outlen, const uint8_t *in, size_t inlen)

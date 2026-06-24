@@ -205,9 +205,9 @@ static void indcpa_enc_old_sim(uint8_t *c, const uint8_t *m, const uint8_t *pk, 
 }
 
 static void bench_encaps_old_sim(void) {
-    uint8_t buf[WEAVER_INDCPA_MSGBYTES + WEAVER_SYMBYTES];
+    uint8_t buf[WEAVER_INDCPA_MSGBYTES + WEAVER_HBYTES];
     /* kr 包含 shared-key material || encryption coins */
-    uint8_t kr[WEAVER_SSBYTES + WEAVER_SYMBYTES];
+    uint8_t kr[WEAVER_GBYTES];
 
     /* 1. 为了绝对的 A/B 测试控制变量，这里不调用 randombytes，
      * 而是直接使用全局提前准备好的明文数据 coins_buf */
@@ -216,8 +216,8 @@ static void bench_encaps_old_sim(void) {
     /* 2. 附加公钥哈希 (多目标攻击防御) */
     hash_h(buf + WEAVER_INDCPA_MSGBYTES, pk_buf, WEAVER_PUBLICKEYBYTES);
 
-    /* 3. 使用定制的 shake256 派生 kr */
-    shake256(kr, sizeof(kr), buf, sizeof(buf));
+    /* 3. 使用模式化 G 派生 kr */
+    hash_g(kr, buf, sizeof(buf));
 
     /* 4. ★ 核心替换：调用我们手写的“旧方案”底层加密 */
     indcpa_enc_old_sim(ct_buf, buf, pk_buf, kr + WEAVER_SSBYTES);
@@ -232,8 +232,8 @@ static void bench_encaps_old_sim(void) {
 static void bench_decaps_old_sim(void) {
     int fail;
     /* 100% 同步原函数的缓冲区大小 */
-    uint8_t buf[WEAVER_INDCPA_MSGBYTES + WEAVER_SYMBYTES];
-    uint8_t kr[WEAVER_SSBYTES + WEAVER_SYMBYTES];
+    uint8_t buf[WEAVER_INDCPA_MSGBYTES + WEAVER_HBYTES];
+    uint8_t kr[WEAVER_GBYTES];
     uint8_t cmp[WEAVER_CIPHERTEXTBYTES];
     const uint8_t *pk = sk_buf + WEAVER_INDCPA_SECRETKEYBYTES;
 
@@ -241,10 +241,10 @@ static void bench_decaps_old_sim(void) {
     indcpa_dec(buf, ct_buf, sk_buf);
 
     /* 2. 附加公钥哈希 (多目标攻击防御) */
-    memcpy(buf + WEAVER_INDCPA_MSGBYTES, sk_buf + WEAVER_SECRETKEYBYTES - 2*WEAVER_SYMBYTES, WEAVER_SYMBYTES);
+    memcpy(buf + WEAVER_INDCPA_MSGBYTES, sk_buf + WEAVER_SK_HPK_OFFSET, WEAVER_HBYTES);
     
-    /* 3. 使用定制的 shake256 派生 */
-    shake256(kr, sizeof(kr), buf, sizeof(buf));
+    /* 3. 使用模式化 G 派生 */
+    hash_g(kr, buf, sizeof(buf));
 
     /* 4. ★ 核心替换：调用我们手写的“旧方案”进行重加密 */
     /* 注意：这里的随机数指针偏移量是 WEAVER_SSBYTES，保持和原函数一致 */
@@ -254,7 +254,7 @@ static void bench_decaps_old_sim(void) {
     fail = verify(ct_buf, cmp, WEAVER_CIPHERTEXTBYTES);
 
     /* 6. 计算隐式拒绝密钥 (直接写入目标测试缓冲区 key_buf) */
-    rkprf(key_buf, sk_buf + WEAVER_SECRETKEYBYTES - WEAVER_SYMBYTES, ct_buf);
+    rkprf(key_buf, sk_buf + WEAVER_SK_Z_OFFSET, ct_buf);
 
     /* 7. 如果比对成功(没有fail)，则把真实的共享密钥拷贝给 key_buf */
     cmov(key_buf, kr, WEAVER_SSBYTES, !fail);

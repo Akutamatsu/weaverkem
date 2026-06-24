@@ -19,11 +19,13 @@
   #define WEAVER_K 5
   #define WEAVER_DV 6
   #define WEAVER_Q 3329
+  #define WEAVER_SYMBYTES 32
+  #define WEAVER_HBYTES 32
 
-  /* Table 1 core: (n,k,q,eta1,eta2,dt,du,dv) = (128,5,3329,3,2,9,9,6). */
+  /* Table 2 core: (n,k,q,eta1,eta2,dt,du,dv) = (128,5,3329,3,2,9,9,6). */
   #define WEAVER_PK_POLYVECBYTES        (WEAVER_K * ((WEAVER_N * 9) / 8))
   #define WEAVER_POLYVECCOMPRESSEDBYTES (WEAVER_K * ((WEAVER_N * 9) / 8))
-  #define WEAVER_POLYCUT_DIMENSION   WEAVER_N
+  #define WEAVER_POLYCUT_DIMENSION      WEAVER_N
 
 #elif (WEAVER_MODE == 3)
   #define WEAVER_N 256
@@ -34,11 +36,13 @@
   #define WEAVER_K 4
   #define WEAVER_DV 8
   #define WEAVER_Q 7681
+  #define WEAVER_SYMBYTES 32
+  #define WEAVER_HBYTES 64
 
-  /* Table 1 core: (n,k,q,eta1,eta2,dt,du,dv) = (256,4,7681,7,7,10,10,8). */
+  /* Table 2 core: (n,k,q,eta1,eta2,dt,du,dv) = (256,4,7681,7,7,10,10,8). */
   #define WEAVER_PK_POLYVECBYTES        (WEAVER_K * ((WEAVER_N * 10) / 8))
   #define WEAVER_POLYVECCOMPRESSEDBYTES (WEAVER_K * ((WEAVER_N * 10) / 8))
-  #define WEAVER_POLYCUT_DIMENSION   WEAVER_N
+  #define WEAVER_POLYCUT_DIMENSION      WEAVER_N
 
 #elif (WEAVER_MODE == 5)
   #define WEAVER_N 512
@@ -49,11 +53,13 @@
   #define WEAVER_K 4
   #define WEAVER_DV 9
   #define WEAVER_Q 7681
+  #define WEAVER_SYMBYTES 64
+  #define WEAVER_HBYTES 128
 
-  /* Table 1 core: (n,k,q,eta1,eta2,dt,du,dv) = (512,4,7681,9,9,11,11,9). */
+  /* Table 2 core: (n,k,q,eta1,eta2,dt,du,dv) = (512,4,7681,9,9,11,11,9). */
   #define WEAVER_PK_POLYVECBYTES        (WEAVER_K * ((WEAVER_N * 11) / 8))
   #define WEAVER_POLYVECCOMPRESSEDBYTES (WEAVER_K * ((WEAVER_N * 11) / 8))
-  #define WEAVER_POLYCUT_DIMENSION   WEAVER_N
+  #define WEAVER_POLYCUT_DIMENSION      WEAVER_N
 
 #else
   #error "WEAVER_MODE must be in {1,3,5}"
@@ -78,12 +84,16 @@
  * ==================================================================== */
 #define WEAVER_HALFQ ((WEAVER_Q + 1) / 2)
 
-/* size in bytes of hashes, and seeds */
-#define WEAVER_SYMBYTES 32
+/* size in bytes of hashes, seeds, and FO outputs */
 #define WEAVER_KEM_DERAND_COINBYTES WEAVER_INDCPA_MSGBYTES
+#define WEAVER_GBYTES (WEAVER_SSBYTES + WEAVER_SYMBYTES)
 
-// 确保 SSBYTES（共享密钥长度）也跟随 SYMBYTES 变动
-#define WEAVER_SSBYTES  WEAVER_INDCPA_MSGBYTES /* size in bytes of shared key */
+/* size in bytes of shared key */
+#define WEAVER_SSBYTES  WEAVER_INDCPA_MSGBYTES
+
+/* helper sizes for KEM secret-key layout */
+#define WEAVER_SK_HPK_OFFSET   (WEAVER_INDCPA_SECRETKEYBYTES + WEAVER_INDCPA_PUBLICKEYBYTES)
+#define WEAVER_SK_Z_OFFSET     (WEAVER_SK_HPK_OFFSET + WEAVER_HBYTES)
 
 
 // 密钥与密文大小的组合计算
@@ -92,10 +102,7 @@
 #define WEAVER_INDCPA_BYTES          ((WEAVER_POLYVECCOMPRESSEDBYTES + WEAVER_POLYCOMPRESSEDBYTES))
 
 #define WEAVER_PUBLICKEYBYTES  (WEAVER_INDCPA_PUBLICKEYBYTES)
-/* 32 bytes of additional space to save H(pk) */
-#define WEAVER_SECRETKEYBYTES  (WEAVER_INDCPA_SECRETKEYBYTES \
-                               + WEAVER_INDCPA_PUBLICKEYBYTES \
-                               + 2*WEAVER_SYMBYTES)
+#define WEAVER_SECRETKEYBYTES  (WEAVER_SK_Z_OFFSET + WEAVER_SYMBYTES)
 #define WEAVER_CIPHERTEXTBYTES  WEAVER_INDCPA_BYTES
 
 

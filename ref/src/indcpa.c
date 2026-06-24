@@ -224,8 +224,8 @@ static unsigned int rej_uniform(int16_t *r,
 *              - int transposed:      boolean deciding whether A or A^T
 *                                     is generated
 **************************************************/
-#if(XOF_BLOCKBYTES % 3)
-#error "Implementation of gen_matrix assumes that XOF_BLOCKBYTES is a multiple of 3"
+#if (WEAVER_Q == 3329) && (XOF_BLOCKBYTES % 3)
+#error "Implementation of gen_matrix for q=3329 assumes XOF_BLOCKBYTES is a multiple of 3"
 #endif
 
 // Not static for benchmarking
@@ -272,15 +272,13 @@ void indcpa_keypair_derand(uint8_t pk[WEAVER_INDCPA_PUBLICKEYBYTES],
                            const uint8_t coins[WEAVER_SYMBYTES])
 {
   unsigned int i;
-  uint8_t buf[2*WEAVER_SYMBYTES];
+  uint8_t buf[2 * WEAVER_SYMBYTES];
   const uint8_t *publicseed = buf;
-  const uint8_t *noiseseed = buf+WEAVER_SYMBYTES;
+  const uint8_t *noiseseed = buf + WEAVER_SYMBYTES;
   uint8_t nonce = 0;
   polyvec a[WEAVER_K] = {0}, pkpv = {0}, skpv = {0};
 
-  memcpy(buf, coins, WEAVER_SYMBYTES);
-  buf[WEAVER_SYMBYTES] = WEAVER_K;
-  hash_g(buf, buf, WEAVER_SYMBYTES+1);
+  expand_keypair_seeds(buf, coins, WEAVER_SYMBYTES);
 
   gen_a(a, publicseed);
 

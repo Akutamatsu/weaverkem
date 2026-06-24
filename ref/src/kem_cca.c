@@ -40,10 +40,10 @@ int crypto_kem_keypair_derand(uint8_t *pk,
                               const uint8_t *coins)
 {
   indcpa_keypair_derand(pk, sk, coins);
-  memcpy(sk+WEAVER_INDCPA_SECRETKEYBYTES, pk, WEAVER_PUBLICKEYBYTES);
-  hash_h(sk+WEAVER_SECRETKEYBYTES-2*WEAVER_SYMBYTES, pk, WEAVER_PUBLICKEYBYTES);
+  memcpy(sk + WEAVER_INDCPA_SECRETKEYBYTES, pk, WEAVER_PUBLICKEYBYTES);
+  hash_h(sk + WEAVER_SK_HPK_OFFSET, pk, WEAVER_PUBLICKEYBYTES);
   /* Value z for pseudo-random output on reject */
-  memcpy(sk+WEAVER_SECRETKEYBYTES-WEAVER_SYMBYTES, coins+WEAVER_SYMBYTES, WEAVER_SYMBYTES);
+  memcpy(sk + WEAVER_SK_Z_OFFSET, coins + WEAVER_SYMBYTES, WEAVER_SYMBYTES);
   return 0;
 }
 
@@ -90,21 +90,20 @@ int crypto_kem_enc_derand(uint8_t *ct,
                           const uint8_t *pk,
                           const uint8_t coins[WEAVER_KEM_DERAND_COINBYTES])
 {
-  uint8_t buf[WEAVER_INDCPA_MSGBYTES + WEAVER_SYMBYTES];
+  uint8_t buf[WEAVER_INDCPA_MSGBYTES + WEAVER_HBYTES];
   /* Will contain shared-key material || encryption coins */
-  uint8_t kr[WEAVER_SSBYTES + WEAVER_SYMBYTES];
+  uint8_t kr[WEAVER_GBYTES];
 
   kem_enc_derand_fill_msg(buf, coins);
 
   /* Multitarget countermeasure for coins + contributory KEM */
-  hash_h(buf+WEAVER_INDCPA_MSGBYTES, pk, WEAVER_PUBLICKEYBYTES);
-  // hash_g(kr, buf, sizeof(buf)); /* currently no enough output length */
-  shake256(kr, sizeof(kr), buf, sizeof(buf));
+  hash_h(buf + WEAVER_INDCPA_MSGBYTES, pk, WEAVER_PUBLICKEYBYTES);
+  hash_g(kr, buf, sizeof(buf));
 
   /* encryption coins are in kr + WEAVER_SSBYTES */
   indcpa_enc(ct, buf, pk, kr + WEAVER_SSBYTES);
 
-  memcpy(ss,kr,WEAVER_SSBYTES);
+  memcpy(ss, kr, WEAVER_SSBYTES);
   return 0;
 }
 
@@ -155,18 +154,17 @@ int crypto_kem_dec(uint8_t *ss,
                    const uint8_t *sk)
 {
   int fail;
-  uint8_t buf[WEAVER_INDCPA_MSGBYTES + WEAVER_SYMBYTES];
+  uint8_t buf[WEAVER_INDCPA_MSGBYTES + WEAVER_HBYTES];
   /* Will contain shared-key material || encryption coins */
-  uint8_t kr[WEAVER_SSBYTES + WEAVER_SYMBYTES];
+  uint8_t kr[WEAVER_GBYTES];
   uint8_t cmp[WEAVER_CIPHERTEXTBYTES];
-  const uint8_t *pk = sk+WEAVER_INDCPA_SECRETKEYBYTES;
+  const uint8_t *pk = sk + WEAVER_INDCPA_SECRETKEYBYTES;
 
   indcpa_dec(buf, ct, sk);
 
   /* Multitarget countermeasure for coins + contributory KEM */
-  memcpy(buf+WEAVER_INDCPA_MSGBYTES, sk+WEAVER_SECRETKEYBYTES-2*WEAVER_SYMBYTES, WEAVER_SYMBYTES);
-  //hash_g(kr, buf, sizeof(buf)); /* currently no enough output length */
-  shake256(kr, sizeof(kr), buf, sizeof(buf));
+  memcpy(buf + WEAVER_INDCPA_MSGBYTES, sk + WEAVER_SK_HPK_OFFSET, WEAVER_HBYTES);
+  hash_g(kr, buf, sizeof(buf));
 
   /* encryption coins are in kr + WEAVER_SSBYTES */
   indcpa_enc(cmp, buf, pk, kr + WEAVER_SSBYTES);
@@ -174,10 +172,10 @@ int crypto_kem_dec(uint8_t *ss,
   fail = verify(ct, cmp, WEAVER_CIPHERTEXTBYTES);
 
   /* Compute rejection key */
-  rkprf(ss,sk+WEAVER_SECRETKEYBYTES-WEAVER_SYMBYTES,ct);
+  rkprf(ss, sk + WEAVER_SK_Z_OFFSET, ct);
 
   /* Copy true key to return buffer if fail is false */
-  cmov(ss,kr,WEAVER_SSBYTES,!fail);
+  cmov(ss, kr, WEAVER_SSBYTES, !fail);
 
   return 0;
 }

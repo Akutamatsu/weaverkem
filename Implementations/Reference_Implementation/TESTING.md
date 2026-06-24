@@ -137,6 +137,6 @@ pacman -S mingw-w64-x86_64-gcc make cmake
 
 | 实例 | PK (bytes) | SK (bytes) | CT (bytes) | SS (bytes) |
 |------|------------|------------|------------|------------|
-| WeaverKEM-128 | 608 | 1440 | 704 | 16 |
-| WeaverKEM-256 | 1312 | 2912 | 1408 | 32 |
-| WeaverKEM-512 | 2592 | 5728 | 2944 | 64 |
+| WeaverKEM-128 | 752 | 1776 | 816 | 16 |
+| WeaverKEM-256 | 1312 | 3072 | 1536 | 32 |
+| WeaverKEM-512 | 2880 | 6400 | 3392 | 64 |

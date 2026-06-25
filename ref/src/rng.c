@@ -71,7 +71,7 @@ seedexpander(AES_XOF_struct *ctx, unsigned char *x, unsigned long xlen)
 
     offset = 0;
     while ( xlen > 0 ) {
-        if ( xlen <= (16-ctx->buffer_pos) ) { // buffer has what we need
+        if ( xlen <= (unsigned long)(16 - ctx->buffer_pos) ) { // buffer has what we need
             memcpy(x+offset, ctx->buffer+ctx->buffer_pos, xlen);
             ctx->buffer_pos += xlen;
 
@@ -119,8 +119,6 @@ AES256_ECB(unsigned char *key, unsigned char *ctr, unsigned char *buffer)
 
     int len;
 
-    int ciphertext_len;
-
     /* Create and initialise the context */
     if(!(ctx = EVP_CIPHER_CTX_new())) handleErrors();
 
@@ -129,8 +127,6 @@ AES256_ECB(unsigned char *key, unsigned char *ctr, unsigned char *buffer)
 
     if(1 != EVP_EncryptUpdate(ctx, buffer, &len, ctr, 16))
         handleErrors();
-    ciphertext_len = len;
-
     /* Clean up */
     EVP_CIPHER_CTX_free(ctx);
 }
@@ -140,6 +136,7 @@ randombytes_init(unsigned char *entropy_input,
                  unsigned char *personalization_string,
                  int security_strength)
 {
+    (void)security_strength;
     unsigned char   seed_material[48];
 
     memcpy(seed_material, entropy_input, 48);

@@ -34,9 +34,6 @@ void poly_tomont(poly *r);
 #define poly_reduce WEAVER_NAMESPACE(_poly_reduce)
 void poly_reduce(poly *r);
 
-#define poly_reduce_v WEAVER_NAMESPACE(_poly_reduce_v)
-void poly_reduce_v(poly *r);
-
 #define poly_add WEAVER_NAMESPACE(_poly_add)
 void poly_add(poly *r, const poly *a, const poly *b);
 #define poly_sub WEAVER_NAMESPACE(_poly_sub)

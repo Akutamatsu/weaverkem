@@ -21,7 +21,7 @@ void poly_tobytes(uint8_t r[WEAVER_POLYBYTES], const poly *a)
 {
     unsigned int i;
 
-#if WEAVER_POLYCOIN_BITS == 12
+#if WEAVER_QBITS == 12
     uint16_t t0, t1;
 
     for (i = 0; i < WEAVER_N / 2; i++) {
@@ -34,7 +34,7 @@ void poly_tobytes(uint8_t r[WEAVER_POLYBYTES], const poly *a)
         r[3 * i + 1] = (t0 >> 8) | (t1 << 4);
         r[3 * i + 2] = (t1 >> 4);
     }
-#elif WEAVER_POLYCOIN_BITS == 13
+#elif WEAVER_QBITS == 13
     uint16_t t[8];
 
     for (i = 0; i < WEAVER_N / 8; i++) {
@@ -61,7 +61,7 @@ void poly_tobytes(uint8_t r[WEAVER_POLYBYTES], const poly *a)
         r += 13;
     }
 #else
-#error "Unsupported WEAVER_POLYCOIN_BITS"
+#error "Unsupported WEAVER_QBITS"
 #endif
 }
 
@@ -79,12 +79,12 @@ void poly_frombytes(poly *r, const uint8_t a[WEAVER_POLYBYTES])
 {
     unsigned int i;
 
-#if WEAVER_POLYCOIN_BITS == 12
+#if WEAVER_QBITS == 12
     for (i = 0; i < WEAVER_N / 2; i++) {
         r->coeffs[2 * i] = ((a[3 * i + 0] >> 0) | ((uint16_t)a[3 * i + 1] << 8)) & 0xFFF;
         r->coeffs[2 * i + 1] = ((a[3 * i + 1] >> 4) | ((uint16_t)a[3 * i + 2] << 4)) & 0xFFF;
     }
-#elif WEAVER_POLYCOIN_BITS == 13
+#elif WEAVER_QBITS == 13
     for (i = 0; i < WEAVER_N / 8; i++) {
         r->coeffs[8 * i + 0] = (int16_t)((((uint16_t)a[0] >> 0) | ((uint16_t)a[1] << 8)) & 0x1FFF);
         r->coeffs[8 * i + 1] = (int16_t)((((uint16_t)a[1] >> 5) | ((uint16_t)a[2] << 3) | ((uint16_t)a[3] << 11)) & 0x1FFF);
@@ -97,7 +97,7 @@ void poly_frombytes(poly *r, const uint8_t a[WEAVER_POLYBYTES])
         a += 13;
     }
 #else
-#error "Unsupported WEAVER_POLYCOIN_BITS"
+#error "Unsupported WEAVER_QBITS"
 #endif
 }
 
@@ -236,13 +236,6 @@ void poly_reduce(poly *r)
     r->coeffs[i] = barrett_reduce(r->coeffs[i]);
 }
 
-void poly_reduce_v(poly *r)
-{
-    unsigned int i;
-    for (i = 0; i < WEAVER_POLYCUT_DIMENSION; i++)
-        r->coeffs[i] = barrett_reduce(r->coeffs[i]);
-}
-
 /*************************************************
 * Name:        poly_add
 *
@@ -271,6 +264,6 @@ void poly_add(poly *r, const poly *a, const poly *b)
 void poly_sub(poly *r, const poly *a, const poly *b)
 {
   unsigned int i;
-  for(i=0;i< WEAVER_POLYCUT_DIMENSION;i++)
+  for(i=0;i< WEAVER_N;i++)
     r->coeffs[i] = a->coeffs[i] - b->coeffs[i];
 }

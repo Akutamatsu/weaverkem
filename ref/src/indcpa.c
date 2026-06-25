@@ -381,7 +381,7 @@ void indcpa_enc(uint8_t c[WEAVER_INDCPA_BYTES],
 
   poly_add(&v, &v, &k);
   polyvec_reduce(&b);
-  poly_reduce_v(&v);
+  poly_reduce(&v);
 
   pack_ciphertext(c, &b, &v);
 }
@@ -414,7 +414,7 @@ void indcpa_dec(uint8_t m[WEAVER_INDCPA_MSGBYTES],
   poly_invntt_tomont(&mp);
 
   poly_sub(&mp, &v, &mp);
-  poly_reduce_v(&mp);
+  poly_reduce(&mp);
 
   poly_tomsg(m, &mp);
 }

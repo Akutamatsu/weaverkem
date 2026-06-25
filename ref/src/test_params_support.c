@@ -61,7 +61,7 @@ static int check_poly_compress(void)
   poly_compress(bytes, &a);
   poly_decompress(&b, bytes);
 
-  for(i = 0; i < WEAVER_POLYCUT_DIMENSION; i++) {
+  for(i = 0; i < WEAVER_N; i++) {
     if(compress_q((uint16_t)b.coeffs[i], WEAVER_DV) != compress_q((uint16_t)a.coeffs[i], WEAVER_DV)) {
       printf("FAIL v compress roundtrip at %u\n", i);
       return 1;

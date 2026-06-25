@@ -245,7 +245,7 @@ void poly_compress(uint8_t r[WEAVER_POLYCOMPRESSEDBYTES], const poly *a)
 #endif
 
 #if (WEAVER_DV == 5)
-    for (i = 0; i < WEAVER_POLYCUT_DIMENSION / 8; i++) {
+    for (i = 0; i < WEAVER_N / 8; i++) {
         for (j = 0; j < 8; j++) {
             // map to positive standard representatives
             u = a->coeffs[8 * i + j];
@@ -261,7 +261,7 @@ void poly_compress(uint8_t r[WEAVER_POLYCOMPRESSEDBYTES], const poly *a)
         r += 5;
     }
 #elif (WEAVER_DV == 6)
-    for (i = 0; i < WEAVER_POLYCUT_DIMENSION / 4; i++) {
+    for (i = 0; i < WEAVER_N / 4; i++) {
         for (j = 0; j < 4; j++) {
             // map to positive standard representatives
             u = a->coeffs[4 * i + j];
@@ -274,13 +274,13 @@ void poly_compress(uint8_t r[WEAVER_POLYCOMPRESSEDBYTES], const poly *a)
         r += 3;
     }
 #elif (WEAVER_DV == 8)
-    for (i = 0; i < WEAVER_POLYCUT_DIMENSION; i++) {
+    for (i = 0; i < WEAVER_N; i++) {
         u = a->coeffs[i];
         u += (u >> 15) & WEAVER_Q;
         *r++ = ((((uint32_t)u << 8) + WEAVER_Q / 2) / WEAVER_Q) & 0xff;
     }
 #elif (WEAVER_DV == 9)
-    for (i = 0; i < WEAVER_POLYCUT_DIMENSION / 8; i++) {
+    for (i = 0; i < WEAVER_N / 8; i++) {
         for (j = 0; j < 8; j++) {
             u = a->coeffs[8 * i + j];
             u += (u >> 15) & WEAVER_Q;
@@ -320,7 +320,7 @@ void poly_decompress(poly *r, const uint8_t a[WEAVER_POLYCOMPRESSEDBYTES])
 #if (WEAVER_DV == 5)
     unsigned int j;
     uint8_t t[8];
-    for (i = 0; i < WEAVER_POLYCUT_DIMENSION / 8; i++) {
+    for (i = 0; i < WEAVER_N / 8; i++) {
         t[0] = (a[0] >> 0);
         t[1] = (a[0] >> 5) | (a[1] << 3);
         t[2] = (a[1] >> 2);
@@ -337,7 +337,7 @@ void poly_decompress(poly *r, const uint8_t a[WEAVER_POLYCOMPRESSEDBYTES])
 #elif (WEAVER_DV == 6)
     unsigned int j;
     uint8_t t[4];
-    for (i = 0; i < WEAVER_POLYCUT_DIMENSION / 4; i++) {
+    for (i = 0; i < WEAVER_N / 4; i++) {
         t[0] = (a[0] >> 0);
         t[1] = (a[0] >> 6) | (a[1] << 2);
         t[2] = (a[1] >> 4) | (a[2] << 4);
@@ -348,12 +348,12 @@ void poly_decompress(poly *r, const uint8_t a[WEAVER_POLYCOMPRESSEDBYTES])
             r->coeffs[4 * i + j] = ((uint32_t)(t[j] & 63)*WEAVER_Q + 32) >> 6;
     }
 #elif (WEAVER_DV == 8)
-    for (i = 0; i < WEAVER_POLYCUT_DIMENSION; i++)
+    for (i = 0; i < WEAVER_N; i++)
         r->coeffs[i] = ((uint32_t)(*a++)*WEAVER_Q + 128) >> 8;
 #elif (WEAVER_DV == 9)
     unsigned int j;
     uint16_t t[8];
-    for (i = 0; i < WEAVER_POLYCUT_DIMENSION / 8; i++) {
+    for (i = 0; i < WEAVER_N / 8; i++) {
         t[0] = (a[0] >> 0) | ((uint16_t)a[1] << 8);
         t[1] = (a[1] >> 1) | ((uint16_t)a[2] << 7);
         t[2] = (a[2] >> 2) | ((uint16_t)a[3] << 6);

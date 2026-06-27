@@ -11,7 +11,7 @@
 #if (WEAVER_Q == 7681)
 
 #define COMPRESS_RECIP7681_D8  559168u
-#define COMPRESS_RECIP7681_D9  559168u
+#define COMPRESS_RECIP7681_D9  1118336u
 #define COMPRESS_RECIP7681_D10 2236671u
 #define COMPRESS_RECIP7681_D11 2236671u
 
@@ -88,7 +88,7 @@ static __attribute__((noinline)) __m128i compress7681_quant4_d9(__m128i f4)
     int32_t u = c[k];
     u += (u >> 15) & WEAVER_Q;
     q[k] = (uint16_t)(((((uint64_t)(uint32_t)u << 9) + (WEAVER_Q / 2))
-                     * COMPRESS_RECIP7681_D9 >> 32) & 511u);
+                     * COMPRESS_RECIP7681_D9 >> 33) & 511u);
   }
   return _mm_set_epi16(0, 0, 0, 0, (short)q[3], (short)q[2], (short)q[1], (short)q[0]);
 }
@@ -241,17 +241,9 @@ void poly_compress_d8_avx(uint8_t r[WEAVER_POLYCOMPRESSEDBYTES], const poly *a)
 void poly_decompress_d8_avx(poly *r, const uint8_t a[WEAVER_POLYCOMPRESSEDBYTES])
 {
   unsigned int i;
-  const __m128i qv = _mm_set1_epi16(WEAVER_Q);
-  const __m128i bias = _mm_set1_epi16(128);
 
-  for(i = 0; i < WEAVER_N / 8; i++) {
-    __m128i b8 = _mm_loadl_epi64((__m128i *)&a[8 * i]);
-    __m128i t8 = _mm_cvtepu8_epi16(b8);
-    t8 = _mm_mullo_epi16(t8, qv);
-    t8 = _mm_add_epi16(t8, bias);
-    t8 = _mm_srli_epi16(t8, 8);
-    _mm_storeu_si128((__m128i *)&r->coeffs[8 * i], t8);
-  }
+  for(i = 0; i < WEAVER_N; i++)
+    r->coeffs[i] = (int16_t)(((uint32_t)a[i] * WEAVER_Q + 128) >> 8);
 }
 
 #endif /* dv=8 */

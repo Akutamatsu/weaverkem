@@ -46,7 +46,11 @@ cmake --build build --target weaver_bench # speed_test (512/1024/2048)
 cmake --build build --target weaver_quick_check
 ```
 
-Useful CMake options: `-DWEAVER_PERF_NATIVE=OFF`, `-DWEAVER_ENABLE_LTO=OFF`, `-DWEAVER_USE_AVX_CBD=OFF`, `-DWEAVER_USE_AVX_COMPRESS7681=OFF`. Binaries land in `build/bin/`.
+Useful CMake options: `-DWEAVER_PERF_NATIVE=OFF`, `-DWEAVER_ENABLE_LTO=OFF`, `-DWEAVER_USE_AVX_CBD=OFF`, `-DWEAVER_USE_AVX_COMPRESS7681=OFF`.
+
+NGCC optimized submission: see `Implementations/Optimized_Implementation/` (ICCS `kem_*` + SM3-DRNG + `auxfunc`; `cmake --build build-opt --target verify_kat`).
+
+Binaries land in `build/bin/`.
 
 Override the compiler if needed: `make CC=gcc all`.
 Performance toggles:

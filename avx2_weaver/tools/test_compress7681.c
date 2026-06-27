@@ -169,11 +169,122 @@ static int test_polyvec_roundtrip(void)
   return 0;
 }
 
+static int test_dv_roundtrip(void)
+{
+  unsigned trial;
+  poly a, r_s, r_a;
+  uint8_t buf_s[WEAVER_POLYCOMPRESSEDBYTES];
+  uint8_t buf_a[WEAVER_POLYCOMPRESSEDBYTES];
+
+  for(trial = 0; trial < 5000; trial++) {
+    unsigned i;
+    for(i = 0; i < WEAVER_N; i++)
+      a.coeffs[i] = (int16_t)((trial * 23 + i * 67) % (2 * WEAVER_Q) - WEAVER_Q);
+
+#if defined(WEAVER_USE_AVX_COMPRESS) && (WEAVER_DV == 8)
+    for(i = 0; i < WEAVER_N; i++) {
+      int16_t u = a.coeffs[i];
+      u += (u >> 15) & WEAVER_Q;
+      buf_s[i] = (uint8_t)((((uint32_t)u << 8) + WEAVER_Q / 2) / WEAVER_Q);
+    }
+    poly_compress_d8_avx(buf_a, &a);
+    for(i = 0; i < WEAVER_N; i++)
+      r_s.coeffs[i] = (int16_t)(((uint32_t)buf_s[i] * WEAVER_Q + 128) >> 8);
+    poly_decompress_d8_avx(&r_a, buf_a);
+#elif defined(WEAVER_USE_AVX_COMPRESS) && (WEAVER_DV == 9)
+    for(i = 0; i < WEAVER_N / 8; i++) {
+      uint16_t t[8];
+      unsigned k;
+      for(k = 0; k < 8; k++) {
+        int16_t u = a.coeffs[8 * i + k];
+        u += (u >> 15) & WEAVER_Q;
+        t[k] = (uint16_t)((((uint32_t)u << 9) + WEAVER_Q / 2) / WEAVER_Q) & 0x1ff;
+      }
+      buf_s[9 * i + 0] = (uint8_t)(t[0] >> 0);
+      buf_s[9 * i + 1] = (uint8_t)((t[0] >> 8) | (t[1] << 1));
+      buf_s[9 * i + 2] = (uint8_t)((t[1] >> 7) | (t[2] << 2));
+      buf_s[9 * i + 3] = (uint8_t)((t[2] >> 6) | (t[3] << 3));
+      buf_s[9 * i + 4] = (uint8_t)((t[3] >> 5) | (t[4] << 4));
+      buf_s[9 * i + 5] = (uint8_t)((t[4] >> 4) | (t[5] << 5));
+      buf_s[9 * i + 6] = (uint8_t)((t[5] >> 3) | (t[6] << 6));
+      buf_s[9 * i + 7] = (uint8_t)((t[6] >> 2) | (t[7] << 7));
+      buf_s[9 * i + 8] = (uint8_t)(t[7] >> 1);
+    }
+    poly_compress_d9_avx(buf_a, &a);
+    for(i = 0; i < WEAVER_N / 8; i++) {
+      uint16_t t[8];
+      unsigned k;
+      const uint8_t *p = buf_s + 9 * i;
+      t[0] = (uint16_t)p[0] | ((uint16_t)p[1] << 8);
+      t[1] = (uint16_t)(p[1] >> 1) | ((uint16_t)p[2] << 7);
+      t[2] = (uint16_t)(p[2] >> 2) | ((uint16_t)p[3] << 6);
+      t[3] = (uint16_t)(p[3] >> 3) | ((uint16_t)p[4] << 5);
+      t[4] = (uint16_t)(p[4] >> 4) | ((uint16_t)p[5] << 4);
+      t[5] = (uint16_t)(p[5] >> 5) | ((uint16_t)p[6] << 3);
+      t[6] = (uint16_t)(p[6] >> 6) | ((uint16_t)p[7] << 2);
+      t[7] = (uint16_t)(p[7] >> 7) | ((uint16_t)p[8] << 1);
+      for(k = 0; k < 8; k++)
+        r_s.coeffs[8 * i + k] =
+            (int16_t)(((uint32_t)(t[k] & 511) * WEAVER_Q + 256) >> 9);
+    }
+    poly_decompress_d9_avx(&r_a, buf_a);
+#else
+    return 0;
+#endif
+
+    if(memcmp(buf_s, buf_a, sizeof(buf_s)) != 0) {
+      fprintf(stderr, "dv compress mismatch trial %u\n", trial);
+      return 1;
+    }
+    if(memcmp(&r_s, &r_a, sizeof(r_s)) != 0) {
+      fprintf(stderr, "dv decompress mismatch trial %u\n", trial);
+      return 1;
+    }
+  }
+  return 0;
+}
+
+static int test_pk_roundtrip(void)
+{
+  unsigned trial;
+  polyvec v, r_s, r_a;
+  uint8_t buf_s[WEAVER_PK_POLYVECBYTES];
+  uint8_t buf_a[WEAVER_PK_POLYVECBYTES];
+
+  for(trial = 0; trial < 1000; trial++) {
+    unsigned i, j;
+    for(i = 0; i < WEAVER_K; i++)
+      for(j = 0; j < WEAVER_N; j++)
+        v.vec[i].coeffs[j] = (int16_t)((trial * 41 + i * 103 + j * 17) % (2 * WEAVER_Q) - WEAVER_Q);
+
+    polyvec_compress_pk(buf_a, &v);
+    for(i = 0; i < WEAVER_K; i++)
+      poly_compress_scalar(buf_s + i * POLY_PER_POLY_BYTES, &v.vec[i]);
+    polyvec_decompress_pk(&r_a, buf_a);
+    for(i = 0; i < WEAVER_K; i++)
+      poly_decompress_scalar(&r_s.vec[i], buf_s + i * POLY_PER_POLY_BYTES);
+
+    if(memcmp(buf_s, buf_a, sizeof(buf_s)) != 0) {
+      fprintf(stderr, "pk compress mismatch trial %u\n", trial);
+      return 1;
+    }
+    if(memcmp(&r_s, &r_a, sizeof(r_s)) != 0) {
+      fprintf(stderr, "pk decompress mismatch trial %u\n", trial);
+      return 1;
+    }
+  }
+  return 0;
+}
+
 int main(void)
 {
   if(test_poly_roundtrip() != 0)
     return 1;
   if(test_polyvec_roundtrip() != 0)
+    return 1;
+  if(test_dv_roundtrip() != 0)
+    return 1;
+  if(test_pk_roundtrip() != 0)
     return 1;
   printf("PASS: compress7681 scalar == AVX (mode %d)\n", WEAVER_MODE);
   return 0;

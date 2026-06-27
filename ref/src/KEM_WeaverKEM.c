@@ -76,6 +76,7 @@ int kem_enc(
     uint8_t coins[WEAVER_INDCPA_MSGBYTES]; /* coins --> used as encrypted m for PKE */
     (void)pk_len_bytes;
     int ret = 0;
+    randombytes(coins, WEAVER_INDCPA_MSGBYTES);
     ret = crypto_kem_enc_derand(ct, ss, pk, coins);
     if (ret != 0)
         return ret;

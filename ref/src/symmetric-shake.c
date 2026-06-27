@@ -31,7 +31,7 @@ void weaver_expand_keypair_seeds(uint8_t out[2 * WEAVER_SYMBYTES], const uint8_t
 /*************************************************
 * Name:        weaver_shake128_absorb
 *
-* Description: Absorb step of the mode-selected XOF.
+* Description: Absorb step of the SHAKE128 XOF used for matrix expansion.
 *
 * Arguments:   - keccak_state *state: pointer to (uninitialized) output Keccak state
 *              - const uint8_t *seed: pointer to WEAVER_SYMBYTES input to be absorbed into state
@@ -49,11 +49,7 @@ void weaver_shake128_absorb(keccak_state *state,
   extseed[WEAVER_SYMBYTES+0] = x;
   extseed[WEAVER_SYMBYTES+1] = y;
 
-#if WEAVER_MODE == 1
   shake128_absorb_once(state, extseed, sizeof(extseed));
-#else
-  shake256_absorb_once(state, extseed, sizeof(extseed));
-#endif
 }
 
 /*************************************************

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Compare scalar vs AVX512 gen_matrix outputs (mode 5).
+# Compare scalar vs AVX7681 gen_matrix outputs (mode 5).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 NCASES="${1:-50}"

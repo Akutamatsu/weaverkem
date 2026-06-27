@@ -1,4 +1,4 @@
-/* AVX2 gen_matrix for q=7681, k=4: shake256x4 + Lemire rejection (matches indcpa.c). */
+/* AVX2 gen_matrix for q=7681, k=4: shake128x4 + Lemire rejection (matches indcpa.c). */
 #include <stdint.h>
 #include <string.h>
 #include <immintrin.h>
@@ -136,21 +136,14 @@ static void fill_x4_seeds(uint8_t buf[4][WEAVER_SYMBYTES + 2],
                           unsigned i2, unsigned j2,
                           unsigned i3, unsigned j3)
 {
-  const __m256i vseed = _mm256_loadu_si256((const __m256i *)seed);
+  unsigned b;
+  unsigned coords[4][2] = {{i0, j0}, {i1, j1}, {i2, j2}, {i3, j3}};
 
-  _mm256_storeu_si256((__m256i *)buf[0], vseed);
-  _mm256_storeu_si256((__m256i *)buf[1], vseed);
-  _mm256_storeu_si256((__m256i *)buf[2], vseed);
-  _mm256_storeu_si256((__m256i *)buf[3], vseed);
-
-  buf[0][WEAVER_SYMBYTES + 0] = (uint8_t)i0;
-  buf[0][WEAVER_SYMBYTES + 1] = (uint8_t)j0;
-  buf[1][WEAVER_SYMBYTES + 0] = (uint8_t)i1;
-  buf[1][WEAVER_SYMBYTES + 1] = (uint8_t)j1;
-  buf[2][WEAVER_SYMBYTES + 0] = (uint8_t)i2;
-  buf[2][WEAVER_SYMBYTES + 1] = (uint8_t)j2;
-  buf[3][WEAVER_SYMBYTES + 0] = (uint8_t)i3;
-  buf[3][WEAVER_SYMBYTES + 1] = (uint8_t)j3;
+  for(b = 0; b < 4; b++) {
+    memcpy(buf[b], seed, WEAVER_SYMBYTES);
+    buf[b][WEAVER_SYMBYTES + 0] = (uint8_t)coords[b][0];
+    buf[b][WEAVER_SYMBYTES + 1] = (uint8_t)coords[b][1];
+  }
   (void)transposed;
 }
 
@@ -172,8 +165,8 @@ static void gen_matrix_x4(poly *p0, poly *p1, poly *p2, poly *p3,
   const __m256i vthm1 = _mm256_set1_epi32((int32_t)LEMIRE_REJ_THRESHOLD - 1);
 
   fill_x4_seeds(xseed, seed, transposed, i0, j0, i1, j1, i2, j2, i3, j3);
-  shake256x4_absorb(&state, xseed[0], xseed[1], xseed[2], xseed[3], WEAVER_SYMBYTES + 2);
-  shake256x4_squeezeblocks(buf[0], buf[1], buf[2], buf[3], GEN_MATRIX_NBLOCKS, &state);
+  shake128x4_absorb(&state, xseed[0], xseed[1], xseed[2], xseed[3], WEAVER_SYMBYTES + 2);
+  shake128x4_squeezeblocks(buf[0], buf[1], buf[2], buf[3], GEN_MATRIX_NBLOCKS, &state);
 
   ctr0 = rej_uniform7681(p0->coeffs, WEAVER_N, buf[0], GEN_MATRIX_NBLOCKS * XOF_BLOCKBYTES, vq, vthm1);
   ctr1 = rej_uniform7681(p1->coeffs, WEAVER_N, buf[1], GEN_MATRIX_NBLOCKS * XOF_BLOCKBYTES, vq, vthm1);
@@ -181,7 +174,7 @@ static void gen_matrix_x4(poly *p0, poly *p1, poly *p2, poly *p3,
   ctr3 = rej_uniform7681(p3->coeffs, WEAVER_N, buf[3], GEN_MATRIX_NBLOCKS * XOF_BLOCKBYTES, vq, vthm1);
 
   while(ctr0 < WEAVER_N || ctr1 < WEAVER_N || ctr2 < WEAVER_N || ctr3 < WEAVER_N) {
-    shake256x4_squeezeblocks(buf[0], buf[1], buf[2], buf[3], 1, &state);
+    shake128x4_squeezeblocks(buf[0], buf[1], buf[2], buf[3], 1, &state);
 
     if(ctr0 < WEAVER_N)
       ctr0 += rej_uniform7681(p0->coeffs + ctr0, WEAVER_N - ctr0, buf[0], XOF_BLOCKBYTES, vq, vthm1);

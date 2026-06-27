@@ -44,21 +44,13 @@ void weaver_shake256_prf(uint8_t *out, size_t outlen, const uint8_t key[WEAVER_S
 #define weaver_shake256_rkprf WEAVER_NAMESPACE(weaver_shake256_rkprf)
 void weaver_shake256_rkprf(uint8_t out[WEAVER_SSBYTES], const uint8_t key[WEAVER_SYMBYTES], const uint8_t input[WEAVER_CIPHERTEXTBYTES]);
 
-#if WEAVER_MODE == 1
 #define XOF_BLOCKBYTES SHAKE128_RATE
-#else
-#define XOF_BLOCKBYTES SHAKE256_RATE
-#endif
 
 #define hash_h(OUT, IN, INBYTES) weaver_hash_h((OUT), (IN), (INBYTES))
 #define hash_g(OUT, IN, INBYTES) weaver_hash_g((OUT), (IN), (INBYTES))
 #define expand_keypair_seeds(OUT, IN, INBYTES) weaver_expand_keypair_seeds((OUT), (IN), (INBYTES))
 #define xof_absorb(STATE, SEED, X, Y) weaver_shake128_absorb(STATE, SEED, X, Y)
-#if WEAVER_MODE == 1
 #define xof_squeezeblocks(OUT, OUTBLOCKS, STATE) shake128_squeezeblocks(OUT, OUTBLOCKS, STATE)
-#else
-#define xof_squeezeblocks(OUT, OUTBLOCKS, STATE) shake256_squeezeblocks(OUT, OUTBLOCKS, STATE)
-#endif
 #define prf(OUT, OUTBYTES, KEY, NONCE) weaver_shake256_prf(OUT, OUTBYTES, KEY, NONCE)
 #define rkprf(OUT, KEY, INPUT) weaver_shake256_rkprf(OUT, KEY, INPUT)
 

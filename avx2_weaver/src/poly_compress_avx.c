@@ -1,146 +1,263 @@
-/* AVX2 compress/decompress for n=256 (10-bit pk/ct polyvec, 4-bit v). */
+/* AVX2 compress/decompress for Weaver Table-2 parameters. */
 #include <stdint.h>
 #include <immintrin.h>
 #include "params.h"
 
-#if defined(WEAVER_USE_AVX_COMPRESS) && (WEAVER_N == 256)
+#if defined(WEAVER_USE_AVX_COMPRESS)
+
 #include "poly.h"
 #include "poly_compress_avx.h"
-#include "avx/consts.h"
 
-void poly_compress10_avx(uint8_t r[(WEAVER_N * 10) / 8], const poly * restrict a)
+#if (WEAVER_Q == 7681)
+
+#define COMPRESS_RECIP7681_D8  559168u
+#define COMPRESS_RECIP7681_D9  559168u
+#define COMPRESS_RECIP7681_D10 2236671u
+#define COMPRESS_RECIP7681_D11 2236671u
+
+static inline __m256i compress7681_center16(__m256i f)
+{
+  const __m256i qv = _mm256_set1_epi16(WEAVER_Q);
+  __m256i neg = _mm256_srai_epi16(f, 15);
+  return _mm256_add_epi16(f, _mm256_and_si256(neg, qv));
+}
+
+static inline __m128i compress7681_center8(__m128i f8)
+{
+  const __m128i qv = _mm_set1_epi16(WEAVER_Q);
+  __m128i neg = _mm_srai_epi16(f8, 15);
+  return _mm_add_epi16(f8, _mm_and_si128(neg, qv));
+}
+
+static __attribute__((noinline)) __m128i compress7681_quant4_d10(__m128i f4)
+{
+  int16_t c[4];
+  uint16_t q[4];
+  unsigned k;
+
+  _mm_storel_epi64((__m128i *)c, f4);
+  for(k = 0; k < 4; k++) {
+    int32_t u = c[k];
+    u += (u >> 15) & WEAVER_Q;
+    q[k] = (uint16_t)(((((uint64_t)(uint32_t)u << 10) + (WEAVER_Q / 2))
+                     * COMPRESS_RECIP7681_D10 >> 34) & 1023u);
+  }
+  return _mm_set_epi16(0, 0, 0, 0, (short)q[3], (short)q[2], (short)q[1], (short)q[0]);
+}
+
+static __attribute__((noinline)) __m128i compress7681_quant4_d11(__m128i f4)
+{
+  int16_t c[4];
+  uint16_t q[4];
+  unsigned k;
+
+  _mm_storel_epi64((__m128i *)c, f4);
+  for(k = 0; k < 4; k++) {
+    int32_t u = c[k];
+    u += (u >> 15) & WEAVER_Q;
+    q[k] = (uint16_t)(((((uint64_t)(uint32_t)u << 11) + (WEAVER_Q / 2))
+                     * COMPRESS_RECIP7681_D11 >> 34) & 2047u);
+  }
+  return _mm_set_epi16(0, 0, 0, 0, (short)q[3], (short)q[2], (short)q[1], (short)q[0]);
+}
+
+static __attribute__((noinline)) __m128i compress7681_quant4_d8(__m128i f4)
+{
+  int16_t c[4];
+  uint16_t q[4];
+  unsigned k;
+
+  _mm_storel_epi64((__m128i *)c, f4);
+  for(k = 0; k < 4; k++) {
+    int32_t u = c[k];
+    u += (u >> 15) & WEAVER_Q;
+    q[k] = (uint16_t)(((((uint64_t)(uint32_t)u << 8) + (WEAVER_Q / 2))
+                     * COMPRESS_RECIP7681_D8 >> 32) & 255u);
+  }
+  return _mm_set_epi16(0, 0, 0, 0, (short)q[3], (short)q[2], (short)q[1], (short)q[0]);
+}
+
+static __attribute__((noinline)) __m128i compress7681_quant4_d9(__m128i f4)
+{
+  int16_t c[4];
+  uint16_t q[4];
+  unsigned k;
+
+  _mm_storel_epi64((__m128i *)c, f4);
+  for(k = 0; k < 4; k++) {
+    int32_t u = c[k];
+    u += (u >> 15) & WEAVER_Q;
+    q[k] = (uint16_t)(((((uint64_t)(uint32_t)u << 9) + (WEAVER_Q / 2))
+                     * COMPRESS_RECIP7681_D9 >> 32) & 511u);
+  }
+  return _mm_set_epi16(0, 0, 0, 0, (short)q[3], (short)q[2], (short)q[1], (short)q[0]);
+}
+
+static void poly_compress_pack4x10(uint8_t r[5], __m128i t)
+{
+  uint16_t v[4];
+  _mm_storeu_si128((__m128i *)v, _mm_and_si128(t, _mm_set1_epi16(1023)));
+  r[0] = (uint8_t)(v[0] >> 0);
+  r[1] = (uint8_t)((v[0] >> 8) | (v[1] << 2));
+  r[2] = (uint8_t)((v[1] >> 6) | (v[2] << 4));
+  r[3] = (uint8_t)((v[2] >> 4) | (v[3] << 6));
+  r[4] = (uint8_t)(v[3] >> 2);
+}
+
+static void poly_compress_pack8x11(uint8_t r[11], __m128i t)
+{
+  uint16_t v[8];
+  _mm_storeu_si128((__m128i *)v, _mm_and_si128(t, _mm_set1_epi16(2047)));
+  r[0]  = (uint8_t)(v[0] >> 0);
+  r[1]  = (uint8_t)((v[0] >> 8) | (v[1] << 3));
+  r[2]  = (uint8_t)((v[1] >> 5) | (v[2] << 6));
+  r[3]  = (uint8_t)(v[2] >> 2);
+  r[4]  = (uint8_t)((v[2] >> 10) | (v[3] << 1));
+  r[5]  = (uint8_t)((v[3] >> 7) | (v[4] << 4));
+  r[6]  = (uint8_t)((v[4] >> 4) | (v[5] << 7));
+  r[7]  = (uint8_t)(v[5] >> 1);
+  r[8]  = (uint8_t)((v[5] >> 9) | (v[6] << 2));
+  r[9]  = (uint8_t)((v[6] >> 6) | (v[7] << 5));
+  r[10] = (uint8_t)(v[7] >> 3);
+}
+
+static __m128i poly_decompress_unpack4x10(const uint8_t a[5])
+{
+  uint16_t v[8];
+  v[0] = (uint16_t)a[0] | ((uint16_t)(a[1] & 3) << 8);
+  v[1] = (uint16_t)(a[1] >> 2) | ((uint16_t)(a[2] & 15) << 6);
+  v[2] = (uint16_t)(a[2] >> 4) | ((uint16_t)(a[3] & 63) << 4);
+  v[3] = (uint16_t)(a[3] >> 6) | ((uint16_t)a[4] << 2);
+  v[4] = v[5] = v[6] = v[7] = 0;
+  return _mm_and_si128(_mm_loadu_si128((__m128i *)v), _mm_set1_epi16(1023));
+}
+
+static __m128i poly_decompress_unpack8x11(const uint8_t a[11])
+{
+  uint16_t v[8];
+  v[0] = (uint16_t)a[0] | ((uint16_t)a[1] << 8);
+  v[1] = (uint16_t)(a[1] >> 3) | ((uint16_t)a[2] << 5);
+  v[2] = (uint16_t)(a[2] >> 6) | ((uint16_t)a[3] << 2) | ((uint16_t)a[4] << 10);
+  v[3] = (uint16_t)(a[4] >> 1) | ((uint16_t)a[5] << 7);
+  v[4] = (uint16_t)(a[5] >> 4) | ((uint16_t)a[6] << 4);
+  v[5] = (uint16_t)(a[6] >> 7) | ((uint16_t)a[7] << 1) | ((uint16_t)a[8] << 9);
+  v[6] = (uint16_t)(a[8] >> 2) | ((uint16_t)a[9] << 6);
+  v[7] = (uint16_t)(a[9] >> 5) | ((uint16_t)a[10] << 3);
+  return _mm_and_si128(_mm_loadu_si128((__m128i *)v), _mm_set1_epi16(2047));
+}
+
+static inline __m128i poly_decompress_scale4(__m128i t4, unsigned d)
+{
+  uint16_t u[4];
+  int16_t out[4];
+  unsigned k;
+  const uint16_t mask = (uint16_t)((1u << d) - 1u);
+  const uint32_t bias = 1u << (d - 1);
+
+  _mm_storel_epi64((__m128i *)u, _mm_and_si128(t4, _mm_set1_epi16(mask)));
+  for(k = 0; k < 4; k++)
+    out[k] = (int16_t)(((uint32_t)(u[k] & mask) * WEAVER_Q + bias) >> d);
+  return _mm_set_epi16(0, 0, 0, 0, out[3], out[2], out[1], out[0]);
+}
+
+static inline __m128i poly_decompress_scale8(__m128i t8, unsigned d)
+{
+  __m128i lo = poly_decompress_scale4(t8, d);
+  __m128i hi = poly_decompress_scale4(_mm_srli_si128(t8, 8), d);
+  return _mm_unpacklo_epi64(lo, hi);
+}
+
+#if (WEAVER_N == 256)
+
+void poly_compress10_avx(uint8_t r[(WEAVER_N * 10) / 8], const poly *a)
 {
   unsigned int i;
-  __m256i f0, f1, f2;
-  __m128i t0, t1;
-  const __m256i v = _mm256_load_si256((__m256i *)&qdata[_16XV]);
-  const __m256i v8 = _mm256_slli_epi16(v, 3);
-  const __m256i off = _mm256_set1_epi16(15);
-  const __m256i shift1 = _mm256_set1_epi16(1 << 12);
-  const __m256i mask = _mm256_set1_epi16(1023);
-  const __m256i shift2 = _mm256_set1_epi64x((1024LL << 48) + (1LL << 32) + (1024 << 16) + 1);
-  const __m256i sllvdidx = _mm256_set1_epi64x(12);
-  const __m256i shufbidx = _mm256_set_epi8( 8, 4, 3, 2, 1, 0,-1,-1,-1,-1,-1,-1,12,11,10, 9,
-                                           -1,-1,-1,-1,-1,-1,12,11,10, 9, 8, 4, 3, 2, 1, 0);
 
-  for(i = 0; i < WEAVER_N / 16; i++) {
-    f0 = _mm256_load_si256((__m256i *)&a->coeffs[16 * i]);
-    f1 = _mm256_mullo_epi16(f0, v8);
-    f2 = _mm256_add_epi16(f0, off);
-    f0 = _mm256_slli_epi16(f0, 3);
-    f0 = _mm256_mulhi_epi16(f0, v);
-    f2 = _mm256_sub_epi16(f1, f2);
-    f1 = _mm256_andnot_si256(f1, f2);
-    f1 = _mm256_srli_epi16(f1, 15);
-    f0 = _mm256_sub_epi16(f0, f1);
-    f0 = _mm256_mulhrs_epi16(f0, shift1);
-    f0 = _mm256_and_si256(f0, mask);
-    f0 = _mm256_madd_epi16(f0, shift2);
-    f0 = _mm256_sllv_epi32(f0, sllvdidx);
-    f0 = _mm256_srli_epi64(f0, 12);
-    f0 = _mm256_shuffle_epi8(f0, shufbidx);
-    t0 = _mm256_castsi256_si128(f0);
-    t1 = _mm256_extracti128_si256(f0, 1);
-    t0 = _mm_blend_epi16(t0, t1, 0xE0);
-    _mm_storeu_si128((__m128i *)&r[20 * i + 0], t0);
-    _mm_store_ss((float *)&r[20 * i + 16], _mm_castsi128_ps(t1));
+  for(i = 0; i < WEAVER_N / 4; i++) {
+    __m128i f4 = compress7681_center8(_mm_loadl_epi64((__m128i *)&a->coeffs[4 * i]));
+    __m128i q4;
+
+    q4 = compress7681_quant4_d10(f4);
+    poly_compress_pack4x10(r + 5 * i, q4);
   }
 }
 
-void poly_decompress10_avx(poly * restrict r, const uint8_t a[(WEAVER_N * 10) / 8])
+void poly_decompress10_avx(poly *r, const uint8_t a[(WEAVER_N * 10) / 8])
 {
   unsigned int i;
-  __m256i f;
-  const __m256i q = _mm256_set1_epi32((WEAVER_Q << 16) + 4 * WEAVER_Q);
-  const __m256i shufbidx = _mm256_set_epi8(11,10,10, 9, 9, 8, 8, 7,
-                                            6, 5, 5, 4, 4, 3, 3, 2,
-                                            9, 8, 8, 7, 7, 6, 6, 5,
-                                            4, 3, 3, 2, 2, 1, 1, 0);
-  const __m256i sllvdidx = _mm256_set1_epi64x(4);
-  const __m256i mask = _mm256_set1_epi32((32736 << 16) + 8184);
 
-  for(i = 0; i < WEAVER_N / 16; i++) {
-    f = _mm256_loadu_si256((__m256i *)&a[20 * i]);
-    f = _mm256_permute4x64_epi64(f, 0x94);
-    f = _mm256_shuffle_epi8(f, shufbidx);
-    f = _mm256_sllv_epi32(f, sllvdidx);
-    f = _mm256_srli_epi16(f, 1);
-    f = _mm256_and_si256(f, mask);
-    f = _mm256_mulhrs_epi16(f, q);
-    _mm256_store_si256((__m256i *)&r->coeffs[16 * i], f);
+  for(i = 0; i < WEAVER_N / 4; i++) {
+    __m128i t4 = poly_decompress_unpack4x10(a + 5 * i);
+    _mm_storel_epi64((__m128i *)&r->coeffs[4 * i], poly_decompress_scale4(t4, 10));
   }
 }
 
-#if (WEAVER_POLYCOMPRESSEDBYTES == (WEAVER_N * 4 / 8))
+#endif /* n=256 10-bit */
 
-void poly_compress_d4_avx(uint8_t r[WEAVER_POLYCOMPRESSEDBYTES], const poly * restrict a)
+#if (WEAVER_N == 512)
+
+void poly_compress11_avx(uint8_t r[(WEAVER_N * 11) / 8], const poly *a)
 {
   unsigned int i;
-  __m256i f0, f1, f2, f3;
-  const __m256i v = _mm256_load_si256((__m256i *)&qdata[_16XV]);
-  const __m256i shift1 = _mm256_set1_epi16(1 << 9);
-  const __m256i mask = _mm256_set1_epi16(15);
-  const __m256i shift2 = _mm256_set1_epi16((16 << 8) + 1);
-  const __m256i permdidx = _mm256_set_epi32(7, 3, 6, 2, 5, 1, 4, 0);
 
-  for(i = 0; i < WEAVER_N / 64; i++) {
-    f0 = _mm256_load_si256((__m256i *)&a->coeffs[64 * i + 0]);
-    f1 = _mm256_load_si256((__m256i *)&a->coeffs[64 * i + 16]);
-    f2 = _mm256_load_si256((__m256i *)&a->coeffs[64 * i + 32]);
-    f3 = _mm256_load_si256((__m256i *)&a->coeffs[64 * i + 48]);
-    f0 = _mm256_mulhi_epi16(f0, v);
-    f1 = _mm256_mulhi_epi16(f1, v);
-    f2 = _mm256_mulhi_epi16(f2, v);
-    f3 = _mm256_mulhi_epi16(f3, v);
-    f0 = _mm256_mulhrs_epi16(f0, shift1);
-    f1 = _mm256_mulhrs_epi16(f1, shift1);
-    f2 = _mm256_mulhrs_epi16(f2, shift1);
-    f3 = _mm256_mulhrs_epi16(f3, shift1);
-    f0 = _mm256_and_si256(f0, mask);
-    f1 = _mm256_and_si256(f1, mask);
-    f2 = _mm256_and_si256(f2, mask);
-    f3 = _mm256_and_si256(f3, mask);
-    f0 = _mm256_packus_epi16(f0, f1);
-    f2 = _mm256_packus_epi16(f2, f3);
-    f0 = _mm256_maddubs_epi16(f0, shift2);
-    f2 = _mm256_maddubs_epi16(f2, shift2);
-    f0 = _mm256_packus_epi16(f0, f2);
-    f0 = _mm256_permutevar8x32_epi32(f0, permdidx);
-    _mm256_storeu_si256((__m256i *)&r[32 * i], f0);
+  for(i = 0; i < WEAVER_N / 8; i++) {
+    __m128i f8 = compress7681_center8(_mm_loadu_si128((__m128i *)&a->coeffs[8 * i]));
+    __m128i q8;
+
+    q8 = _mm_unpacklo_epi64(compress7681_quant4_d11(f8),
+                            compress7681_quant4_d11(_mm_srli_si128(f8, 8)));
+    poly_compress_pack8x11(r + 11 * i, q8);
   }
 }
 
-void poly_decompress_d4_avx(poly * restrict r, const uint8_t a[WEAVER_POLYCOMPRESSEDBYTES])
+void poly_decompress11_avx(poly *r, const uint8_t a[(WEAVER_N * 11) / 8])
 {
   unsigned int i;
-  __m256i f;
-  const __m256i q = _mm256_load_si256((__m256i *)&qdata[_16XQ]);
-  const __m256i shufbidx = _mm256_set_epi8(7,7,7,7,6,6,6,6,5,5,5,5,4,4,4,4,
-                                           3,3,3,3,2,2,2,2,1,1,1,1,0,0,0,0);
-  const __m256i mask = _mm256_set1_epi32(0x00F0000F);
-  const __m256i shift = _mm256_set1_epi32((128 << 16) + 2048);
 
-  for(i = 0; i < WEAVER_N / 16; i++) {
-    f = _mm256_broadcastq_epi64(_mm_loadl_epi64((__m128i *)&a[8 * i]));
-    f = _mm256_shuffle_epi8(f, shufbidx);
-    f = _mm256_and_si256(f, mask);
-    f = _mm256_mullo_epi16(f, shift);
-    f = _mm256_mulhrs_epi16(f, q);
-    _mm256_store_si256((__m256i *)&r->coeffs[16 * i], f);
+  for(i = 0; i < WEAVER_N / 8; i++) {
+    __m128i t8 = poly_decompress_unpack8x11(a + 11 * i);
+    _mm_storeu_si128((__m128i *)&r->coeffs[8 * i], poly_decompress_scale8(t8, 11));
   }
 }
 
-#endif /* 4-bit v */
+#endif /* n=512 11-bit */
 
-#endif /* n=256 10-bit / 4-bit */
+#if (WEAVER_DV == 8)
 
-#if defined(WEAVER_USE_AVX_COMPRESS) && (WEAVER_N == 128 || WEAVER_N == 256) && \
-    (WEAVER_PK_POLYVECBYTES == (WEAVER_K * WEAVER_N * 9 / 8))
+void poly_compress_d8_avx(uint8_t r[WEAVER_POLYCOMPRESSEDBYTES], const poly *a)
+{
+  unsigned int i;
 
-#include "poly.h"
-#include "poly_compress9.h"
+  for(i = 0; i < WEAVER_N / 8; i++) {
+    __m128i f8 = compress7681_center8(
+        _mm_loadu_si128((__m128i *)&a->coeffs[8 * i]));
+    __m128i q8 = _mm_unpacklo_epi64(compress7681_quant4_d8(f8),
+                                    compress7681_quant4_d8(_mm_srli_si128(f8, 8)));
+    _mm_storel_epi64((__m128i *)&r[8 * i],
+                     _mm_packus_epi16(q8, _mm_setzero_si128()));
+  }
+}
 
-/* Pack eight 9-bit values (lanes of t) into nine output bytes. */
+void poly_decompress_d8_avx(poly *r, const uint8_t a[WEAVER_POLYCOMPRESSEDBYTES])
+{
+  unsigned int i;
+  const __m128i qv = _mm_set1_epi16(WEAVER_Q);
+  const __m128i bias = _mm_set1_epi16(128);
+
+  for(i = 0; i < WEAVER_N / 8; i++) {
+    __m128i b8 = _mm_loadl_epi64((__m128i *)&a[8 * i]);
+    __m128i t8 = _mm_cvtepu8_epi16(b8);
+    t8 = _mm_mullo_epi16(t8, qv);
+    t8 = _mm_add_epi16(t8, bias);
+    t8 = _mm_srli_epi16(t8, 8);
+    _mm_storeu_si128((__m128i *)&r->coeffs[8 * i], t8);
+  }
+}
+
+#endif /* dv=8 */
+
+#if (WEAVER_DV == 9)
+
 static void poly_compress9_pack8_si128(uint8_t r[9], __m128i t)
 {
   uint64_t bits;
@@ -167,12 +284,88 @@ static void poly_compress9_pack8_si128(uint8_t r[9], __m128i t)
   r[8] = (uint8_t)(v[7] >> 1);
 }
 
-/* Exact 9-bit quant on eight lanes. */
+void poly_compress_d9_avx(uint8_t r[WEAVER_POLYCOMPRESSEDBYTES], const poly *a)
+{
+  unsigned int i;
+
+  for(i = 0; i < WEAVER_N / 8; i++) {
+    __m128i f8 = compress7681_center8(
+        _mm_loadu_si128((__m128i *)&a->coeffs[8 * i]));
+    __m128i q8 = _mm_unpacklo_epi64(compress7681_quant4_d9(f8),
+                                    compress7681_quant4_d9(_mm_srli_si128(f8, 8)));
+
+    poly_compress9_pack8_si128(r + 9 * i, q8);
+  }
+}
+
+void poly_decompress_d9_avx(poly *r, const uint8_t a[WEAVER_POLYCOMPRESSEDBYTES])
+{
+  unsigned int i;
+
+  for(i = 0; i < WEAVER_N / 8; i++) {
+    uint16_t t[8];
+    __m128i packed;
+
+    t[0] = (uint16_t)a[0] | ((uint16_t)a[1] << 8);
+    t[1] = (uint16_t)(a[1] >> 1) | ((uint16_t)a[2] << 7);
+    t[2] = (uint16_t)(a[2] >> 2) | ((uint16_t)a[3] << 6);
+    t[3] = (uint16_t)(a[3] >> 3) | ((uint16_t)a[4] << 5);
+    t[4] = (uint16_t)(a[4] >> 4) | ((uint16_t)a[5] << 4);
+    t[5] = (uint16_t)(a[5] >> 5) | ((uint16_t)a[6] << 3);
+    t[6] = (uint16_t)(a[6] >> 6) | ((uint16_t)a[7] << 2);
+    t[7] = (uint16_t)(a[7] >> 7) | ((uint16_t)a[8] << 1);
+    a += 9;
+    packed = _mm_and_si128(_mm_loadu_si128((__m128i *)t), _mm_set1_epi16(511));
+    _mm_storeu_si128((__m128i *)&r->coeffs[8 * i], poly_decompress_scale8(packed, 9));
+  }
+}
+
+#endif /* dv=9 */
+
+#endif /* WEAVER_Q == 7681 */
+
+#if (WEAVER_PK_POLYVECBYTES == (WEAVER_K * WEAVER_N * 9 / 8) || \
+     WEAVER_POLYVECCOMPRESSEDBYTES == (WEAVER_K * WEAVER_N * 9 / 8))
+
+#include "poly_compress9.h"
+
+#if (WEAVER_Q == 3329)
+#define COMPRESS9_RECIP 1290168ULL
+#else
+#define COMPRESS9_RECIP 559168ULL
+#endif
+
+static void poly_compress9_pack8_si128(uint8_t r[9], __m128i t)
+{
+  uint64_t bits;
+  uint16_t v[8];
+
+  t = _mm_and_si128(t, _mm_set1_epi16(511));
+  _mm_storeu_si128((__m128i *)v, t);
+  bits = (uint64_t)v[0]
+       | ((uint64_t)v[1] << 9)
+       | ((uint64_t)v[2] << 18)
+       | ((uint64_t)v[3] << 27)
+       | ((uint64_t)v[4] << 36)
+       | ((uint64_t)v[5] << 45)
+       | ((uint64_t)v[6] << 54)
+       | ((uint64_t)v[7] << 63);
+  r[0] = (uint8_t)(bits >> 0);
+  r[1] = (uint8_t)(bits >> 8);
+  r[2] = (uint8_t)(bits >> 16);
+  r[3] = (uint8_t)(bits >> 24);
+  r[4] = (uint8_t)(bits >> 32);
+  r[5] = (uint8_t)(bits >> 40);
+  r[6] = (uint8_t)(bits >> 48);
+  r[7] = (uint8_t)(bits >> 56);
+  r[8] = (uint8_t)(v[7] >> 1);
+}
+
 static __m128i poly_compress9_quant8_avx(__m128i f16)
 {
   const __m256i qv = _mm256_set1_epi32(WEAVER_Q);
   const __m256i half = _mm256_set1_epi32(WEAVER_Q / 2);
-  const __m256i recip = _mm256_set1_epi64x(1290168ULL);
+  const __m256i recip = _mm256_set1_epi64x(COMPRESS9_RECIP);
   __m256i u, neg, p0, p1;
   uint32_t q[8];
 
@@ -199,11 +392,9 @@ static __m128i poly_compress9_quant8_avx(__m128i f16)
 
 static __m256i poly_compress9_quant16_avx(__m256i f0)
 {
-  __m128i lo, hi;
-
-  lo = poly_compress9_quant8_avx(_mm256_castsi256_si128(f0));
-  hi = poly_compress9_quant8_avx(_mm256_extracti128_si256(f0, 1));
-  return _mm256_set_m128i(hi, lo);
+  return _mm256_set_m128i(
+      poly_compress9_quant8_avx(_mm256_extracti128_si256(f0, 1)),
+      poly_compress9_quant8_avx(_mm256_castsi256_si128(f0)));
 }
 
 void poly_compress9_quant_avx(uint16_t t[WEAVER_N], const poly *a)
@@ -230,4 +421,6 @@ void poly_compress9_avx(uint8_t r[(WEAVER_N * 9) / 8], const poly *a)
   }
 }
 
-#endif /* 9-bit pk (n=128/256) */
+#endif /* 9-bit pk/c1 */
+
+#endif /* WEAVER_USE_AVX_COMPRESS */

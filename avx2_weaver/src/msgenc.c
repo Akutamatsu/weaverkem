@@ -4,6 +4,9 @@
 #include "params.h"
 #include "poly.h"
 #include "msgenc.h"
+#if defined(WEAVER_USE_AVX_COMPRESS)
+#include "poly_compress_avx.h"
+#endif
 #include "reduce.h"
 #include "bch.h"
 
@@ -274,13 +277,20 @@ void poly_compress(uint8_t r[WEAVER_POLYCOMPRESSEDBYTES], const poly *a)
         r += 3;
     }
 #elif (WEAVER_DV == 8)
-    for (i = 0; i < WEAVER_N; i++) {
-        u = a->coeffs[i];
-        u += (u >> 15) & WEAVER_Q;
-        *r++ = ((((uint32_t)u << 8) + WEAVER_Q / 2) / WEAVER_Q) & 0xff;
-    }
+#if defined(WEAVER_USE_AVX_COMPRESS)
+  poly_compress_d8_avx(r, a);
+#else
+  for (i = 0; i < WEAVER_N; i++) {
+    u = a->coeffs[i];
+    u += (u >> 15) & WEAVER_Q;
+    *r++ = ((((uint32_t)u << 8) + WEAVER_Q / 2) / WEAVER_Q) & 0xff;
+  }
+#endif
 #elif (WEAVER_DV == 9)
-    for (i = 0; i < WEAVER_N / 8; i++) {
+#if defined(WEAVER_USE_AVX_COMPRESS)
+  poly_compress_d9_avx(r, a);
+#else
+  for (i = 0; i < WEAVER_N / 8; i++) {
         for (j = 0; j < 8; j++) {
             u = a->coeffs[8 * i + j];
             u += (u >> 15) & WEAVER_Q;
@@ -298,6 +308,7 @@ void poly_compress(uint8_t r[WEAVER_POLYCOMPRESSEDBYTES], const poly *a)
         r[8] = (uint8_t)(t[7] >> 1);
         r += 9;
     }
+#endif
 #else
 #error "WEAVER_DV needs to be 5, 6, 8, or 9"
 #endif
@@ -348,9 +359,16 @@ void poly_decompress(poly *r, const uint8_t a[WEAVER_POLYCOMPRESSEDBYTES])
             r->coeffs[4 * i + j] = ((uint32_t)(t[j] & 63)*WEAVER_Q + 32) >> 6;
     }
 #elif (WEAVER_DV == 8)
+#if defined(WEAVER_USE_AVX_COMPRESS)
+  poly_decompress_d8_avx(r, a);
+#else
     for (i = 0; i < WEAVER_N; i++)
         r->coeffs[i] = ((uint32_t)(*a++)*WEAVER_Q + 128) >> 8;
+#endif
 #elif (WEAVER_DV == 9)
+#if defined(WEAVER_USE_AVX_COMPRESS)
+  poly_decompress_d9_avx(r, a);
+#else
     unsigned int j;
     uint16_t t[8];
     for (i = 0; i < WEAVER_N / 8; i++) {
@@ -367,6 +385,7 @@ void poly_decompress(poly *r, const uint8_t a[WEAVER_POLYCOMPRESSEDBYTES])
         for (j = 0; j < 8; j++)
             r->coeffs[8 * i + j] = ((uint32_t)(t[j] & 0x1ff)* WEAVER_Q + 256) >> 9;
     }
+#endif
 #else
 #error "WEAVER_DV needs to be 5, 6, 8, or 9"
 #endif

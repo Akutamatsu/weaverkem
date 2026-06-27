@@ -34,6 +34,13 @@ USE_GETRANDOM ?= 0
 ifeq ($(USE_GETRANDOM),1)
   CFLAGS += -DUSE_GETRANDOM
 endif
+USE_AVX_CBD ?= 1
+ifeq ($(USE_AVX_CBD),1)
+  CFLAGS += -DWEAVER_USE_AVX_CBD
+  CBD_AVX_C = src/cbd_avx2.c
+else
+  CBD_AVX_C =
+endif
 ASMFLAGS = $(CFLAGS) -x assembler-with-cpp
 INC     = -Isrc -Isrc/avx -Ibench
 LDFLAGS = $(ARCH_FLAGS)
@@ -42,7 +49,7 @@ ifeq ($(ENABLE_LTO),1)
   # Keccak x4 / rejsample / compress: avoid LTO miscompilation with gen_matrix (mode 1).
   NO_LTO_C = src/fips202x4.c src/rejsample.c src/indcpa_gen_matrix_avx.c \
              src/poly_compress_avx.c src/poly_compress9.c \
-             src/keccak4x/KeccakP-1600-times4-SIMD256.c
+             src/keccak4x/KeccakP-1600-times4-SIMD256.c $(CBD_AVX_C)
   CFLAGS_NO_LTO = $(filter-out -flto,$(CFLAGS)) -fno-lto
 endif
 BD      = build
@@ -56,13 +63,13 @@ WEAVER_C = \
 	src/indcpa.c src/kem_cca.c src/msgenc.c src/bch_high.c src/bch_low.c \
 	src/polyvec.c src/poly.c src/ntt.c src/cbd.c src/reduce.c \
 	src/verify.c src/fips202.c src/symmetric-shake.c src/randombytes_ctr.c \
-	src/aes256ctr.c src/poly_invq.c
+	src/aes256ctr.c src/poly_invq.c $(CBD_AVX_C)
 
 WEAVER_C_NORNG = \
 	src/indcpa.c src/kem_cca.c src/msgenc.c src/bch_high.c src/bch_low.c \
 	src/polyvec.c src/poly.c src/ntt.c src/cbd.c src/reduce.c \
 	src/verify.c src/fips202.c src/symmetric-shake.c \
-	src/aes256ctr.c src/poly_invq.c
+	src/aes256ctr.c src/poly_invq.c $(CBD_AVX_C)
 
 AVX_C  = src/poly_avx.c src/avx/consts.c
 AVX_S  = src/avx/ntt.S src/avx/invntt.S src/avx/basemul.S src/avx/fq.S src/avx/shuffle.S
@@ -133,7 +140,7 @@ MODE5_GEN_MATRIX_C =
 endif
 MODE5_BUILD_C = $(NTT_C) $(MODE7681_C) $(MODE5_C_FQ) $(MODE5_GEN_MATRIX_C)
 
-# q=7681, n=256 (Weaver-1024 / mode 3): 16-bit AVX2 NTT + shake256x4 gen_matrix.
+# q=7681, n=256 (Weaver-1024 / mode 3): 16-bit AVX2 NTT + shake128x4 gen_matrix.
 USE_AVX_NTT7681 ?= 1
 USE_AVX_GEN_MATRIX7681 ?= 1
 USE_AVX_NTT7681_ASM ?= 0
@@ -155,6 +162,12 @@ MODE7681_C += src/indcpa_gen_matrix_avx7681.c src/fips202x4.c \
                src/keccak4x/KeccakP-1600-times4-SIMD256.c
 NO_LTO_C += src/indcpa_gen_matrix_avx7681.c src/fips202x4.c \
             src/keccak4x/KeccakP-1600-times4-SIMD256.c
+endif
+
+USE_AVX_COMPRESS7681 ?= 1
+ifeq ($(USE_AVX_COMPRESS7681),1)
+MODE7681_DEFS += -DWEAVER_USE_AVX_COMPRESS
+MODE7681_C += src/poly_compress_avx.c src/poly_compress9.c
 endif
 
 MODE5_DEFS += $(MODE7681_DEFS)
@@ -183,9 +196,12 @@ endif
 
 .PHONY: all kat test bench bench-components bench-q12289-saber bench-q7681 bench-q7681-i16 gen_vectors ref_vectors clean test-san quick-check
 
-quick-check: test test-extended bin/test_enc_derand_coins_2048 bin/test_compress9_512
+quick-check: test test-extended bin/test_enc_derand_coins_2048 bin/test_compress9_512 \
+             bin/test_compress7681_1024 bin/test_compress7681_2048
 	@chmod +x tools/quick_check.sh
 	@bin/test_compress9_512
+	@bin/test_compress7681_1024
+	@bin/test_compress7681_2048
 
 define link_bench_components
 	@mkdir -p bin
@@ -318,7 +334,7 @@ bin/gen_vectors_512:
 
 bin/gen_vectors_1024:
 	@mkdir -p bin
-	$(call compile_objs,gv1024,$(WEAVER_C) $(MODE7681_C),3,$(MODE7681_DEFS),)
+	$(call compile_objs,gv1024,$(WEAVER_C) $(MODE7681_C),3,$(MODE7681_DEFS),$(MODE7681_S))
 	$(CC) $(CFLAGS) -DWEAVER_MODE=3 $(INC) -c tools/gen_vectors.c -o $(BD)/gv1024/gen_vectors.o
 	$(CC) $(LDFLAGS) -o $@ $(BD)/gv1024/*.o
 
@@ -330,7 +346,7 @@ bin/gen_vectors_2048:
 
 bin/verify_vectors_1024: tools/verify_vectors.c
 	@mkdir -p bin
-	$(call compile_objs,vv1024,$(WEAVER_C) $(MODE7681_C),3,$(MODE7681_DEFS),)
+	$(call compile_objs,vv1024,$(WEAVER_C) $(MODE7681_C),3,$(MODE7681_DEFS),$(MODE7681_S))
 	$(CC) $(CFLAGS) -DWEAVER_MODE=3 $(INC) -c tools/verify_vectors.c -o $(BD)/vv1024/verify_vectors.o
 	$(CC) $(LDFLAGS) -o $@ $(BD)/vv1024/*.o
 
@@ -342,7 +358,7 @@ bin/compare_ref_avx_128: tools/compare_ref_avx.c
 
 bin/compare_ref_avx_1024: tools/compare_ref_avx.c
 	@mkdir -p bin
-	$(call compile_objs,cmp1024,$(WEAVER_C) $(MODE7681_C),3,$(MODE7681_DEFS),)
+	$(call compile_objs,cmp1024,$(WEAVER_C) $(MODE7681_C),3,$(MODE7681_DEFS),$(MODE7681_S))
 	$(CC) $(CFLAGS) -DWEAVER_MODE=3 $(INC) -c tools/compare_ref_avx.c -o $(BD)/cmp1024/compare_ref_avx.o
 	$(CC) $(LDFLAGS) -o $@ $(BD)/cmp1024/*.o
 
@@ -365,7 +381,7 @@ bin/kem_replay_avx_512:
 	$(call link_kem_replay_avx,1,512,$(MODE1_C),$(MODE1_DEFS),)
 
 bin/kem_replay_avx_1024:
-	$(call link_kem_replay_avx,3,1024,$(MODE7681_C),$(MODE7681_DEFS),)
+	$(call link_kem_replay_avx,3,1024,$(MODE7681_C),$(MODE7681_DEFS),$(MODE7681_S))
 
 bin/kem_replay_avx_2048:
 	$(call link_kem_replay_avx,5,2048,$(MODE5_BUILD_C),$(MODE5_DEFS),$(MODE5_S_FQ))
@@ -534,12 +550,26 @@ bin/test_compress9_512:
 	  -o $(BD)/tc9/test_compress9.o
 	$(CC) $(LDFLAGS) -o $@ $(BD)/tc9/*.o
 
+bin/test_compress7681_1024:
+	@mkdir -p bin
+	$(call compile_objs,tc7681,$(WEAVER_C) $(MODE7681_C),3,$(MODE7681_DEFS),$(MODE7681_S))
+	@$(CC) $(CFLAGS) -DWEAVER_MODE=3 $(INC) $(MODE7681_DEFS) -c tools/test_compress7681.c \
+	  -o $(BD)/tc7681/test_compress7681.o
+	$(CC) $(LDFLAGS) -o $@ $(BD)/tc7681/*.o
+
+bin/test_compress7681_2048:
+	@mkdir -p bin
+	$(call compile_objs,tc7681_5,$(WEAVER_C) $(MODE5_BUILD_C),5,$(MODE5_DEFS),$(MODE5_S_FQ))
+	@$(CC) $(CFLAGS) -DWEAVER_MODE=5 $(INC) $(MODE5_DEFS) -c tools/test_compress7681.c \
+	  -o $(BD)/tc7681_5/test_compress7681.o
+	$(CC) $(LDFLAGS) -o $@ $(BD)/tc7681_5/*.o
+
 bin/test_gen_matrix5_scalar:
 	@mkdir -p bin
 	$(call compile_objs,tgm5s,$(WEAVER_C) $(NTT_C) $(MODE5_C_FQ),5,\
 	  $(filter-out -DWEAVER_AVX_GEN_MATRIX512,$(MODE5_DEFS)),$(MODE5_S_FQ))
 	@$(CC) $(CFLAGS) -DWEAVER_MODE=5 $(INC) \
-	  $(filter-out -DWEAVER_AVX_GEN_MATRIX512,$(MODE5_DEFS)) \
+	  $(filter-out -DWEAVER_AVX_GEN_MATRIX512 -DWEAVER_AVX_GEN_MATRIX7681,$(MODE5_DEFS)) \
 	  -c tools/test_gen_matrix_mode5.c -o $(BD)/tgm5s/test_gen_matrix_mode5.o
 	$(CC) $(LDFLAGS) -o $@ $(BD)/tgm5s/*.o
 
@@ -552,6 +582,8 @@ bin/test_gen_matrix5_avx:
 
 test-gen-matrix-mode5: bin/test_gen_matrix5_scalar bin/test_gen_matrix5_avx
 	@chmod +x tools/compare_gen_matrix_mode5.sh
+	@USE_AVX_GEN_MATRIX7681=0 $(MAKE) -s bin/test_gen_matrix5_scalar
+	@USE_AVX_GEN_MATRIX7681=1 $(MAKE) -s bin/test_gen_matrix5_avx
 	@tools/compare_gen_matrix_mode5.sh 50
 
 bin/test_gen_matrix1_scalar: tools/test_gen_matrix_mode1.c
@@ -583,7 +615,7 @@ bin/test_gen_matrix3_scalar: tools/test_gen_matrix_mode3.c
 
 bin/test_gen_matrix3_avx: tools/test_gen_matrix_mode3.c
 	@mkdir -p bin
-	$(call compile_objs,tgm3a,$(WEAVER_C) $(MODE7681_C),3,$(MODE7681_DEFS),)
+	$(call compile_objs,tgm3a,$(WEAVER_C) $(MODE7681_C),3,$(MODE7681_DEFS),$(MODE7681_S))
 	@$(CC) $(CFLAGS) -DWEAVER_MODE=3 $(INC) $(MODE7681_DEFS) -c tools/test_gen_matrix_mode3.c \
 	  -o $(BD)/tgm3a/test_gen_matrix_mode3.o
 	$(CC) $(LDFLAGS) -o $@ $(BD)/tgm3a/*.o

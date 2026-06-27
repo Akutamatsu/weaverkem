@@ -1,6 +1,7 @@
 /* Mode 5 (n=512): SHAKE128x4 parallel XOF + scalar rej_uniform (standard coefficient order).
  * No Kyber packed layout and no poly_nttunpack. */
 #include <stdint.h>
+#include <string.h>
 #include <immintrin.h>
 #include "params.h"
 
@@ -53,16 +54,12 @@ static void gen_matrix_row_x4(polyvec *row,
                             keccakx4_state *state)
 {
   unsigned int ctr0, ctr1, ctr2, ctr3;
-  unsigned int buflen;
+  unsigned int buflen, b;
   __attribute__((aligned(32)))
   uint8_t buf[4][(GEN_MATRIX_BUFLEN + 31) / 32 * 32];
-  __m256i f;
 
-  f = _mm256_loadu_si256((__const __m256i *)seed);
-  _mm256_store_si256((__m256i *)buf[0], f);
-  _mm256_store_si256((__m256i *)buf[1], f);
-  _mm256_store_si256((__m256i *)buf[2], f);
-  _mm256_store_si256((__m256i *)buf[3], f);
+  for(b = 0; b < 4; b++)
+    memcpy(buf[b], seed, WEAVER_SYMBYTES);
 
   if(transposed) {
     buf[0][WEAVER_SYMBYTES + 0] = (uint8_t)row_idx;

@@ -2,7 +2,6 @@
 #include <immintrin.h>
 #include <string.h>
 #include "params.h"
-#include "consts.h"
 #include "rejsample.h"
 
 //#define BMI

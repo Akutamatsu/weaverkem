@@ -30,10 +30,6 @@ option(WEAVER_USE_AVX_NTT7681 "Modes 3/5: ntt7681_avx.c" ON)
 option(WEAVER_USE_AVX_GEN_MATRIX7681 "Modes 3/5: shake128x4 gen_matrix7681" ON)
 option(WEAVER_USE_AVX_NTT7681_ASM "Modes 3/5: ntt7681 assembly (experimental)" OFF)
 option(WEAVER_USE_AVX_COMPRESS7681 "Modes 3/5: AVX2 10/11-bit compress" ON)
-option(WEAVER_USE_AVX_FQ_512 "Mode 5: AVX512 fq path" OFF)
-option(WEAVER_USE_AVX_GEN_MATRIX512 "Mode 5: AVX512 gen_matrix" OFF)
-option(WEAVER_USE_AVX_NTT "Modes 1/3: legacy Kyber AVX NTT (3329)" OFF)
-option(WEAVER_USE_AVX_COMPRESS "Modes 1/3: legacy compress flag" OFF)
 option(WEAVER_BUILD_TESTS "Build compare/test executables" ON)
 option(WEAVER_BUILD_KAT "Build ICCS KAT replay tools" ON)
 option(WEAVER_BUILD_BENCH "Build speed_test benchmarks" ON)
@@ -60,7 +56,6 @@ set(WEAVER_CORE_SRC_NORNG
 set(WEAVER_NO_LTO_SRC
   src/fips202x4.c
   src/rejsample.c
-  src/indcpa_gen_matrix_avx.c
   src/poly_compress_avx.c
   src/poly_compress9.c
   src/keccak4x/KeccakP-1600-times4-SIMD256.c
@@ -157,29 +152,13 @@ if(WEAVER_USE_AVX_GEN_MATRIX7681)
 endif()
 
 if(WEAVER_USE_AVX_COMPRESS7681)
-  list(APPEND MODE7681_EXTRA_SRC src/poly_compress_avx.c src/poly_compress9.c)
+  list(APPEND MODE7681_EXTRA_SRC src/poly_compress_avx.c)
   list(APPEND MODE7681_DEFS WEAVER_USE_AVX_COMPRESS)
 endif()
 
 list(APPEND MODE5_DEFS ${MODE7681_DEFS})
 list(APPEND MODE5_EXTRA_SRC ${MODE7681_EXTRA_SRC})
 list(APPEND MODE5_EXTRA_ASM ${MODE7681_EXTRA_ASM})
-
-if(WEAVER_USE_AVX_FQ_512)
-  list(APPEND MODE5_EXTRA_SRC src/avx/consts.c src/poly_avx512.c)
-  list(APPEND MODE5_EXTRA_ASM src/avx/fq.S)
-  list(APPEND MODE5_DEFS WEAVER_USE_AVX_FQ_512 WEAVER_EXPERIMENTAL_MSGENC_AVX)
-endif()
-
-if(WEAVER_USE_AVX_GEN_MATRIX512)
-  list(APPEND MODE5_EXTRA_SRC
-    src/indcpa_gen_matrix_avx512.c src/fips202x4.c
-    src/keccak4x/KeccakP-1600-times4-SIMD256.c)
-  list(APPEND MODE5_DEFS WEAVER_AVX_GEN_MATRIX512)
-  list(APPEND WEAVER_NO_LTO_SRC
-    src/indcpa_gen_matrix_avx512.c src/fips202x4.c
-    src/keccak4x/KeccakP-1600-times4-SIMD256.c)
-endif()
 
 if(WEAVER_ENABLE_LTO)
   list(REMOVE_DUPLICATES WEAVER_NO_LTO_SRC)

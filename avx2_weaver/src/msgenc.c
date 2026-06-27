@@ -10,53 +10,6 @@
 #include "reduce.h"
 #include "bch.h"
 
-#if 0
-/*************************************************
-* Name:        poly_frommsg
-*
-* Description: Convert 32-byte message to polynomial
-*
-* Arguments:   - poly *r:            pointer to output polynomial
-*              - const uint8_t *msg: pointer to input message
-**************************************************/
-/* kyber原代码: 不使用纠错, 直接编一层高位 */
-void poly_frommsg(poly *r, const uint8_t msg[WEAVER_INDCPA_MSGBYTES])
-{
-  unsigned int i,j;
-  int16_t mask;
-
-#if (WEAVER_INDCPA_MSGBYTES > WEAVER_N/8)
-#error "WEAVER_INDCPA_MSGBYTES must be less than WEAVER_N/8 bytes!"
-#endif
-
-  for(i=0;i<WEAVER_N/8;i++) {
-    for(j=0;j<8;j++) {
-      mask = -(int16_t)((msg[i] >> j)&1);
-      r->coeffs[8*i+j] = mask & ((WEAVER_Q+1)/2);
-    }
-  }
-}
-/* kyber原代码: 不使用纠错, 直接编一层高位 */
-void poly_tomsg(uint8_t msg[WEAVER_INDCPA_MSGBYTES], const poly *a)
-{
-  unsigned int i,j;
-  uint16_t t;
-
-  //poly_csubq(a); /* modified barret_reduce */
-
-  for(i=0;i<WEAVER_N/8;i++) {
-    msg[i] = 0;
-    for(j=0;j<8;j++) {
-      t  = a->coeffs[8*i+j];
-      // map to positive standard representatives
-      t += ((int16_t)t >> 15) & WEAVER_Q;
-      t  = (((t << 1) + WEAVER_Q/2)/WEAVER_Q) & 1;
-      msg[i] |= t << j;
-    }
-  }
-}
-#else
-
 #if WEAVER_MODE == 1 || WEAVER_MODE == 3 || WEAVER_MODE == 5
 
 /*************************************************
@@ -224,9 +177,8 @@ void poly_tomsg(uint8_t msg[WEAVER_INDCPA_MSGBYTES], const poly *a)
 
 #endif
 }
-#endif
 
-#endif
+#endif /* WEAVER_MODE == 1 || 3 || 5 */
 
 /*************************************************
 * Name:        poly_compress

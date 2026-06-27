@@ -13,6 +13,8 @@ AVX2-oriented build of WeaverKEM, based on `ref/src/` and Kyber AVX2 primitives 
 
 Requires **x86_64** with AVX2 (`-mavx2 -mbmi2 -mpopcnt`). On Linux, `gcc` or `clang` is auto-selected.
 
+### Make (default)
+
 ```bash
 cd avx2_weaver
 make all      # binaries in bin/
@@ -20,6 +22,20 @@ make kat      # replay ../Test_Vectors/ (must match ref; all 3 security levels)
 make test     # make kat + extended ref/AVX cross-check vectors
 make bench    # keypair / encaps / decaps timing
 ```
+
+### CMake
+
+```bash
+cd avx2_weaver
+cmake -B build -S .
+cmake --build build
+ctest --test-dir build                    # compress differential tests
+cmake --build build --target weaver_kat   # ICCS KAT replay
+cmake --build build --target weaver_bench # speed_test (512/1024/2048)
+cmake --build build --target weaver_quick_check
+```
+
+Useful CMake options: `-DWEAVER_PERF_NATIVE=OFF`, `-DWEAVER_ENABLE_LTO=OFF`, `-DWEAVER_USE_AVX_CBD=OFF`, `-DWEAVER_USE_AVX_COMPRESS7681=OFF`. Binaries land in `build/bin/`.
 
 Override the compiler if needed: `make CC=gcc all`.
 Performance toggles:

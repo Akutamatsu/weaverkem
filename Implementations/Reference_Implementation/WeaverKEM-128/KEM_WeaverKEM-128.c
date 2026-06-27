@@ -32,16 +32,6 @@ Security level: 128-bit classical / 80-bit quantum (WEAVER_MODE=1).
 extern DRNG_ctx drng_algorithm;
 
 /* ---------------------------------------------------------------
- * randombytes() shim
- * Routes all randomness requests in WeaverKEM through drng_algorithm
- * so that test-vector generation is fully deterministic.
- * --------------------------------------------------------------- */
-int randombytes(unsigned char *x, unsigned long long xlen)
-{
-    return get_random_number(&drng_algorithm, x, xlen * 8);
-}
-
-/* ---------------------------------------------------------------
  * Length query functions
  * --------------------------------------------------------------- */
 
@@ -73,12 +63,15 @@ int kem_keygen(
     unsigned char *pk, unsigned long long *pk_len_bytes,
     unsigned char *sk, unsigned long long *sk_len_bytes)
 {
-    int ret = crypto_kem_keypair(pk, sk);
+    uint8_t coins[2*WEAVER_SYMBYTES];
+    int ret = 0;
+    randombytes(coins, 2*WEAVER_SYMBYTES);
+    ret = crypto_kem_keypair_derand(pk, sk, coins);
     if (ret != 0)
         return ret;
     *pk_len_bytes = (unsigned long long)WEAVER_PUBLICKEYBYTES;
     *sk_len_bytes = (unsigned long long)WEAVER_SECRETKEYBYTES;
-    return 0;
+    return ret;
 }
 
 int kem_enc(
@@ -86,13 +79,16 @@ int kem_enc(
     unsigned char *ss, unsigned long long *ss_len_bytes,
     unsigned char *ct, unsigned long long *ct_len_bytes)
 {
+    uint8_t coins[WEAVER_INDCPA_MSGBYTES]; /* coins --> used as encrypted m for PKE */
     (void)pk_len_bytes;
-    int ret = crypto_kem_enc(ct, ss, pk);
+    int ret = 0;
+    randombytes(coins, WEAVER_INDCPA_MSGBYTES);
+    ret = crypto_kem_enc_derand(ct, ss, pk, coins);
     if (ret != 0)
         return ret;
     *ss_len_bytes = (unsigned long long)WEAVER_SSBYTES;
     *ct_len_bytes = (unsigned long long)WEAVER_CIPHERTEXTBYTES;
-    return 0;
+    return ret;
 }
 
 int kem_dec(

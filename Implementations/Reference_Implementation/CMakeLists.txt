@@ -11,13 +11,6 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 # Set output directory for all executables
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 
-# Path to the shared reference source tree
-set(REF_SRC "${CMAKE_CURRENT_SOURCE_DIR}/../../ref/src")
-
-# Include directories for all subdirectories
-include_directories(
-    ${REF_SRC}
-)
 
 # Add subdirectories for each security level
 add_subdirectory(WeaverKEM-128)

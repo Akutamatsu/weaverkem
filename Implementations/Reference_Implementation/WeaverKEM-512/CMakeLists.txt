@@ -5,35 +5,30 @@ add_compile_definitions(WEAVER_MODE=5)
 
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${REF_SRC}
 )
 
+# 17 files
 set(SOURCES
     drng.c
     auxfunc.c
     KAT_KEM.c
     KEM_WeaverKEM-512.c
-    ${REF_SRC}/kem_cca.c
-    ${REF_SRC}/indcpa.c
-    ${REF_SRC}/polyvec.c
-    ${REF_SRC}/poly.c
-    ${REF_SRC}/ntt.c
-    ${REF_SRC}/cbd.c
-    ${REF_SRC}/reduce.c
-    ${REF_SRC}/verify.c
     symmetric-iccs.c
-    ${REF_SRC}/msgenc.c
-    ${REF_SRC}/aes256ctr.c
-    ${REF_SRC}/bch_high.c
-    ${REF_SRC}/bch_low.c
-    ${REF_SRC}/poly_invq.c
+    kem_cca.c
+    indcpa.c
+    polyvec.c
+    poly.c
+    ntt.c
+    cbd.c
+    reduce.c
+    verify.c
+    msgenc.c
+    bch_high.c
+    bch_low.c
+    poly_invq.c
 )
 
 add_executable(KAT_KEM_WeaverKEM-512 ${SOURCES})
-
-target_compile_options(KAT_KEM_WeaverKEM-512 PRIVATE
-    -include ${CMAKE_CURRENT_SOURCE_DIR}/symmetric.h
-)
 
 if(UNIX)
     target_link_libraries(KAT_KEM_WeaverKEM-512 m)

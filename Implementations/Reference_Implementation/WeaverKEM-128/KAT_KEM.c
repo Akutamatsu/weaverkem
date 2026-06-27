@@ -15,7 +15,7 @@ other purposes.
 #include <ctype.h>
 #include <errno.h>
 #include "drng.h"
-#include "KEM_AlgorithmInstance.h"
+#include "KEM_WeaverKEM-128.h"
 #if defined(_WIN32)
 #include <direct.h>
 #include <io.h>

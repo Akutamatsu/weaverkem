@@ -1,0 +1,870 @@
+=== run 1 ===
+========== component benchmark: WEAVER-640 (N=128 K=5, NTESTS=1000) ==========
+layout: standard coefficient order (no nttunpack)
+gen_matrix: 
+median: 12869  p10: 12583  p90: 13649  avg: 13176 cycles
+
+gen_matrix^T: 
+median: 12791  p10: 12635  p90: 13181  avg: 13148 cycles
+
+polyvec_ntt (K polys): 
+median: 2781  p10: 2755  p90: 2807  avg: 2810 cycles
+
+poly_ntt (1 poly): 
+median: 571  p10: 571  p90: 597  avg: 581 cycles
+
+polyvec_basemul_acc: 
+median: 103  p10: 103  p90: 129  avg: 109 cycles
+
+poly_invntt_tomont (1 poly): 
+median: 987  p10: 987  p90: 1013  avg: 994 cycles
+
+polyvec_invntt_tomont (K polys): 
+median: 4939  p10: 4913  p90: 4965  avg: 5132 cycles
+
+polyvec_compress_pk: 
+median: 1611  p10: 1585  p90: 1637  avg: 1611 cycles
+
+polyvec_decompress_pk: 
+median: 675  p10: 649  p90: 675  avg: 666 cycles
+
+polyvec_compress (c1): 
+median: 1585  p10: 1559  p90: 1611  avg: 1595 cycles
+
+polyvec_decompress (c1): 
+median: 649  p10: 649  p90: 675  avg: 657 cycles
+
+poly_compress (c2/v): 
+median: 51  p10: 51  p90: 77  avg: 57 cycles
+
+poly_decompress (c2/v): 
+median: 103  p10: 77  p90: 103  avg: 95 cycles
+
+poly_frommsg: 
+median: 285  p10: 285  p90: 311  avg: 302 cycles
+
+poly_tomsg: 
+median: 1455  p10: 1455  p90: 1481  avg: 1486 cycles
+
+--- full KEM ---
+kem_keypair: 
+median: 35931  p10: 35489  p90: 36425  avg: 36173 cycles
+
+kem_encaps: 
+median: 47319  p10: 46877  p90: 47995  avg: 47756 cycles
+
+kem_decaps: 
+median: 51479  p10: 51245  p90: 52181  avg: 53564 cycles
+
+--- mode3 ---
+========== component benchmark: WEAVER-1024 (N=256 K=4, NTESTS=1000) ==========
+layout: standard coefficient order (no nttunpack)
+gen_matrix: 
+median: 12245  p10: 12089  p90: 12323  avg: 12368 cycles
+
+gen_matrix^T: 
+median: 12219  p10: 11985  p90: 12297  avg: 12286 cycles
+
+polyvec_ntt (K polys): 
+median: 7149  p10: 7123  p90: 7175  avg: 7227 cycles
+
+poly_ntt (1 poly): 
+median: 1793  p10: 1767  p90: 1819  avg: 1792 cycles
+
+polyvec_basemul_acc: 
+median: 155  p10: 155  p90: 181  avg: 173 cycles
+
+poly_invntt_tomont (1 poly): 
+median: 1117  p10: 1117  p90: 1143  avg: 1138 cycles
+
+polyvec_invntt_tomont (K polys): 
+median: 4419  p10: 4393  p90: 4419  avg: 4425 cycles
+
+polyvec_compress_pk: 
+median: 2183  p10: 2183  p90: 2209  avg: 2215 cycles
+
+polyvec_decompress_pk: 
+median: 1065  p10: 1039  p90: 1065  avg: 1066 cycles
+
+polyvec_compress (c1): 
+median: 2183  p10: 2183  p90: 2209  avg: 2199 cycles
+
+polyvec_decompress (c1): 
+median: 1065  p10: 1039  p90: 1065  avg: 1057 cycles
+
+poly_compress (c2/v): 
+median: 25  p10: 25  p90: 51  avg: 34 cycles
+
+poly_decompress (c2/v): 
+median: 25  p10: 25  p90: 25  avg: 27 cycles
+
+poly_frommsg: 
+median: 545  p10: 519  p90: 545  avg: 558 cycles
+
+poly_tomsg: 
+median: 1689  p10: 1689  p90: 1715  avg: 1707 cycles
+
+--- full KEM ---
+kem_keypair: 
+median: 85409  p10: 84785  p90: 86995  avg: 86194 cycles
+
+kem_encaps: 
+median: 99267  p10: 98513  p90: 101113  avg: 100205 cycles
+
+kem_decaps: 
+median: 87723  p10: 87489  p90: 88347  avg: 88851 cycles
+
+--- mode5 ---
+========== component benchmark: WEAVER-2048 (N=512 K=4, NTESTS=1000) ==========
+layout: standard coefficient order (no nttunpack)
+gen_matrix: 
+median: 21813  p10: 21553  p90: 21943  avg: 21987 cycles
+
+gen_matrix^T: 
+median: 21813  p10: 21241  p90: 21891  avg: 21962 cycles
+
+polyvec_ntt (K polys): 
+median: 14273  p10: 14221  p90: 14299  avg: 14362 cycles
+
+poly_ntt (1 poly): 
+median: 3561  p10: 3535  p90: 3561  avg: 3595 cycles
+
+polyvec_basemul_acc: 
+median: 3275  p10: 3249  p90: 3275  avg: 3283 cycles
+
+poly_invntt_tomont (1 poly): 
+median: 2937  p10: 2937  p90: 2963  avg: 2961 cycles
+
+polyvec_invntt_tomont (K polys): 
+median: 11673  p10: 11595  p90: 11777  avg: 11790 cycles
+
+polyvec_compress_pk: 
+median: 4575  p10: 4549  p90: 4575  avg: 4602 cycles
+
+polyvec_decompress_pk: 
+median: 2157  p10: 2157  p90: 2183  avg: 2176 cycles
+
+polyvec_compress (c1): 
+median: 4575  p10: 4549  p90: 4601  avg: 4601 cycles
+
+polyvec_decompress (c1): 
+median: 2157  p10: 2157  p90: 2183  avg: 2180 cycles
+
+poly_compress (c2/v): 
+median: 1143  p10: 1117  p90: 1299  avg: 1164 cycles
+
+poly_decompress (c2/v): 
+median: 493  p10: 493  p90: 519  avg: 494 cycles
+
+poly_frommsg: 
+median: 1221  p10: 1169  p90: 1247  avg: 1230 cycles
+
+poly_tomsg: 
+median: 9827  p10: 9775  p90: 9853  avg: 9898 cycles
+
+--- full KEM ---
+kem_keypair: 
+median: 176851  p10: 175915  p90: 184105  avg: 178143 cycles
+
+kem_encaps: 
+median: 255501  p10: 254071  p90: 263665  avg: 257236 cycles
+
+kem_decaps: 
+median: 219725  p10: 219387  p90: 227265  avg: 221399 cycles
+
+=== run 2 ===
+========== component benchmark: WEAVER-640 (N=128 K=5, NTESTS=1000) ==========
+layout: standard coefficient order (no nttunpack)
+gen_matrix: 
+median: 12739  p10: 12583  p90: 13363  avg: 12995 cycles
+
+gen_matrix^T: 
+median: 12999  p10: 12635  p90: 13571  avg: 13216 cycles
+
+polyvec_ntt (K polys): 
+median: 2781  p10: 2755  p90: 2807  avg: 2796 cycles
+
+poly_ntt (1 poly): 
+median: 571  p10: 571  p90: 597  avg: 581 cycles
+
+polyvec_basemul_acc: 
+median: 103  p10: 103  p90: 129  avg: 110 cycles
+
+poly_invntt_tomont (1 poly): 
+median: 987  p10: 987  p90: 1013  avg: 1028 cycles
+
+polyvec_invntt_tomont (K polys): 
+median: 4965  p10: 4939  p90: 4991  avg: 5006 cycles
+
+polyvec_compress_pk: 
+median: 1611  p10: 1585  p90: 1637  avg: 1604 cycles
+
+polyvec_decompress_pk: 
+median: 675  p10: 649  p90: 675  avg: 668 cycles
+
+polyvec_compress (c1): 
+median: 1585  p10: 1559  p90: 1611  avg: 1596 cycles
+
+polyvec_decompress (c1): 
+median: 675  p10: 649  p90: 675  avg: 673 cycles
+
+poly_compress (c2/v): 
+median: 51  p10: 51  p90: 77  avg: 57 cycles
+
+poly_decompress (c2/v): 
+median: 103  p10: 77  p90: 103  avg: 94 cycles
+
+poly_frommsg: 
+median: 285  p10: 285  p90: 311  avg: 302 cycles
+
+poly_tomsg: 
+median: 1481  p10: 1455  p90: 1481  avg: 1499 cycles
+
+--- full KEM ---
+kem_keypair: 
+median: 36113  p10: 35671  p90: 36581  avg: 36391 cycles
+
+kem_encaps: 
+median: 47241  p10: 46721  p90: 47891  avg: 47505 cycles
+
+kem_decaps: 
+median: 51713  p10: 51349  p90: 52441  avg: 52500 cycles
+
+--- mode3 ---
+========== component benchmark: WEAVER-1024 (N=256 K=4, NTESTS=1000) ==========
+layout: standard coefficient order (no nttunpack)
+gen_matrix: 
+median: 12297  p10: 12011  p90: 12401  avg: 12356 cycles
+
+gen_matrix^T: 
+median: 12271  p10: 11985  p90: 12349  avg: 12294 cycles
+
+polyvec_ntt (K polys): 
+median: 7097  p10: 7071  p90: 7149  avg: 7155 cycles
+
+poly_ntt (1 poly): 
+median: 1767  p10: 1741  p90: 1793  avg: 1780 cycles
+
+polyvec_basemul_acc: 
+median: 155  p10: 155  p90: 181  avg: 179 cycles
+
+poly_invntt_tomont (1 poly): 
+median: 1117  p10: 1091  p90: 1143  avg: 1141 cycles
+
+polyvec_invntt_tomont (K polys): 
+median: 4419  p10: 4393  p90: 4445  avg: 4432 cycles
+
+polyvec_compress_pk: 
+median: 2183  p10: 2183  p90: 2209  avg: 2199 cycles
+
+polyvec_decompress_pk: 
+median: 1065  p10: 1039  p90: 1065  avg: 1065 cycles
+
+polyvec_compress (c1): 
+median: 2183  p10: 2183  p90: 2209  avg: 2282 cycles
+
+polyvec_decompress (c1): 
+median: 1065  p10: 1039  p90: 1065  avg: 1056 cycles
+
+poly_compress (c2/v): 
+median: 25  p10: 25  p90: 51  avg: 34 cycles
+
+poly_decompress (c2/v): 
+median: 25  p10: 25  p90: 25  avg: 27 cycles
+
+poly_frommsg: 
+median: 545  p10: 519  p90: 545  avg: 545 cycles
+
+poly_tomsg: 
+median: 1559  p10: 1533  p90: 1585  avg: 1582 cycles
+
+--- full KEM ---
+kem_keypair: 
+median: 85383  p10: 84759  p90: 86839  avg: 86222 cycles
+
+kem_encaps: 
+median: 99111  p10: 98461  p90: 101087  avg: 99869 cycles
+
+kem_decaps: 
+median: 87879  p10: 87645  p90: 88243  avg: 88420 cycles
+
+--- mode5 ---
+========== component benchmark: WEAVER-2048 (N=512 K=4, NTESTS=1000) ==========
+layout: standard coefficient order (no nttunpack)
+gen_matrix: 
+median: 21683  p10: 21423  p90: 21865  avg: 21852 cycles
+
+gen_matrix^T: 
+median: 21579  p10: 21189  p90: 21865  avg: 21725 cycles
+
+polyvec_ntt (K polys): 
+median: 14299  p10: 14273  p90: 14351  avg: 14481 cycles
+
+poly_ntt (1 poly): 
+median: 3561  p10: 3561  p90: 3587  avg: 3582 cycles
+
+polyvec_basemul_acc: 
+median: 3275  p10: 3275  p90: 3301  avg: 3309 cycles
+
+poly_invntt_tomont (1 poly): 
+median: 2937  p10: 2911  p90: 2963  avg: 2992 cycles
+
+polyvec_invntt_tomont (K polys): 
+median: 11647  p10: 11621  p90: 11803  avg: 11760 cycles
+
+polyvec_compress_pk: 
+median: 4575  p10: 4549  p90: 4601  avg: 4670 cycles
+
+polyvec_decompress_pk: 
+median: 2183  p10: 2157  p90: 2183  avg: 2185 cycles
+
+polyvec_compress (c1): 
+median: 4575  p10: 4549  p90: 4601  avg: 4676 cycles
+
+polyvec_decompress (c1): 
+median: 2183  p10: 2157  p90: 2183  avg: 2181 cycles
+
+poly_compress (c2/v): 
+median: 1143  p10: 1117  p90: 1143  avg: 1143 cycles
+
+poly_decompress (c2/v): 
+median: 493  p10: 493  p90: 597  avg: 524 cycles
+
+poly_frommsg: 
+median: 1325  p10: 1247  p90: 1377  avg: 1376 cycles
+
+poly_tomsg: 
+median: 9827  p10: 9801  p90: 9879  avg: 10100 cycles
+
+--- full KEM ---
+kem_keypair: 
+median: 177943  p10: 176487  p90: 185457  avg: 179888 cycles
+
+kem_encaps: 
+median: 255917  p10: 254149  p90: 265199  avg: 258205 cycles
+
+kem_decaps: 
+median: 219777  p10: 219439  p90: 227733  avg: 221975 cycles
+
+=== run 3 ===
+========== component benchmark: WEAVER-640 (N=128 K=5, NTESTS=1000) ==========
+layout: standard coefficient order (no nttunpack)
+gen_matrix: 
+median: 12817  p10: 12713  p90: 13493  avg: 13078 cycles
+
+gen_matrix^T: 
+median: 12713  p10: 12557  p90: 13337  avg: 13005 cycles
+
+polyvec_ntt (K polys): 
+median: 2781  p10: 2755  p90: 2807  avg: 2810 cycles
+
+poly_ntt (1 poly): 
+median: 571  p10: 571  p90: 597  avg: 592 cycles
+
+polyvec_basemul_acc: 
+median: 103  p10: 103  p90: 129  avg: 110 cycles
+
+poly_invntt_tomont (1 poly): 
+median: 987  p10: 987  p90: 1013  avg: 996 cycles
+
+polyvec_invntt_tomont (K polys): 
+median: 4939  p10: 4939  p90: 4965  avg: 5036 cycles
+
+polyvec_compress_pk: 
+median: 1611  p10: 1585  p90: 1637  avg: 1731 cycles
+
+polyvec_decompress_pk: 
+median: 675  p10: 649  p90: 675  avg: 669 cycles
+
+polyvec_compress (c1): 
+median: 1585  p10: 1559  p90: 1611  avg: 1603 cycles
+
+polyvec_decompress (c1): 
+median: 649  p10: 649  p90: 675  avg: 658 cycles
+
+poly_compress (c2/v): 
+median: 51  p10: 51  p90: 77  avg: 57 cycles
+
+poly_decompress (c2/v): 
+median: 103  p10: 77  p90: 103  avg: 95 cycles
+
+poly_frommsg: 
+median: 285  p10: 285  p90: 311  avg: 302 cycles
+
+poly_tomsg: 
+median: 1481  p10: 1455  p90: 1507  avg: 1498 cycles
+
+--- full KEM ---
+kem_keypair: 
+median: 36165  p10: 35697  p90: 36633  avg: 36389 cycles
+
+kem_encaps: 
+median: 47267  p10: 46669  p90: 48125  avg: 47828 cycles
+
+kem_decaps: 
+median: 51609  p10: 51375  p90: 52363  avg: 53615 cycles
+
+--- mode3 ---
+========== component benchmark: WEAVER-1024 (N=256 K=4, NTESTS=1000) ==========
+layout: standard coefficient order (no nttunpack)
+gen_matrix: 
+median: 12271  p10: 11985  p90: 12323  avg: 12362 cycles
+
+gen_matrix^T: 
+median: 12323  p10: 12245  p90: 12375  avg: 12410 cycles
+
+polyvec_ntt (K polys): 
+median: 7071  p10: 7045  p90: 7123  avg: 7155 cycles
+
+poly_ntt (1 poly): 
+median: 1793  p10: 1767  p90: 1793  avg: 1814 cycles
+
+polyvec_basemul_acc: 
+median: 155  p10: 155  p90: 181  avg: 164 cycles
+
+poly_invntt_tomont (1 poly): 
+median: 1117  p10: 1117  p90: 1143  avg: 1143 cycles
+
+polyvec_invntt_tomont (K polys): 
+median: 4419  p10: 4393  p90: 4419  avg: 4426 cycles
+
+polyvec_compress_pk: 
+median: 2183  p10: 2183  p90: 2209  avg: 2200 cycles
+
+polyvec_decompress_pk: 
+median: 1065  p10: 1039  p90: 1065  avg: 1057 cycles
+
+polyvec_compress (c1): 
+median: 2183  p10: 2183  p90: 2209  avg: 2318 cycles
+
+polyvec_decompress (c1): 
+median: 1065  p10: 1039  p90: 1065  avg: 1057 cycles
+
+poly_compress (c2/v): 
+median: 25  p10: 25  p90: 51  avg: 34 cycles
+
+poly_decompress (c2/v): 
+median: 25  p10: 25  p90: 25  avg: 27 cycles
+
+poly_frommsg: 
+median: 545  p10: 519  p90: 545  avg: 557 cycles
+
+poly_tomsg: 
+median: 1559  p10: 1559  p90: 1585  avg: 1579 cycles
+
+--- full KEM ---
+kem_keypair: 
+median: 85565  p10: 84993  p90: 91077  avg: 86944 cycles
+
+kem_encaps: 
+median: 99449  p10: 98721  p90: 102413  avg: 100478 cycles
+
+kem_decaps: 
+median: 87801  p10: 87567  p90: 90011  avg: 89306 cycles
+
+--- mode5 ---
+========== component benchmark: WEAVER-2048 (N=512 K=4, NTESTS=1000) ==========
+layout: standard coefficient order (no nttunpack)
+gen_matrix: 
+median: 21683  p10: 21371  p90: 21891  avg: 21820 cycles
+
+gen_matrix^T: 
+median: 21995  p10: 21449  p90: 22099  avg: 22153 cycles
+
+polyvec_ntt (K polys): 
+median: 14273  p10: 14247  p90: 14325  avg: 14377 cycles
+
+poly_ntt (1 poly): 
+median: 3561  p10: 3535  p90: 3587  avg: 3573 cycles
+
+polyvec_basemul_acc: 
+median: 3275  p10: 3249  p90: 3275  avg: 3306 cycles
+
+poly_invntt_tomont (1 poly): 
+median: 2963  p10: 2937  p90: 2963  avg: 2967 cycles
+
+polyvec_invntt_tomont (K polys): 
+median: 11777  p10: 11751  p90: 11803  avg: 11933 cycles
+
+polyvec_compress_pk: 
+median: 4549  p10: 4549  p90: 4575  avg: 4602 cycles
+
+polyvec_decompress_pk: 
+median: 2183  p10: 2157  p90: 2183  avg: 2181 cycles
+
+polyvec_compress (c1): 
+median: 4549  p10: 4549  p90: 4575  avg: 4576 cycles
+
+polyvec_decompress (c1): 
+median: 2183  p10: 2157  p90: 2183  avg: 2194 cycles
+
+poly_compress (c2/v): 
+median: 1143  p10: 1117  p90: 1143  avg: 1136 cycles
+
+poly_decompress (c2/v): 
+median: 493  p10: 493  p90: 519  avg: 494 cycles
+
+poly_frommsg: 
+median: 1221  p10: 1143  p90: 1247  avg: 1231 cycles
+
+poly_tomsg: 
+median: 9827  p10: 9801  p90: 9853  avg: 9911 cycles
+
+--- full KEM ---
+kem_keypair: 
+median: 176955  p10: 175993  p90: 183169  avg: 178073 cycles
+
+kem_encaps: 
+median: 257009  p10: 255527  p90: 264497  avg: 258662 cycles
+
+kem_decaps: 
+median: 219855  p10: 219491  p90: 227863  avg: 222190 cycles
+
+=== run 4 ===
+========== component benchmark: WEAVER-640 (N=128 K=5, NTESTS=1000) ==========
+layout: standard coefficient order (no nttunpack)
+gen_matrix: 
+median: 12713  p10: 12609  p90: 13051  avg: 12920 cycles
+
+gen_matrix^T: 
+median: 12817  p10: 12635  p90: 13415  avg: 13074 cycles
+
+polyvec_ntt (K polys): 
+median: 2781  p10: 2781  p90: 2807  avg: 2807 cycles
+
+poly_ntt (1 poly): 
+median: 571  p10: 571  p90: 597  avg: 583 cycles
+
+polyvec_basemul_acc: 
+median: 103  p10: 103  p90: 129  avg: 110 cycles
+
+poly_invntt_tomont (1 poly): 
+median: 987  p10: 987  p90: 1013  avg: 1008 cycles
+
+polyvec_invntt_tomont (K polys): 
+median: 4965  p10: 4939  p90: 4991  avg: 5003 cycles
+
+polyvec_compress_pk: 
+median: 1611  p10: 1585  p90: 1637  avg: 1609 cycles
+
+polyvec_decompress_pk: 
+median: 675  p10: 649  p90: 701  avg: 689 cycles
+
+polyvec_compress (c1): 
+median: 1585  p10: 1559  p90: 1611  avg: 1594 cycles
+
+polyvec_decompress (c1): 
+median: 675  p10: 649  p90: 675  avg: 681 cycles
+
+poly_compress (c2/v): 
+median: 51  p10: 51  p90: 77  avg: 58 cycles
+
+poly_decompress (c2/v): 
+median: 103  p10: 77  p90: 103  avg: 95 cycles
+
+poly_frommsg: 
+median: 285  p10: 285  p90: 311  avg: 303 cycles
+
+poly_tomsg: 
+median: 1481  p10: 1455  p90: 1481  avg: 1486 cycles
+
+--- full KEM ---
+kem_keypair: 
+median: 36061  p10: 35619  p90: 36555  avg: 36405 cycles
+
+kem_encaps: 
+median: 46955  p10: 46461  p90: 47813  avg: 47368 cycles
+
+kem_decaps: 
+median: 51947  p10: 51453  p90: 52389  avg: 52227 cycles
+
+--- mode3 ---
+========== component benchmark: WEAVER-1024 (N=256 K=4, NTESTS=1000) ==========
+layout: standard coefficient order (no nttunpack)
+gen_matrix: 
+median: 12271  p10: 11777  p90: 12349  avg: 12283 cycles
+
+gen_matrix^T: 
+median: 12323  p10: 12271  p90: 12375  avg: 12466 cycles
+
+polyvec_ntt (K polys): 
+median: 7071  p10: 7045  p90: 7955  avg: 7250 cycles
+
+poly_ntt (1 poly): 
+median: 1767  p10: 1741  p90: 1793  avg: 1775 cycles
+
+polyvec_basemul_acc: 
+median: 155  p10: 155  p90: 181  avg: 164 cycles
+
+poly_invntt_tomont (1 poly): 
+median: 1117  p10: 1091  p90: 1117  avg: 1138 cycles
+
+polyvec_invntt_tomont (K polys): 
+median: 4393  p10: 4367  p90: 4419  avg: 4407 cycles
+
+polyvec_compress_pk: 
+median: 2183  p10: 2183  p90: 2209  avg: 2193 cycles
+
+polyvec_decompress_pk: 
+median: 1065  p10: 1039  p90: 1065  avg: 1069 cycles
+
+polyvec_compress (c1): 
+median: 2183  p10: 2157  p90: 2209  avg: 2298 cycles
+
+polyvec_decompress (c1): 
+median: 1065  p10: 1039  p90: 1065  avg: 1055 cycles
+
+poly_compress (c2/v): 
+median: 25  p10: 25  p90: 51  avg: 34 cycles
+
+poly_decompress (c2/v): 
+median: 25  p10: 25  p90: 25  avg: 27 cycles
+
+poly_frommsg: 
+median: 545  p10: 519  p90: 545  avg: 547 cycles
+
+poly_tomsg: 
+median: 1559  p10: 1559  p90: 1923  avg: 1627 cycles
+
+--- full KEM ---
+kem_keypair: 
+median: 85305  p10: 84707  p90: 86735  avg: 86158 cycles
+
+kem_encaps: 
+median: 99241  p10: 98643  p90: 100385  avg: 99825 cycles
+
+kem_decaps: 
+median: 87879  p10: 87619  p90: 88633  avg: 88490 cycles
+
+--- mode5 ---
+========== component benchmark: WEAVER-2048 (N=512 K=4, NTESTS=1000) ==========
+layout: standard coefficient order (no nttunpack)
+gen_matrix: 
+median: 21683  p10: 21475  p90: 21865  avg: 22097 cycles
+
+gen_matrix^T: 
+median: 21631  p10: 21449  p90: 21917  avg: 21795 cycles
+
+polyvec_ntt (K polys): 
+median: 14299  p10: 14273  p90: 14351  avg: 14641 cycles
+
+poly_ntt (1 poly): 
+median: 3561  p10: 3561  p90: 3587  avg: 3575 cycles
+
+polyvec_basemul_acc: 
+median: 3977  p10: 3951  p90: 3977  avg: 4007 cycles
+
+poly_invntt_tomont (1 poly): 
+median: 2911  p10: 2885  p90: 2911  avg: 2917 cycles
+
+polyvec_invntt_tomont (K polys): 
+median: 11647  p10: 11621  p90: 11725  avg: 11756 cycles
+
+polyvec_compress_pk: 
+median: 4575  p10: 4549  p90: 5147  avg: 4739 cycles
+
+polyvec_decompress_pk: 
+median: 2183  p10: 2157  p90: 2183  avg: 2192 cycles
+
+polyvec_compress (c1): 
+median: 4575  p10: 4549  p90: 4575  avg: 4586 cycles
+
+polyvec_decompress (c1): 
+median: 2157  p10: 2157  p90: 2183  avg: 2194 cycles
+
+poly_compress (c2/v): 
+median: 1117  p10: 1117  p90: 1143  avg: 1141 cycles
+
+poly_decompress (c2/v): 
+median: 493  p10: 493  p90: 519  avg: 495 cycles
+
+poly_frommsg: 
+median: 1221  p10: 1169  p90: 1247  avg: 1237 cycles
+
+poly_tomsg: 
+median: 9827  p10: 9801  p90: 9853  avg: 9915 cycles
+
+--- full KEM ---
+kem_keypair: 
+median: 177007  p10: 175993  p90: 184937  avg: 179567 cycles
+
+kem_encaps: 
+median: 256073  p10: 254409  p90: 265771  avg: 259337 cycles
+
+kem_decaps: 
+median: 220401  p10: 219907  p90: 228305  avg: 223470 cycles
+
+=== run 5 ===
+========== component benchmark: WEAVER-640 (N=128 K=5, NTESTS=1000) ==========
+layout: standard coefficient order (no nttunpack)
+gen_matrix: 
+median: 12765  p10: 12557  p90: 13649  avg: 13117 cycles
+
+gen_matrix^T: 
+median: 12635  p10: 12557  p90: 13129  avg: 12903 cycles
+
+polyvec_ntt (K polys): 
+median: 2781  p10: 2781  p90: 2807  avg: 2812 cycles
+
+poly_ntt (1 poly): 
+median: 571  p10: 571  p90: 597  avg: 589 cycles
+
+polyvec_basemul_acc: 
+median: 103  p10: 103  p90: 129  avg: 110 cycles
+
+poly_invntt_tomont (1 poly): 
+median: 987  p10: 987  p90: 1013  avg: 1112 cycles
+
+polyvec_invntt_tomont (K polys): 
+median: 4965  p10: 4939  p90: 4991  avg: 5053 cycles
+
+polyvec_compress_pk: 
+median: 1611  p10: 1585  p90: 1637  avg: 1616 cycles
+
+polyvec_decompress_pk: 
+median: 675  p10: 675  p90: 701  avg: 685 cycles
+
+polyvec_compress (c1): 
+median: 1585  p10: 1559  p90: 1611  avg: 1609 cycles
+
+polyvec_decompress (c1): 
+median: 675  p10: 649  p90: 701  avg: 690 cycles
+
+poly_compress (c2/v): 
+median: 51  p10: 51  p90: 77  avg: 58 cycles
+
+poly_decompress (c2/v): 
+median: 103  p10: 77  p90: 103  avg: 95 cycles
+
+poly_frommsg: 
+median: 285  p10: 285  p90: 311  avg: 304 cycles
+
+poly_tomsg: 
+median: 1481  p10: 1455  p90: 1481  avg: 1492 cycles
+
+--- full KEM ---
+kem_keypair: 
+median: 36139  p10: 35697  p90: 36607  avg: 36414 cycles
+
+kem_encaps: 
+median: 47033  p10: 46591  p90: 47761  avg: 47436 cycles
+
+kem_decaps: 
+median: 51791  p10: 51531  p90: 52311  avg: 52129 cycles
+
+--- mode3 ---
+========== component benchmark: WEAVER-1024 (N=256 K=4, NTESTS=1000) ==========
+layout: standard coefficient order (no nttunpack)
+gen_matrix: 
+median: 12297  p10: 12245  p90: 12375  avg: 12429 cycles
+
+gen_matrix^T: 
+median: 12375  p10: 12271  p90: 12427  avg: 12446 cycles
+
+polyvec_ntt (K polys): 
+median: 7149  p10: 7123  p90: 7175  avg: 7328 cycles
+
+poly_ntt (1 poly): 
+median: 1793  p10: 1767  p90: 1793  avg: 1793 cycles
+
+polyvec_basemul_acc: 
+median: 155  p10: 155  p90: 181  avg: 164 cycles
+
+poly_invntt_tomont (1 poly): 
+median: 1117  p10: 1117  p90: 1143  avg: 1134 cycles
+
+polyvec_invntt_tomont (K polys): 
+median: 4419  p10: 4393  p90: 4419  avg: 4428 cycles
+
+polyvec_compress_pk: 
+median: 2183  p10: 2183  p90: 2209  avg: 2245 cycles
+
+polyvec_decompress_pk: 
+median: 1065  p10: 1039  p90: 1065  avg: 1058 cycles
+
+polyvec_compress (c1): 
+median: 2209  p10: 2183  p90: 2209  avg: 2214 cycles
+
+polyvec_decompress (c1): 
+median: 1065  p10: 1039  p90: 1065  avg: 1074 cycles
+
+poly_compress (c2/v): 
+median: 25  p10: 25  p90: 51  avg: 36 cycles
+
+poly_decompress (c2/v): 
+median: 25  p10: 25  p90: 25  avg: 27 cycles
+
+poly_frommsg: 
+median: 545  p10: 519  p90: 545  avg: 549 cycles
+
+poly_tomsg: 
+median: 1559  p10: 1559  p90: 1585  avg: 1593 cycles
+
+--- full KEM ---
+kem_keypair: 
+median: 85513  p10: 84941  p90: 86813  avg: 86420 cycles
+
+kem_encaps: 
+median: 99163  p10: 98513  p90: 101399  avg: 100079 cycles
+
+kem_decaps: 
+median: 87723  p10: 87541  p90: 93365  avg: 89333 cycles
+
+--- mode5 ---
+========== component benchmark: WEAVER-2048 (N=512 K=4, NTESTS=1000) ==========
+layout: standard coefficient order (no nttunpack)
+gen_matrix: 
+median: 21423  p10: 21137  p90: 21917  avg: 21824 cycles
+
+gen_matrix^T: 
+median: 21735  p10: 21293  p90: 21995  avg: 22215 cycles
+
+polyvec_ntt (K polys): 
+median: 14273  p10: 14247  p90: 14325  avg: 14378 cycles
+
+poly_ntt (1 poly): 
+median: 3561  p10: 3561  p90: 3587  avg: 3605 cycles
+
+polyvec_basemul_acc: 
+median: 3275  p10: 3249  p90: 3301  avg: 3285 cycles
+
+poly_invntt_tomont (1 poly): 
+median: 2911  p10: 2885  p90: 2937  avg: 2932 cycles
+
+polyvec_invntt_tomont (K polys): 
+median: 11673  p10: 11621  p90: 11751  avg: 11788 cycles
+
+polyvec_compress_pk: 
+median: 4575  p10: 4549  p90: 4601  avg: 4598 cycles
+
+polyvec_decompress_pk: 
+median: 2183  p10: 2157  p90: 2547  avg: 2263 cycles
+
+polyvec_compress (c1): 
+median: 4575  p10: 4549  p90: 4601  avg: 4633 cycles
+
+polyvec_decompress (c1): 
+median: 2157  p10: 2131  p90: 2183  avg: 2171 cycles
+
+poly_compress (c2/v): 
+median: 1117  p10: 1117  p90: 1143  avg: 1120 cycles
+
+poly_decompress (c2/v): 
+median: 493  p10: 493  p90: 519  avg: 494 cycles
+
+poly_frommsg: 
+median: 1221  p10: 1169  p90: 1247  avg: 1238 cycles
+
+poly_tomsg: 
+median: 9827  p10: 9801  p90: 9853  avg: 9936 cycles
+
+--- full KEM ---
+kem_keypair: 
+median: 177059  p10: 176175  p90: 182467  avg: 178208 cycles
+
+kem_encaps: 
+median: 255059  p10: 253655  p90: 262755  avg: 256470 cycles
+
+kem_decaps: 
+median: 219699  p10: 219361  p90: 226875  avg: 221000 cycles
+

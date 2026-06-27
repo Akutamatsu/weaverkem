@@ -4,8 +4,16 @@
 #include <stdint.h>
 #include "params.h"
 
-#define MONT 2285 // 2^16 mod q
-#define QINV 62209 // q^-1 mod 2^16
+#if WEAVER_N == 128
+// q = 3329
+#define MONT -1044 // 2^16 mod q
+#define QINV -3327 // q^-1 mod 2^16
+
+#elif WEAVER_N == 256 || WEAVER_N == 512
+// q = 7681
+#define MONT -3593  // 2^16 mod q
+#define QINV -7679 // q^-1 mod 2^16
+#endif
 
 #define montgomery_reduce WEAVER_NAMESPACE(_montgomery_reduce)
 int16_t montgomery_reduce(int32_t a);

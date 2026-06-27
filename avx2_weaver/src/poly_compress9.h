@@ -13,7 +13,7 @@ void poly_compress9_pack8(uint8_t r[9], const uint16_t t[8]);
 #define poly_compress9_scalar WEAVER_NAMESPACE(_poly_compress9_scalar)
 void poly_compress9_scalar(uint8_t r[(WEAVER_N * 9) / 8], const poly *a);
 
-#if defined(WEAVER_USE_AVX_COMPRESS) && (WEAVER_N == 256)
+#if defined(WEAVER_USE_AVX_COMPRESS) && (WEAVER_N == 128 || WEAVER_N == 256)
 #define poly_compress9_quant_avx WEAVER_NAMESPACE(_poly_compress9_quant_avx)
 void poly_compress9_quant_avx(uint16_t t[WEAVER_N], const poly *a);
 

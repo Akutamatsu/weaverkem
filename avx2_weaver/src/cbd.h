@@ -8,4 +8,7 @@
 #define cbd_eta1 WEAVER_NAMESPACE(_cbd_eta1)
 void cbd_eta1(poly *r, const uint8_t buf[WEAVER_ETA1*WEAVER_N/4]);
 
+#define cbd_eta2 WEAVER_NAMESPACE(_cbd_eta2)
+void cbd_eta2(poly *r, const uint8_t buf[WEAVER_ETA2*WEAVER_N/4]);
+
 #endif

@@ -1,0 +1,58 @@
+profile_encap_decaps WEAVER_MODE=1 (K=5 N=128, NRUNS=1000)
+
+=== crypto_kem_keypair (median cycles) ===
+  randombytes(64):                597
+  indcpa_keypair_derand:        30419
+  rng + indcpa (medians):       31016
+  CCA tail (H||copy z):          4003
+  kem_keypair total:            35774  (bench_components kem_keypair)
+  check: rng+indcpa+cca ~       35019
+
+=== indcpa_keypair_derand segments (median cycles, in-tree hooks) ===
+  [0] buf + hash_g:                 0
+  [1] gen_a (gen_matrix):           0
+  [2] poly_getnoise x5:            0
+  [3] polyvec_ntt(sk):              0
+  [4] matvec basemul x5:           0
+  [5] polyvec_invntt_tomont:        0
+  [6] polyvec_reduce:               0
+  [7] pack_sk + pack_pk:            0
+  sum(segment medians):             0
+  indcpa_keypair_derand:        28911  (single rdtsc wrap, same runs)
+  residual (sum - wrap):        28911
+
+=== indcpa_enc segments (median cycles, 1000 runs) ===
+  parse_pk (fromcompressed):      649
+  polyvec_invq:                  5095  <-- Weaver-only
+  polyvec_ntt(pk):               2755
+  poly_frommsg (BCH encode):      363  <-- Weaver-only
+  gen_matrix^T:                 12739
+  poly_getnoise x5:             4601
+  polyvec_ntt(sp):               2962
+  basemul_acc (b+v):              623
+  invntt+add+reduce:             6265
+  compress (c1+c2):              1611
+  indcpa_enc total:             37673
+
+=== indcpa_dec segments (median cycles) ===
+  decompress (c+sk):              831
+  ntt+basemul+invntt+sub:        3951
+  poly_tomsg (BCH decode):       1611  <-- Weaver-only
+  indcpa_dec total:              6447
+
+=== crypto_kem_enc segments (median cycles) ===
+  randombytes(16):                415  (only in kem_enc)
+  hash_h(pk):                    4705
+  shake256(G):                    883  (ML-KEM uses hash_g)
+  indcpa_enc:                   40975
+  kem_enc_derand total:         43393  (fair vs ML-KEM kyber_encaps_derand)
+  kem_enc total:                46981  (bench_components kem_encaps)
+  enc - enc_derand ~= rng:       3588
+
+=== crypto_kem_dec segments (median cycles) ===
+  indcpa_dec:                    6447
+  shake256(G):                    883
+  indcpa_enc (re-encrypt):      37621
+  verify+rkprf+cmov:             6473
+  kem_dec total:                51427  (bench_components kem_decaps)
+  dec sum (dec+shake+reenc):    44951

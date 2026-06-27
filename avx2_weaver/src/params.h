@@ -7,46 +7,90 @@
 
 #define PK_COMPRESS
 
-#if (WEAVER_MODE == 1)
-  #define WEAVER_N 256
+//#define NO_INV_Q_LIFTING
+
+#if   (WEAVER_MODE == 1)
+  #define WEAVER_NAMESPACE(s) pqcrystals_weaver640_avx2##s
+  /* Table 2 core: (n,k,q,eta1,eta2,dt,du,dv) = (128,5,3329,3,2,9,9,6). */
   #define WEAVER_INDCPA_MSGBYTES 16
-  #define WEAVER_NAMESPACE(s) pqcrystals_weaver512_avx2##s
-  #define WEAVER_ETA1 5
-  #define WEAVER_ETA2 WEAVER_ETA1
-  #define WEAVER_K 2
-  #define WEAVER_PK_POLYVECBYTES        (WEAVER_K * ((WEAVER_N * 9) / 8))
-  #define WEAVER_POLYVECCOMPRESSEDBYTES (WEAVER_K * ((WEAVER_N * 9) / 8))
-  #define WEAVER_POLYCOMPRESSEDBYTES    ((WEAVER_N * 4) / 8)
+  #define WEAVER_N 128
+  #define WEAVER_K 5
+  #define WEAVER_Q 3329
+  #define WEAVER_QBITS 12
+  #define WEAVER_ETA1 3
+  #define WEAVER_ETA2 2
+  #define WEAVER_DT 9
+  #define WEAVER_DU 9
+  #define WEAVER_DV 6
+  #define WEAVER_SYMBYTES 32
+  #define WEAVER_HBYTES 32
 
 #elif (WEAVER_MODE == 3)
-  #define WEAVER_N 256
-  #define WEAVER_INDCPA_MSGBYTES       (WEAVER_N / 8)
   #define WEAVER_NAMESPACE(s) pqcrystals_weaver1024_avx2##s
-  #define WEAVER_ETA1 2
-  #define WEAVER_ETA2 WEAVER_ETA1
+  /* Table 2 core: (n,k,q,eta1,eta2,dt,du,dv) = (256,4,7681,7,7,10,10,8). */
+  #define WEAVER_INDCPA_MSGBYTES  32
+  #define WEAVER_N 256
   #define WEAVER_K 4
-  /* ICCS Test_Vectors/KAT_KEM_WeaverKEM-256.txt: PK 1312, CT 1408, SK 2912 → du=10, dv=4 */
-  #define WEAVER_PK_POLYVECBYTES        (WEAVER_K * ((WEAVER_N * 10) / 8))
-  #define WEAVER_POLYVECCOMPRESSEDBYTES (WEAVER_K * ((WEAVER_N * 10) / 8))
-  #define WEAVER_POLYCOMPRESSEDBYTES    ((WEAVER_N * 4) / 8)
+  #define WEAVER_Q 7681
+  #define WEAVER_QBITS 13
+  #define WEAVER_ETA1 7
+  #define WEAVER_ETA2 7
+  #define WEAVER_DT 10
+  #define WEAVER_DU 10
+  #define WEAVER_DV 8
+  #define WEAVER_SYMBYTES 32
+  #define WEAVER_HBYTES 64
 
 #elif (WEAVER_MODE == 5)
-  #define WEAVER_N 512
-  #define WEAVER_INDCPA_MSGBYTES       (WEAVER_N / 8)
   #define WEAVER_NAMESPACE(s) pqcrystals_weaver2048_avx2##s
-  #define WEAVER_ETA1 1
-  #define WEAVER_ETA2 WEAVER_ETA1
+  /* Table 2 core: (n,k,q,eta1,eta2,dt,du,dv) = (512,4,7681,9,9,11,11,9). */
+  #define WEAVER_INDCPA_MSGBYTES  64
+  #define WEAVER_N 512
   #define WEAVER_K 4
-  #define WEAVER_PK_POLYVECBYTES        (WEAVER_K * ((WEAVER_N * 9) / 8))
-  #define WEAVER_POLYVECCOMPRESSEDBYTES (WEAVER_K * ((WEAVER_N * 9) / 8))
-  #define WEAVER_POLYCOMPRESSEDBYTES    ((WEAVER_N * 6) / 8)
+  #define WEAVER_Q 7681
+  #define WEAVER_QBITS 13
+  #define WEAVER_ETA1 9
+  #define WEAVER_ETA2 9
+  #define WEAVER_DT 11
+  #define WEAVER_DU 11
+  #define WEAVER_DV 9
+  #define WEAVER_SYMBYTES 64
+  #define WEAVER_HBYTES 128
 
 #else
   #error "WEAVER_MODE must be in {1,3,5}"
 #endif
 
-/* Optional AVX2 NTT/basemul for n=256 (modes 1 and 3). Enable with -DWEAVER_USE_AVX_NTT. */
-#if !defined(WEAVER_AVX256_NTT) && (WEAVER_N == 256) && defined(WEAVER_USE_AVX_NTT)
+#define WEAVER_PK_POLYVECBYTES         (WEAVER_K * ((WEAVER_N * WEAVER_DT) / 8))
+#define WEAVER_POLYVECCOMPRESSEDBYTES  (WEAVER_K * ((WEAVER_N * WEAVER_DU) / 8))
+#define WEAVER_POLYCOMPRESSEDBYTES    ((WEAVER_N * WEAVER_DV) / 8)
+#define WEAVER_POLYBYTES     ((WEAVER_N * WEAVER_QBITS) / 8)
+#define WEAVER_POLYVECBYTES  (WEAVER_K * WEAVER_POLYBYTES)
+
+#ifndef PK_COMPRESS
+#undef WEAVER_PK_POLYVECBYTES
+#define WEAVER_PK_POLYVECBYTES WEAVER_POLYVECBYTES
+#endif
+
+#define WEAVER_HALFQ ((WEAVER_Q + 1) / 2)
+
+#define WEAVER_SSBYTES  WEAVER_INDCPA_MSGBYTES
+#define WEAVER_KEM_DERAND_COINBYTES WEAVER_INDCPA_MSGBYTES
+#define WEAVER_GBYTES (WEAVER_SSBYTES + WEAVER_SYMBYTES)
+
+#define WEAVER_INDCPA_PUBLICKEYBYTES (WEAVER_PK_POLYVECBYTES + WEAVER_SYMBYTES)
+#define WEAVER_INDCPA_SECRETKEYBYTES (WEAVER_POLYVECBYTES)
+#define WEAVER_INDCPA_BYTES          (WEAVER_POLYVECCOMPRESSEDBYTES + WEAVER_POLYCOMPRESSEDBYTES)
+
+#define WEAVER_SK_HPK_OFFSET   (WEAVER_INDCPA_SECRETKEYBYTES + WEAVER_INDCPA_PUBLICKEYBYTES)
+#define WEAVER_SK_Z_OFFSET     (WEAVER_SK_HPK_OFFSET + WEAVER_HBYTES)
+
+#define WEAVER_PUBLICKEYBYTES  (WEAVER_INDCPA_PUBLICKEYBYTES)
+#define WEAVER_SECRETKEYBYTES  (WEAVER_SK_Z_OFFSET + WEAVER_SYMBYTES)
+#define WEAVER_CIPHERTEXTBYTES  WEAVER_INDCPA_BYTES
+
+/* Kyber AVX2 NTT only valid for n=256, q=3329 (legacy path; NGCC modes use portable C). */
+#if !defined(WEAVER_AVX256_NTT) && (WEAVER_N == 256) && (WEAVER_Q == 3329) && defined(WEAVER_USE_AVX_NTT)
 #define WEAVER_AVX256_NTT 1
 #endif
 
@@ -55,41 +99,28 @@
 #define WEAVER_USE_AVX_COMPRESS 1
 #endif
 
-/* n=512 (mode 5): AVX2 NTT + fq reduce/tomont */
-#if (WEAVER_N == 512) && defined(WEAVER_USE_AVX_FQ_512)
+#if (WEAVER_N == 512) && (WEAVER_Q == 3329) && defined(WEAVER_USE_AVX_FQ_512)
 #define WEAVER_USE_AVX_NTT512 1
 #endif
 
-/* n=512 (mode 5): parallel SHAKE128x4 matrix gen (standard coefficient order). */
-#if (WEAVER_N == 512) && defined(WEAVER_AVX_GEN_MATRIX512)
-/* Must not use Kyber packed gen_matrix on mode 5 (see layout.h). */
+#if (WEAVER_Q == 7681) && defined(WEAVER_USE_AVX_NTT7681) && \
+    (WEAVER_N == 256 || WEAVER_N == 512)
+#define WEAVER_USE_AVX_NTT7681_ON 1
 #endif
 
-#define WEAVER_Q     3329
-#define WEAVER_HALFQ ((WEAVER_Q + 1) / 2)
-
-#define WEAVER_SYMBYTES 32
-/* FO message m for crypto_kem_enc_derand; equals INDCPA message length per mode. */
-#define WEAVER_KEM_DERAND_COINBYTES WEAVER_INDCPA_MSGBYTES
-#define WEAVER_SSBYTES  WEAVER_INDCPA_MSGBYTES
-
-#define WEAVER_POLYBYTES     ((WEAVER_N * 12) / 8)
-#define WEAVER_POLYVECBYTES  (WEAVER_K * WEAVER_POLYBYTES)
-
-#ifndef PK_COMPRESS
-#undef WEAVER_PK_POLYVECBYTES
-#define WEAVER_PK_POLYVECBYTES WEAVER_POLYVECBYTES
+#if (WEAVER_Q == 7681) && defined(WEAVER_AVX_GEN_MATRIX7681) && (WEAVER_K == 4) && \
+    (WEAVER_N == 256 || WEAVER_N == 512)
+#define WEAVER_AVX_GEN_MATRIX7681_ON 1
 #endif
 
-#define WEAVER_INDCPA_PUBLICKEYBYTES (WEAVER_PK_POLYVECBYTES + WEAVER_SYMBYTES)
-#define WEAVER_INDCPA_SECRETKEYBYTES (WEAVER_POLYVECBYTES)
-#define WEAVER_INDCPA_BYTES          (WEAVER_POLYVECCOMPRESSEDBYTES + WEAVER_POLYCOMPRESSEDBYTES)
+#if (WEAVER_Q == 3329) && defined(WEAVER_USE_AVX_NTT128) && (WEAVER_N == 128)
+#define WEAVER_USE_AVX_NTT128_ON 1
+#endif
 
-#define WEAVER_PUBLICKEYBYTES  (WEAVER_INDCPA_PUBLICKEYBYTES)
-#define WEAVER_SECRETKEYBYTES  (WEAVER_INDCPA_SECRETKEYBYTES \
-                               + WEAVER_INDCPA_PUBLICKEYBYTES \
-                               + 2*WEAVER_SYMBYTES)
-#define WEAVER_CIPHERTEXTBYTES  WEAVER_INDCPA_BYTES
+#if (WEAVER_Q == 3329) && defined(WEAVER_AVX_GEN_MATRIX128) && (WEAVER_N == 128) && \
+    (WEAVER_K == 5)
+#define WEAVER_AVX_GEN_MATRIX128_ON 1
+#endif
 
 #include "layout.h"
 

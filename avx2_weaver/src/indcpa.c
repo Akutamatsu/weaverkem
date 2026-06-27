@@ -9,21 +9,6 @@
 #include "ntt.h"
 #include "symmetric.h"
 
-#ifdef WEAVER_PROFILE_KEYPAIR_DERAND
-#include "cpucycles.h"
-#include "weaver_kp_profile.h"
-#define WEAVER_KP_T0() uint64_t weaver_kp_ts = cpucycles()
-#define WEAVER_KP_T(slot)                                                      \
-  do {                                                                         \
-    uint64_t weaver_kp_te = cpucycles();                                      \
-    weaver_kp_prof_segment((slot), weaver_kp_te - weaver_kp_ts);               \
-    weaver_kp_ts = weaver_kp_te;                                               \
-  } while(0)
-#else
-#define WEAVER_KP_T0() ((void)0)
-#define WEAVER_KP_T(slot) ((void)0)
-#endif
-
 #ifdef PK_COMPRESS
 #include "invq.h"
 #if !defined(NO_INV_Q_LIFTING)
@@ -120,7 +105,7 @@ static void unpack_sk(polyvec *sk,
 *              poly *pk:   pointer to the input vector of polynomials b
 *              poly *v:    pointer to the input polynomial v
 **************************************************/
-static void pack_ciphertext(uint8_t r[WEAVER_INDCPA_BYTES],
+void pack_ciphertext(uint8_t r[WEAVER_INDCPA_BYTES],
                             polyvec *b,
                             poly *v)
 {
@@ -161,12 +146,25 @@ static void unpack_ciphertext(polyvec *b,
 *
 * Returns number of sampled 16-bit integers (at most len)
 **************************************************/
+
+#if WEAVER_Q == 3329
+#define REJ_UNIFORM_BITS 12
+#define REJ_UNIFORM_MASK 0xFFF
+#define GEN_MATRIX_NBLOCKS ((REJ_UNIFORM_BITS*WEAVER_N/8*(1 << REJ_UNIFORM_BITS)/WEAVER_Q + XOF_BLOCKBYTES)/XOF_BLOCKBYTES)
+#elif WEAVER_Q == 7681
+#define LEMIRE_REJ_THRESHOLD ((uint32_t)((1ULL << 16) % WEAVER_Q))
+#define GEN_MATRIX_NBLOCKS ((((uint32_t)2 * WEAVER_N * 65536u + (65536u - LEMIRE_REJ_THRESHOLD - 1)) / (65536u - LEMIRE_REJ_THRESHOLD) + XOF_BLOCKBYTES - 1) / XOF_BLOCKBYTES)
+#else
+#error "Unsupported WEAVER_Q for gen_matrix rejection sampling"
+#endif
+
+#if WEAVER_Q == 3329
 static unsigned int rej_uniform(int16_t *r,
                                 unsigned int len,
                                 const uint8_t *buf,
                                 unsigned int buflen)
 {
-  unsigned int ctr, pos, j;
+  unsigned int ctr, pos;
   uint16_t val0, val1;
 
   ctr = pos = 0;
@@ -181,9 +179,33 @@ static unsigned int rej_uniform(int16_t *r,
       r[ctr++] = val1;
   }
 
-  (void)j;
   return ctr;
 }
+#elif WEAVER_Q == 7681 && !defined(WEAVER_AVX_GEN_MATRIX7681)
+static unsigned int rej_uniform(int16_t *r,
+                                unsigned int len,
+                                const uint8_t *buf,
+                                unsigned int buflen)
+{
+  const uint32_t threshold = LEMIRE_REJ_THRESHOLD;
+  unsigned int ctr = 0;
+  unsigned int pos = 0;
+
+  while (ctr < len && pos + 1 < buflen) {
+    uint32_t val = (uint32_t)buf[pos] | ((uint32_t)buf[pos + 1] << 8);
+    pos += 2;
+    uint32_t prod = val * (uint32_t)WEAVER_Q;
+    uint16_t low = (uint16_t)prod;
+
+    if (low < threshold)
+      continue;
+
+    r[ctr++] = (int16_t)(prod >> 16);
+  }
+
+  return ctr;
+}
+#endif
 
 #define gen_a(A,B)  gen_matrix(A,B,0)
 #define gen_at(A,B) gen_matrix(A,B,1)
@@ -201,14 +223,11 @@ static unsigned int rej_uniform(int16_t *r,
 *              - int transposed:      boolean deciding whether A or A^T
 *                                     is generated
 **************************************************/
-#if(XOF_BLOCKBYTES % 3)
-#error "Implementation of gen_matrix assumes that XOF_BLOCKBYTES is a multiple of 3"
+#if (WEAVER_Q == 3329) && (XOF_BLOCKBYTES % 3)
+#error "Implementation of gen_matrix for q=3329 assumes XOF_BLOCKBYTES is a multiple of 3"
 #endif
 
-#define GEN_MATRIX_NBLOCKS ((12*WEAVER_N/8*(1 << 12)/WEAVER_Q + XOF_BLOCKBYTES)/XOF_BLOCKBYTES)
-
-#if !defined(WEAVER_AVX_GEN_MATRIX) && \
-    !(defined(WEAVER_AVX_GEN_MATRIX512) && (WEAVER_N == 512))
+#if !defined(WEAVER_AVX_GEN_MATRIX7681_ON) && !defined(WEAVER_AVX_GEN_MATRIX128_ON)
 // Not static for benchmarking
 void gen_matrix(polyvec *a, const uint8_t seed[WEAVER_SYMBYTES], int transposed)
 {
@@ -233,14 +252,10 @@ void gen_matrix(polyvec *a, const uint8_t seed[WEAVER_SYMBYTES], int transposed)
         buflen = XOF_BLOCKBYTES;
         ctr += rej_uniform(a[i].vec[j].coeffs + ctr, WEAVER_N - ctr, buf, buflen);
       }
-#if defined(WEAVER_AVX256_NTT)
-      /* AVX basemul expects matrix coeffs in unpacked layout (weaver avx2). */
-      poly_nttunpack(&a[i].vec[j]);
-#endif
     }
   }
 }
-#endif /* !WEAVER_AVX_GEN_MATRIX && !WEAVER_AVX_GEN_MATRIX512 on n=512 */
+#endif /* !WEAVER_AVX_GEN_MATRIX7681_ON && !WEAVER_AVX_GEN_MATRIX128_ON */
 
 /*************************************************
 * Name:        indcpa_keypair
@@ -258,98 +273,42 @@ void indcpa_keypair_derand(uint8_t pk[WEAVER_INDCPA_PUBLICKEYBYTES],
                            const uint8_t coins[WEAVER_SYMBYTES])
 {
   unsigned int i;
-  uint8_t buf[2*WEAVER_SYMBYTES];
+  uint8_t buf[2 * WEAVER_SYMBYTES];
   const uint8_t *publicseed = buf;
-  const uint8_t *noiseseed = buf+WEAVER_SYMBYTES;
+  const uint8_t *noiseseed = buf + WEAVER_SYMBYTES;
   uint8_t nonce = 0;
   polyvec a[WEAVER_K] = {0}, pkpv = {0}, skpv = {0};
 
-  (void)i;
-
-  WEAVER_KP_T0();
-  memcpy(buf, coins, WEAVER_SYMBYTES);
-  buf[WEAVER_SYMBYTES] = WEAVER_K;
-  hash_g(buf, buf, WEAVER_SYMBYTES+1);
-  WEAVER_KP_T(0); /* 0: buf + hash_g */
+  expand_keypair_seeds(buf, coins, WEAVER_SYMBYTES);
 
   gen_a(a, publicseed);
-  WEAVER_KP_T(1); /* 1: gen_matrix (gen_a) */
 
-  #if (WEAVER_K == 2)
-  poly_getnoise_eta1(&skpv.vec[0], noiseseed, nonce++);
-  poly_getnoise_eta1(&skpv.vec[1], noiseseed, nonce++);
-  #elif (WEAVER_K == 4)
-  poly_getnoise_eta1(&skpv.vec[0], noiseseed, nonce++);
-  poly_getnoise_eta1(&skpv.vec[1], noiseseed, nonce++);
-  poly_getnoise_eta1(&skpv.vec[2], noiseseed, nonce++);
-  poly_getnoise_eta1(&skpv.vec[3], noiseseed, nonce++);
-  #else
   for(i=0;i<WEAVER_K;i++)
     poly_getnoise_eta1(&skpv.vec[i], noiseseed, nonce++);
-  #endif
-  WEAVER_KP_T(2); /* 2: poly_getnoise x K */
 
   polyvec_ntt(&skpv);
-  WEAVER_KP_T(3); /* 3: polyvec_ntt (K polys) */
   
 #ifndef PK_COMPRESS
 
   // matrix-vector multiplication
-  #if (WEAVER_K == 2)
-  polyvec_basemul_acc_montgomery(&pkpv.vec[0], &a[0], &skpv);
-  poly_tomont(&pkpv.vec[0]);
-  polyvec_basemul_acc_montgomery(&pkpv.vec[1], &a[1], &skpv);
-  poly_tomont(&pkpv.vec[1]);
-  #elif (WEAVER_K == 4)
-  polyvec_basemul_acc_montgomery(&pkpv.vec[0], &a[0], &skpv);
-  poly_tomont(&pkpv.vec[0]);
-  polyvec_basemul_acc_montgomery(&pkpv.vec[1], &a[1], &skpv);
-  poly_tomont(&pkpv.vec[1]);
-  polyvec_basemul_acc_montgomery(&pkpv.vec[2], &a[2], &skpv);
-  poly_tomont(&pkpv.vec[2]);
-  polyvec_basemul_acc_montgomery(&pkpv.vec[3], &a[3], &skpv);
-  poly_tomont(&pkpv.vec[3]);
-  #else
   for(i=0;i<WEAVER_K;i++) {
     polyvec_basemul_acc_montgomery(&pkpv.vec[i], &a[i], &skpv);
     poly_tomont(&pkpv.vec[i]);
   }
-  #endif
 
-  WEAVER_KP_T(4); /* matvec (NTT domain) */
-  polyvec_reduce(&pkpv); /* save in NTT domain */
-  WEAVER_KP_T(5); /* polyvec_reduce */
-#ifdef WEAVER_PROFILE_KEYPAIR_DERAND
-  weaver_kp_prof_segment(6, 0); /* no invntt in this path */
-#endif
+  polyvec_reduce(&pkpv); // save in NTT domain.
 
 #else
-  #if (WEAVER_K == 2)
-  polyvec_basemul_acc_montgomery(&pkpv.vec[0], &a[0], &skpv);
-  polyvec_basemul_acc_montgomery(&pkpv.vec[1], &a[1], &skpv);
-  #elif (WEAVER_K == 4)
-  polyvec_basemul_acc_montgomery(&pkpv.vec[0], &a[0], &skpv);
-  polyvec_basemul_acc_montgomery(&pkpv.vec[1], &a[1], &skpv);
-  polyvec_basemul_acc_montgomery(&pkpv.vec[2], &a[2], &skpv);
-  polyvec_basemul_acc_montgomery(&pkpv.vec[3], &a[3], &skpv);
-  #else
   for (i = 0; i < WEAVER_K; i++) {
       polyvec_basemul_acc_montgomery(&pkpv.vec[i], &a[i], &skpv);
       //poly_tomont(&pkpv.vec[i]);
   }
-  #endif
-  WEAVER_KP_T(4); /* 4: matrix-vector (k basemul_acc), NTT domain */
-
   polyvec_invntt_tomont(&pkpv);  // from NTT to plain.
-  WEAVER_KP_T(5); /* 5: polyvec_invntt_tomont */
-
   polyvec_reduce(&pkpv);
-  WEAVER_KP_T(6); /* 6: polyvec_reduce */
 
 #endif
   pack_sk(sk, &skpv);
   pack_pk(pk, &pkpv, publicseed);
-  WEAVER_KP_T(7); /* 7: pack_sk + pack_pk */
 }
 
 /*************************************************
@@ -380,8 +339,6 @@ void indcpa_enc(uint8_t c[WEAVER_INDCPA_BYTES],
   polyvec sp = {0}, pkpv = {0}, at[WEAVER_K] = {0}, b = {0};
   poly v = {0}, k = {0};
 
-  (void)i;
-
 #ifdef INV_Q_LIFTING
   /*
    * WEAVER-Inv (Algorithm 2):
@@ -404,34 +361,19 @@ void indcpa_enc(uint8_t c[WEAVER_INDCPA_BYTES],
   poly_frommsg(&k, m);
   gen_at(at, seed);
 
-  #if (WEAVER_K == 2)
-  poly_getnoise_eta1(&sp.vec[0], coins, nonce++);
-  poly_getnoise_eta1(&sp.vec[1], coins, nonce++);
-  #elif (WEAVER_K == 4)
-  poly_getnoise_eta1(&sp.vec[0], coins, nonce++);
-  poly_getnoise_eta1(&sp.vec[1], coins, nonce++);
-  poly_getnoise_eta1(&sp.vec[2], coins, nonce++);
-  poly_getnoise_eta1(&sp.vec[3], coins, nonce++);
-  #else
+#ifdef INV_Q_LIFTING
   for(i=0;i<WEAVER_K;i++)
-    poly_getnoise_eta1(sp.vec+i, coins, nonce++);
-  #endif
+    poly_getnoise_eta2(sp.vec+i, coins, nonce++);
+#else
+  for(i=0;i<WEAVER_K;i++)
+    poly_getnoise_eta2(sp.vec+i, coins, nonce++);
+#endif
 
   polyvec_ntt(&sp);
 
   // matrix-vector multiplication
-  #if (WEAVER_K == 2)
-  polyvec_basemul_acc_montgomery(&b.vec[0], &at[0], &sp);
-  polyvec_basemul_acc_montgomery(&b.vec[1], &at[1], &sp);
-  #elif (WEAVER_K == 4)
-  polyvec_basemul_acc_montgomery(&b.vec[0], &at[0], &sp);
-  polyvec_basemul_acc_montgomery(&b.vec[1], &at[1], &sp);
-  polyvec_basemul_acc_montgomery(&b.vec[2], &at[2], &sp);
-  polyvec_basemul_acc_montgomery(&b.vec[3], &at[3], &sp);
-  #else
   for(i=0;i<WEAVER_K;i++)
     polyvec_basemul_acc_montgomery(&b.vec[i], &at[i], &sp);
-  #endif
 
   polyvec_basemul_acc_montgomery(&v, &pkpv, &sp);
 

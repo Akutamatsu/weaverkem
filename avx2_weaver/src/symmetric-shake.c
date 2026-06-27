@@ -5,10 +5,33 @@
 #include "symmetric.h"
 #include "fips202.h"
 
+void weaver_hash_h(uint8_t out[WEAVER_HBYTES], const uint8_t *in, size_t inlen)
+{
+#if WEAVER_HBYTES == 32
+  sha3_256(out, in, inlen);
+#elif WEAVER_HBYTES == 64
+  sha3_512(out, in, inlen);
+#elif WEAVER_HBYTES == 128
+  shake256(out, WEAVER_HBYTES, in, inlen);
+#else
+#error "Unsupported WEAVER_HBYTES"
+#endif
+}
+
+void weaver_hash_g(uint8_t out[WEAVER_GBYTES], const uint8_t *in, size_t inlen)
+{
+  shake256(out, WEAVER_GBYTES, in, inlen);
+}
+
+void weaver_expand_keypair_seeds(uint8_t out[2 * WEAVER_SYMBYTES], const uint8_t *in, size_t inlen)
+{
+  shake256(out, 2 * WEAVER_SYMBYTES, in, inlen);
+}
+
 /*************************************************
 * Name:        weaver_shake128_absorb
 *
-* Description: Absorb step of the SHAKE128 specialized for the Kyber context.
+* Description: Absorb step of the mode-selected XOF.
 *
 * Arguments:   - keccak_state *state: pointer to (uninitialized) output Keccak state
 *              - const uint8_t *seed: pointer to WEAVER_SYMBYTES input to be absorbed into state
@@ -26,7 +49,11 @@ void weaver_shake128_absorb(keccak_state *state,
   extseed[WEAVER_SYMBYTES+0] = x;
   extseed[WEAVER_SYMBYTES+1] = y;
 
+#if WEAVER_MODE == 1
   shake128_absorb_once(state, extseed, sizeof(extseed));
+#else
+  shake256_absorb_once(state, extseed, sizeof(extseed));
+#endif
 }
 
 /*************************************************
@@ -51,15 +78,9 @@ void weaver_shake256_prf(uint8_t *out, size_t outlen, const uint8_t key[WEAVER_S
 }
 
 /*************************************************
-* Name:        weaver_shake256_prf
+* Name:        weaver_shake256_rkprf
 *
-* Description: Usage of SHAKE256 as a PRF, concatenates secret and public input
-*              and then generates outlen bytes of SHAKE256 output
-*
-* Arguments:   - uint8_t *out: pointer to output
-*              - size_t outlen: number of requested output bytes
-*              - const uint8_t *key: pointer to the key (of length WEAVER_SYMBYTES)
-*              - uint8_t nonce: single-byte nonce (public PRF input)
+* Description: Usage of SHAKE256 as rejection-key PRF.
 **************************************************/
 void weaver_shake256_rkprf(uint8_t out[WEAVER_SSBYTES], const uint8_t key[WEAVER_SYMBYTES], const uint8_t input[WEAVER_CIPHERTEXTBYTES])
 {

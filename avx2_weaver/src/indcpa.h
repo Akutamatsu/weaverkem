@@ -27,5 +27,9 @@ void indcpa_dec(uint8_t m[WEAVER_INDCPA_MSGBYTES],
 void unpack_pk(polyvec *pk,
                uint8_t seed[WEAVER_SYMBYTES],
                const uint8_t packedpk[WEAVER_INDCPA_PUBLICKEYBYTES]);
+                      
+void pack_ciphertext(uint8_t r[WEAVER_INDCPA_BYTES],
+                     polyvec *b,
+                     poly *v);              
 
 #endif

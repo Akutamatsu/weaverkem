@@ -2,17 +2,10 @@
 #define WEAVER_LAYOUT_H
 
 /*
- * AVX2 coefficient layout contract (see comments in params.h).
+ * AVX2 coefficient layout contract.
  *
- * mode 1/3 (n=256, WEAVER_AVX256_NTT):
- *   - AVX gen_matrix + rej_uniform_avx emit Kyber-AVX packed order.
- *   - poly_nttunpack is a layout adapter (not an NTT); required before basemul.
- *   - ntt_avx / basemul_avx use pq-crystals shuffle layout.
- *
- * mode 5 (n=512, WEAVER_USE_AVX_NTT512):
- *   - WEAVER_AVX_GEN_MATRIX512: SHAKE128x4 + scalar rej_uniform (standard order).
- *   - ntt512_avx matches portable ntt.c order; poly_nttunpack is a no-op.
- *   - Do not enable WEAVER_AVX_GEN_MATRIX (Kyber packed layout) on mode 5.
+ * Kyber AVX (n=256, q=3329): packed gen_matrix + poly_nttunpack before basemul.
+ * NGCC modes use portable ref C NTT until q7681/n128 AVX paths are integrated.
  */
 
 #if (WEAVER_MODE == 5) && defined(WEAVER_AVX_GEN_MATRIX)

@@ -8,10 +8,21 @@
 #include "verify.h"
 #include "symmetric.h"
 //#include "randombytes.h"
-#include "rng.h"
 
 #ifdef PK_COMPRESS
 #include "invq.h"
+#endif
+
+#ifndef WEAVER_USE_SHAKE
+// USE SM3:
+#include "drng.h"
+extern DRNG_ctx drng_algorithm;
+int randombytes(unsigned char *x, unsigned long long xlen)
+{
+    return get_random_number(&drng_algorithm, x, xlen * 8);
+}
+#else
+#include "rng.h"
 #endif
 
 static void kem_enc_derand_fill_msg(uint8_t buf[WEAVER_INDCPA_MSGBYTES],
@@ -60,6 +71,7 @@ int crypto_kem_keypair_derand(uint8_t *pk,
 *
 * Returns 0 (success)
 **************************************************/
+// For Inner Test ONLY: replaced by "kem_keygen"
 int crypto_kem_keypair(uint8_t *pk,
                        uint8_t *sk)
 {

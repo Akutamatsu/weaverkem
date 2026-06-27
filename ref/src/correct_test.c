@@ -14,6 +14,7 @@
 #include "rng.h"
 #include "params.h"
 #include "api.h"
+#include "kem.h"
 
 #define	MAX_MARKER_LEN		50
 #define KAT_SUCCESS          0

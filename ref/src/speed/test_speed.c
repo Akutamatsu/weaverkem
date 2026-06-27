@@ -15,8 +15,22 @@
 #include "msgenc.h"      
 #include "bch.h"     
 #include "symmetric.h"
-#include "rng.h"   
 #include "kem.h" 
+
+#ifndef WEAVER_USE_SHAKE
+#include "drng.h"
+DRNG_ctx drng_algorithm;
+void randombytes_init(unsigned char *entropy_input,
+                 unsigned char *personalization_string,
+                 int security_strength)
+{
+    (void)personalization_string;
+
+    init_random_number(&drng_algorithm, entropy_input, (security_strength/8));
+}
+#else
+#include "rng.h" 
+#endif
 
 #define NTESTS 10000
 
@@ -67,16 +81,16 @@ int main()
   unsigned char sk[CRYPTO_SECRETKEYBYTES] = {0};
   unsigned char ct[CRYPTO_CIPHERTEXTBYTES] = {0};
   unsigned char key[CRYPTO_BYTES] = {0};
-  uint8_t garbage_buf[64] = {0};
-  
+  uint8_t garbage_buf[WEAVER_GBYTES] = {0};
   polyvec matrix[WEAVER_K], s, e;
   poly ap;
   uint8_t msg[WEAVER_INDCPA_MSGBYTES] = {0};
   uint8_t ecc_buf[128] = {0}; // BCH 校验位缓冲
   uint8_t pcomp[WEAVER_POLYCOMPRESSEDBYTES] = {0};
   uint8_t pvcomp[WEAVER_POLYVECCOMPRESSEDBYTES] = {0};
-
   char filename[128];
+  unsigned char entropy_input[64];
+
   snprintf(filename, sizeof(filename), "%s_performance.csv", CRYPTO_ALGNAME);
 
   printf("%s Performance Test Start..\n", CRYPTO_ALGNAME);
@@ -87,6 +101,11 @@ int main()
       fprintf(csv_file, "Operation,Median (Cycles),Average (Cycles)\n");
       fclose(csv_file);
   }
+
+  for (int i=0; i<sizeof(entropy_input); i++)
+    entropy_input[i] = i;
+  randombytes_init(entropy_input, NULL, 512);
+
   // ============== 0. 对称哈希与系统调用模块 ==============
   
   for(i=0;i<NTESTS;i++) {

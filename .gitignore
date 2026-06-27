@@ -1,5 +1,7 @@
 ref/correct/*-failure
+ref/correct/*-kat
 ref/correct/*.rsp
+ref/correct/output
 ref/speed_test/*-speed*
 ref/tools/
 ref/vs_proj

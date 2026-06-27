@@ -29,7 +29,7 @@
 // #endif
 
 #if   (WEAVER_MODE == 1)
-  #define CRYPTO_ALGNAME "WEAVER-512"
+  #define CRYPTO_ALGNAME "WEAVER-640"
 #elif (WEAVER_MODE == 3)
   #define CRYPTO_ALGNAME "WEAVER-1024"
 #elif (WEAVER_MODE == 5)

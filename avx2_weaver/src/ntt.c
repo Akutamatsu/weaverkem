@@ -3,8 +3,6 @@
 #include "ntt.h"
 #include "reduce.h"
 
-#if !defined(WEAVER_AVX256_NTT)
-
 /* Code to generate zetas and zetas_inv used in the number-theoretic transform:
 
 #define WEAVER_ROOT_OF_UNITY 17
@@ -41,31 +39,45 @@ void init_ntt() {
 
 */
 
+#if WEAVER_N == 128
 const int16_t zetas[128] = {
-  2285, 2571, 2970, 1812, 1493, 1422, 287, 202, 3158, 622, 1577, 182, 962,
-  2127, 1855, 1468, 573, 2004, 264, 383, 2500, 1458, 1727, 3199, 2648, 1017,
-  732, 608, 1787, 411, 3124, 1758, 1223, 652, 2777, 1015, 2036, 1491, 3047,
-  1785, 516, 3321, 3009, 2663, 1711, 2167, 126, 1469, 2476, 3239, 3058, 830,
-  107, 1908, 3082, 2378, 2931, 961, 1821, 2604, 448, 2264, 677, 2054, 2226,
-  430, 555, 843, 2078, 871, 1550, 105, 422, 587, 177, 3094, 3038, 2869, 1574,
-  1653, 3083, 778, 1159, 3182, 2552, 1483, 2727, 1119, 1739, 644, 2457, 349,
-  418, 329, 3173, 3254, 817, 1097, 603, 610, 1322, 2044, 1864, 384, 2114, 3193,
-  1218, 1994, 2455, 220, 2142, 1670, 2144, 1799, 2051, 794, 1819, 2475, 2459,
-  478, 3221, 3021, 996, 991, 958, 1869, 1522, 1628
+  -1044,  -758,  -359, -1517,  1493,  1422,   287,   202,
+   -171,   622,  1577,   182,   962, -1202, -1474,  1468,
+    573, -1325,   264,   383,  -829,  1458, -1602,  -130,
+   -681,  1017,   732,   608, -1542,   411,  -205, -1571,
+   1223,   652,  -552,  1015, -1293,  1491,  -282, -1544,
+    516,    -8,  -320,  -666, -1618, -1162,   126,  1469,
+   -853,   -90,  -271,   830,   107, -1421,  -247,  -951,
+   -398,   961, -1508,  -725,   448, -1065,   677, -1275,
+  -1103,   430,   555,   843, -1251,   871,  1550,   105,
+    422,   587,   177,  -235,  -291,  -460,  1574,  1653,
+   -246,   778,  1159,  -147,  -777,  1483,  -602,  1119,
+  -1590,   644,  -872,   349,   418,   329,  -156,   -75,
+    817,  1097,   603,   610,  1322, -1285, -1465,   384,
+  -1215,  -136,  1218, -1335,  -874,   220, -1187, -1659,
+  -1185, -1530, -1278,   794, -1510,  -854,  -870,   478,
+   -108,  -308,   996,   991,   958, -1460,  1522,  1628
 };
-
-const int16_t zetas_inv[128] = {
-  1701, 1807, 1460, 2371, 2338, 2333, 308, 108, 2851, 870, 854, 1510, 2535,
-  1278, 1530, 1185, 1659, 1187, 3109, 874, 1335, 2111, 136, 1215, 2945, 1465,
-  1285, 2007, 2719, 2726, 2232, 2512, 75, 156, 3000, 2911, 2980, 872, 2685,
-  1590, 2210, 602, 1846, 777, 147, 2170, 2551, 246, 1676, 1755, 460, 291, 235,
-  3152, 2742, 2907, 3224, 1779, 2458, 1251, 2486, 2774, 2899, 1103, 1275, 2652,
-  1065, 2881, 725, 1508, 2368, 398, 951, 247, 1421, 3222, 2499, 271, 90, 853,
-  1860, 3203, 1162, 1618, 666, 320, 8, 2813, 1544, 282, 1838, 1293, 2314, 552,
-  2677, 2106, 1571, 205, 2918, 1542, 2721, 2597, 2312, 681, 130, 1602, 1871,
-  829, 2946, 3065, 1325, 2756, 1861, 1474, 1202, 2367, 3147, 1752, 2707, 171,
-  3127, 3042, 1907, 1836, 1517, 359, 758, 1441
+#elif WEAVER_N == 256 || WEAVER_N == 512
+const int16_t zetas[256] = {
+    -3593, 3777, -3182, 3625, -3696, -1100, 2456, 2194, 121, -2250, 834, -2495, -2319, 2876, -1701, 1414,
+    2816, -2088, -2237, 1986, -1599, 1993, 3706, -2006, -1525, -2557, 1296, 1483, -2830, 3364, 617, 1921,
+    -3689, -1738, 3266, -3600, 810, 1887, -638, -7, -438, -679, -1305, -1760, 396, -3174, -3555, -1881,
+    3772, -2535, -2440, -2555, 1535, -549, 3153, 2310, -1399, 1321, 514, -2956, -103, 2804, -2043, -1431,
+    -1054, 1698, -3456, 1166, 2426, 3831, 915, -2, -3417, -194, 2919, 2789, 3405, 2385, -2113, -2732,
+    2175, 373, 3692, -730, -1756, 3135, -2391, 660, -1497, 2572, -3145, 1350, -2224, -3588, -1681, 2883,
+    -1390, 1598, 3750, 2762, 2835, 2764, -2233, 3816, -1533, 1464, -727, 1521, 1386, -3428, -921, -2743,
+    -2160, 2649, -859, 2579, 1532, 1919, -486, 404, -1056, 783, 1799, -2665, 3480, 2133, -3310, -1168,
+    -17, 3744, 2422, 2001, 1278, 929, -1348, -2230, -179, -1242, -2059, -1070, 2161, 1649, 2072, 3177,
+    -2071, 1121, -436, 236, 715, 670, -658, -1476, -2378, 2767, 3542, -226, 1203, 1181, -151, -3794,
+    1712, -222, 2786, -451, -3547, 1779, -1151, -434, 3568, -3693, 3581, -1586, 1509, 2918, 2339, -1407,
+    3434, -3550, 2340, 2891, 2998, -3314, 3461, -2719, -2247, -2589, 1144, 1072, 1295, -2815, -3770, 3450,
+    3781, -2258, 796, 3163, -3208, -589, 2963, -124, 3214, 3334, -3366, -3745, 3723, 1931, -429, -402,
+    -3408, 83, -1526, 826, -1338, 2345, -2303, 2515, -642, -1837, -2965, -791, 370, 293, 3312, 2083,
+    -1689, -777, 2070, 2262, -893, 2386, -188, -1519, -2874, -1404, 1012, 2130, 1441, 2532, -3335, -1084,
+    -3343, 2937, 509, -1403, 2812, 3763, 592, 2005, 3657, 2460, -3677, 3752, 692, 1669, 2167, -3287,
 };
+#endif
 
 /*************************************************
 * Name:        fqmul
@@ -108,24 +120,14 @@ static int16_t fqmul(int16_t a, int16_t b) {
 // }
 
 void ntt(int16_t r[WEAVER_N]) {
-  unsigned int len, start, j, k;
+  unsigned int len, start, i, j, k;
   int16_t t, zeta;
 
   k = 1;
   
 #if WEAVER_N == 128
   // 128 维：7层，底度为 1 (len 从 64 到 1)
-  for(len = 64; len >= 1; len >>= 1) {
-#elif WEAVER_N == 256
-  // 256 维：7层，底度为 2 (len 从 128 到 2)
-  for(len = 128; len >= 2; len >>= 1) {
-#elif WEAVER_N == 512
-  // 512 维：7层，底度为 4 (len 从 256 到 4)
-  for(len = 256; len >= 4; len >>= 1) {
-#else
-  #error "Unsupported WEAVER_N"
-#endif
-
+  for(len = 64; len >= 1; len >>= 1) { // lazy reduction
     for(start = 0; start < WEAVER_N; start = j + len) {
       zeta = zetas[k++];
       for(j = start; j < start + len; ++j) {
@@ -135,6 +137,53 @@ void ntt(int16_t r[WEAVER_N]) {
       }
     }
   }
+#elif WEAVER_N == 256
+  // 256 维：8层，底度为 1 (len 从 128 到 1)
+  for (i = 8; i > 0; i -= 2)
+  {
+      len = 1 << (i-1);
+      for (start = 0; start < WEAVER_N; start = j + len) { // lazy reduction
+          zeta = zetas[k++];
+          for (j = start; j < start + len; ++j) {
+              t = fqmul(zeta, r[j + len]);
+              r[j + len] = r[j] - t;
+              r[j] = r[j] + t;
+          }
+      }
+      len >>= 1;
+      for (start = 0; start < WEAVER_N; start = j + len) { // full reduction
+          zeta = zetas[k++];
+          for (j = start; j < start + len; ++j) {
+              t = fqmul(zeta, r[j + len]);
+              r[j + len] = barrett_reduce(r[j] - t);
+              r[j] = barrett_reduce(r[j] + t);
+          }
+      }
+  }
+#elif WEAVER_N == 512
+  // 512 维：8层，底度为 2 (len 从 256 到 2)
+  for (i = 9; i > 1; i -= 2)
+  {
+      len = 1 << (i - 1);
+      for (start = 0; start < WEAVER_N; start = j + len) { // lazy reduction
+          zeta = zetas[k++];
+          for (j = start; j < start + len; ++j) {
+              t = fqmul(zeta, r[j + len]);
+              r[j + len] = r[j] - t;
+              r[j] = r[j] + t;
+          }
+      }
+      len >>= 1;
+      for (start = 0; start < WEAVER_N; start = j + len) { // full reduction
+          zeta = zetas[k++];
+          for (j = start; j < start + len; ++j) {
+              t = fqmul(zeta, r[j + len]);
+              r[j + len] = barrett_reduce(r[j] - t);
+              r[j] = barrett_reduce(r[j] + t);
+          }
+      }
+  }
+#endif
 }
 
 /*************************************************
@@ -147,27 +196,105 @@ void ntt(int16_t r[WEAVER_N]) {
 * Arguments:   - int16_t r[256]: pointer to input/output vector of elements
 *                                of Zq
 **************************************************/
-// void invntt(int16_t r[256]) {
-//   unsigned int start, len, j, k;
-//   int16_t t, zeta;
+//void invntt(int16_t r[256]) {
+//    unsigned int start, len, j, k;
+//    int16_t t, zeta;
+//    const int16_t f = 1441; // mont^2/128
+//
+//    k = 127;
+//    for (len = 2; len <= 128; len <<= 1) {
+//        for (start = 0; start < 256; start = j + len) {
+//            zeta = zetas[k--];
+//            for (j = start; j < start + len; j++) {
+//                t = r[j];
+//                r[j] = barrett_reduce(t + r[j + len]);
+//                r[j + len] = r[j + len] - t;
+//                r[j + len] = fqmul(zeta, r[j + len]);
+//            }
+//        }
+//    }
+//
+//    for (j = 0; j < 256; j++)
+//        r[j] = fqmul(r[j], f);
+//}
 
-//   k = 0;
-//   for(len = 2; len <= 128; len <<= 1) {
-//     for(start = 0; start < 256; start = j + len) {
-//       zeta = zetas_inv[k++];
-//       for(j = start; j < start + len; ++j) {
-//         t = r[j];
-//         r[j] = barrett_reduce(t + r[j + len]);
-//         r[j + len] = t - r[j + len];
-//         r[j + len] = fqmul(zeta, r[j + len]);
-//       }
-//     }
-//   }
+#if 1
+// New:
+void invntt(int16_t r[256]) {
+    unsigned int start, len, i, j, k;
+    int16_t t, zeta;
+#if WEAVER_N == 128
+    const int16_t f = 1441; // mont^2/128
+    k = 127;
+#elif WEAVER_N == 256 || WEAVER_N == 512
+    const int16_t f = 1912; // mont^2/256
+    k = 255;
+#endif
 
-//   for(j = 0; j < 256; ++j)
-//     r[j] = fqmul(r[j], zetas_inv[127]);
-// }
-
+#if WEAVER_N == 128
+    for (len = 1; len <= 64; len <<= 1) { // lazy reduction
+        for (start = 0; start < WEAVER_N; start = j + len) {
+            zeta = zetas[k--];
+            for (j = start; j < start + len; j++) {
+                t = r[j];
+                r[j] = barrett_reduce(t + r[j + len]);
+                r[j + len] = r[j + len] - t;
+                r[j + len] = fqmul(zeta, r[j + len]);
+            }
+        }
+    }
+#elif WEAVER_N == 256
+    for (i = 0; i < 8; i += 2) {
+        len = 1 << i;
+        for (start = 0; start < WEAVER_N; start = j + len) { // lazy reduction
+            zeta = zetas[k--];
+            for (j = start; j < start + len; j++) {
+                t = r[j];
+                r[j] = t + r[j + len];
+                r[j + len] = r[j + len] - t;
+                r[j + len] = fqmul(zeta, r[j + len]);
+            }
+        }
+        len <<= 1;
+        for (start = 0; start < WEAVER_N; start = j + len) { // full reduction
+            zeta = zetas[k--];
+            for (j = start; j < start + len; j++) {
+                t = r[j];
+                r[j] = barrett_reduce(t + r[j + len]);
+                r[j + len] = barrett_reduce(r[j + len] - t);
+                r[j + len] = fqmul(zeta, r[j + len]);
+            }
+        }
+    }
+#elif WEAVER_N == 512
+    for (i = 1; i < 9; i += 2) {
+        len = 1 << i;
+        for (start = 0; start < WEAVER_N; start = j + len) { // lazy reduction
+            zeta = zetas[k--];
+            for (j = start; j < start + len; j++) {
+                t = r[j];
+                r[j] = t + r[j + len];
+                r[j + len] = r[j + len] - t;
+                r[j + len] = fqmul(zeta, r[j + len]);
+            }
+        }
+        len <<= 1;
+        for (start = 0; start < WEAVER_N; start = j + len) { // full reduction
+            zeta = zetas[k--];
+            for (j = start; j < start + len; j++) {
+                t = r[j];
+                r[j] = barrett_reduce(t + r[j + len]);
+                r[j + len] = barrett_reduce(r[j + len] - t);
+                r[j + len] = fqmul(zeta, r[j + len]);
+            }
+        }
+    }
+#endif
+    for (j = 0; j < WEAVER_N; j++)
+        r[j] = fqmul(r[j], f);
+}
+#else
+// old: need inv_zeta array.
 void invntt(int16_t r[WEAVER_N]) {
   unsigned int start, len, j, k;
   int16_t t, zeta;
@@ -197,7 +324,7 @@ void invntt(int16_t r[WEAVER_N]) {
   for(j = 0; j < WEAVER_N; ++j)
     r[j] = fqmul(r[j], zetas_inv[127]);
 }
-
+#endif
 
 /*************************************************
 * Name:        basemul
@@ -223,6 +350,7 @@ void basemul(int16_t r[2],
   r[1] += fqmul(a[1], b[0]);
 }
 
+#if 0
 /*************************************************
 * Name:        basemul_degree4
 *
@@ -276,5 +404,4 @@ void basemul_degree4(int16_t r[4],
   r[3] += fqmul(a[2], b[1]);
   r[3] += fqmul(a[3], b[0]);
 }
-
-#endif /* !WEAVER_AVX256_NTT */
+#endif

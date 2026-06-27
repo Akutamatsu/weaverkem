@@ -132,8 +132,12 @@ void poly_decompress_d4_avx(poly * restrict r, const uint8_t a[WEAVER_POLYCOMPRE
 
 #endif /* 4-bit v */
 
-#if (WEAVER_PK_POLYVECBYTES == (WEAVER_K * WEAVER_N * 9 / 8))
+#endif /* n=256 10-bit / 4-bit */
 
+#if defined(WEAVER_USE_AVX_COMPRESS) && (WEAVER_N == 128 || WEAVER_N == 256) && \
+    (WEAVER_PK_POLYVECBYTES == (WEAVER_K * WEAVER_N * 9 / 8))
+
+#include "poly.h"
 #include "poly_compress9.h"
 
 /* Pack eight 9-bit values (lanes of t) into nine output bytes. */
@@ -208,7 +212,7 @@ void poly_compress9_quant_avx(uint16_t t[WEAVER_N], const poly *a)
 
   for(i = 0; i < WEAVER_N; i += 16) {
     __m256i q = poly_compress9_quant16_avx(
-        _mm256_load_si256((__m256i *)&a->coeffs[i]));
+        _mm256_loadu_si256((__m256i *)&a->coeffs[i]));
     _mm_storeu_si128((__m128i *)&t[i + 0], _mm256_castsi256_si128(q));
     _mm_storeu_si128((__m128i *)&t[i + 8], _mm256_extracti128_si256(q, 1));
   }
@@ -220,12 +224,10 @@ void poly_compress9_avx(uint8_t r[(WEAVER_N * 9) / 8], const poly *a)
 
   for(i = 0; i < WEAVER_N / 16; i++) {
     __m256i q = poly_compress9_quant16_avx(
-        _mm256_load_si256((__m256i *)&a->coeffs[16 * i]));
+        _mm256_loadu_si256((__m256i *)&a->coeffs[16 * i]));
     poly_compress9_pack8_si128(r + 18 * i + 0, _mm256_castsi256_si128(q));
     poly_compress9_pack8_si128(r + 18 * i + 9, _mm256_extracti128_si256(q, 1));
   }
 }
 
-#endif /* 9-bit pk */
-
-#endif /* WEAVER_USE_AVX_COMPRESS */
+#endif /* 9-bit pk (n=128/256) */

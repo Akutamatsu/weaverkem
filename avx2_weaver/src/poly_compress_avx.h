@@ -4,7 +4,7 @@
 #include "params.h"
 #include "poly.h"
 
-#if defined(WEAVER_USE_AVX_COMPRESS) && (WEAVER_N == 256)
+#if defined(WEAVER_USE_AVX_COMPRESS) && (WEAVER_N == 128 || WEAVER_N == 256)
 
 #define poly_compress10_avx WEAVER_NAMESPACE(_poly_compress10_avx)
 void poly_compress10_avx(uint8_t r[(WEAVER_N * 10) / 8], const poly *a);

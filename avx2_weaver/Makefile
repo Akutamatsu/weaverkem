@@ -15,6 +15,13 @@ endif
 
 CFLAGS_COMMON = -std=c99 -Wall -O3 -fomit-frame-pointer $(ARCH_FLAGS)
 CFLAGS  = $(CFLAGS_COMMON) -mavx2 -mbmi2 -mpopcnt
+WEAVER_USE_SHAKE ?= 1
+ifeq ($(WEAVER_USE_SHAKE),1)
+CFLAGS += -DWEAVER_USE_SHAKE
+SYMMETRIC_C = src/fips202.c src/symmetric-shake.c
+else
+SYMMETRIC_C = src/symmetric-iccs.c
+endif
 PERF_NATIVE ?= 1
 ENABLE_LTO  ?= 1
 ifeq ($(PERF_NATIVE),1)
@@ -62,13 +69,13 @@ REF_SRC = ../ref/src
 WEAVER_C = \
 	src/indcpa.c src/kem_cca.c src/msgenc.c src/bch_high.c src/bch_low.c \
 	src/polyvec.c src/poly.c src/ntt.c src/cbd.c src/reduce.c \
-	src/verify.c src/fips202.c src/symmetric-shake.c src/randombytes_ctr.c \
+	src/verify.c $(SYMMETRIC_C) src/randombytes_ctr.c \
 	src/aes256ctr.c src/poly_invq.c $(CBD_AVX_C)
 
 WEAVER_C_NORNG = \
 	src/indcpa.c src/kem_cca.c src/msgenc.c src/bch_high.c src/bch_low.c \
 	src/polyvec.c src/poly.c src/ntt.c src/cbd.c src/reduce.c \
-	src/verify.c src/fips202.c src/symmetric-shake.c \
+	src/verify.c $(SYMMETRIC_C) \
 	src/aes256ctr.c src/poly_invq.c $(CBD_AVX_C)
 
 NTT_C  = src/ntt.c

@@ -60,3 +60,27 @@ Each instance directory contains `symmetric.h` and `symmetric-iccs.c` (ICCS
 hash/XOF via `auxfunc`). Build uses `-include symmetric.h` so `ref/src` sources
 use `sm3hash` / `pseudohash` / `pseudoXOF` without modifying `ref/src`.
 `KAT_KEM.c` and `auxfunc.c` are unmodified copies from API_PKC.
+
+## Optimized_Implementation (AVX2)
+
+Same NGCC API as Reference (`kem_keygen` / `kem_enc` / `kem_dec`, SM3-DRNG,
+`auxfunc`, official `KAT_KEM.c`). SIMD kernels are taken from `avx2_weaver/src/`;
+each `WeaverKEM-XXX/` directory holds the ICCS interface files only.
+
+| Instance | Default AVX2 kernels |
+|----------|----------------------|
+| WeaverKEM-128 | `ntt3329_avx128`, `cbd_avx2`, 9-bit `poly_compress_avx` |
+| WeaverKEM-256 | `ntt7681_avx`, `cbd_avx2`, 10/8-bit `poly_compress_avx` |
+| WeaverKEM-512 | `ntt7681_avx`, `cbd_avx2`, 11/9-bit `poly_compress_avx` |
+
+```bash
+cmake -B build-opt -S Implementations/Optimized_Implementation
+cmake --build build-opt
+cmake --build build-opt --target verify_kat   # == Test_Vectors/*.txt
+```
+
+Optional: `-DWEAVER_USE_AVX_COMPRESS7681=OFF` disables q=7681 AVX compress for
+modes 3/5 (enabled by default).
+
+Development builds (`avx2_weaver/`) keep SHAKE + AES-DRBG via `-DWEAVER_USE_SHAKE`
+(default in Makefile); submission builds use `symmetric-iccs.c` + SM3-DRNG.

@@ -209,7 +209,8 @@ endef
 all: bin/weaver_avx_512 bin/weaver_avx_1024 bin/weaver_avx_2048 \
      bin/kat_iccs_128 bin/kat_iccs_256 bin/kat_iccs_512 \
      bin/gen_vectors_1024 bin/verify_vectors_1024 \
-     bin/compare_ntt_avx_512 bin/compare_ntt_avx_1024 bin/compare_ntt_avx_2048
+     bin/compare_ntt_avx_512 bin/compare_ntt_avx_1024 bin/compare_ntt_avx_2048 \
+     bin/compare_i16_ref_ntt_1024
 
 # Replay ../Test_Vectors/ (generated from ref via Reference_Implementation)
 kat: bin/kat_iccs_128 bin/kat_iccs_256 bin/kat_iccs_512
@@ -427,6 +428,12 @@ bin/compare_ntt_avx_2048: tools/compare_ntt_avx.c
 	$(CC) $(CFLAGS) -DWEAVER_MODE=5 $(INC) $(MODE7681_DEFS) -c tools/compare_ntt_avx.c -o $(BD)/nttcmp2048/compare_ntt_avx.o
 	$(CC) $(LDFLAGS) -o $@ $(BD)/nttcmp2048/*.o
 
+bin/compare_i16_ref_ntt_1024: tools/compare_i16_ref_ntt.c src/ntt7681_i16_avx.c
+	@mkdir -p bin $(BD)/i16cmp1024
+	$(CC) $(CFLAGS) -DWEAVER_MODE=3 $(INC) -c src/ntt7681_i16_avx.c -o $(BD)/i16cmp1024/ntt7681_i16_avx.o
+	$(CC) $(CFLAGS) -DWEAVER_MODE=3 $(INC) -c tools/compare_i16_ref_ntt.c -o $(BD)/i16cmp1024/compare_i16_ref_ntt.o
+	$(CC) $(LDFLAGS) -o $@ $(BD)/i16cmp1024/*.o
+
 define link_gen_vectors_ref
 	@mkdir -p bin
 	@rm -rf $(BD)/refgv$(1) && mkdir -p $(BD)/refgv$(1)
@@ -467,7 +474,8 @@ ref_vectors: bin/gen_vectors_ref_512 bin/gen_vectors_ref_1024 bin/gen_vectors_re
 test: kat ref_vectors gen_vectors \
       bin/compare_ref_avx_128 bin/compare_ref_avx_1024 bin/compare_ref_avx_512 \
       bin/compare_ref_random_512 bin/compare_ref_random_1024 \
-      bin/verify_vectors_1024 bin/compare_ntt_avx_2048
+      bin/verify_vectors_1024 bin/compare_ntt_avx_1024 bin/compare_ntt_avx_2048 \
+      bin/compare_i16_ref_ntt_1024
 	@echo "=== Ref vs AVX vectors (mode 1) ===" \
 	  && bin/compare_ref_avx_128 test_vectors/weaver_ref_mode1.vec
 	@echo "=== Ref vs AVX vectors (mode 3) ===" \
@@ -478,6 +486,12 @@ test: kat ref_vectors gen_vectors \
 	  && $(MAKE) bin/compare_ref_random_1024
 	@echo "=== AVX self-check (mode 3) ===" \
 	  && bin/verify_vectors_1024 test_vectors/weaver_avx_mode3.vec
+	@echo "=== NTT256 AVX vs ref (mode 3) ===" \
+	  && bin/compare_ntt_avx_1024
+	@echo "=== i16 vs ref KAT gate (mode 3) ===" \
+	  && (bin/compare_i16_ref_ntt_1024; ec=$$?; \
+	      if [ $$ec -eq 1 ]; then echo "(expected: i16 not bit-exact with ref)"; \
+	      elif [ $$ec -ne 0 ]; then exit $$ec; fi)
 	@echo "=== NTT512 AVX primitives (mode 5) ===" \
 	  && bin/compare_ntt_avx_2048
 

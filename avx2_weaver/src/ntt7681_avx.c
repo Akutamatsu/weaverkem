@@ -172,8 +172,27 @@ static __attribute__((always_inline)) inline void
 bf_full_len1_all(int16_t *r, const int16_t *z, unsigned count)
 {
   unsigned i;
+  const __m256i mask16 = _mm256_set1_epi32(0xFFFF);
 
-  for(i = 0; i < count; i++) {
+  for(i = 0; i + 8 <= count; i += 8) {
+    unsigned j = 2 * i;
+    __m256i x = _mm256_loadu_si256((__m256i *)&r[j]);
+    __m256i odds_w = _mm256_srli_epi32(x, 16);
+    __m256i evens_w = _mm256_and_si256(x, mask16);
+    __m128i ev = _mm_packus_epi32(_mm256_castsi256_si128(evens_w),
+                                  _mm256_extracti128_si256(evens_w, 1));
+    __m128i od = _mm_packus_epi32(_mm256_castsi256_si128(odds_w),
+                                  _mm256_extracti128_si256(odds_w, 1));
+    __m128i z8 = _mm_loadu_si128((__m128i *)&z[i]);
+    __m128i t = montmul_x8(od, z8);
+    __m128i new_od = barrett_reduce_x8(_mm_sub_epi16(ev, t));
+    __m128i new_ev = barrett_reduce_x8(_mm_add_epi16(ev, t));
+
+    _mm_storeu_si128((__m128i *)&r[j], _mm_unpacklo_epi16(new_ev, new_od));
+    _mm_storeu_si128((__m128i *)&r[j + 8], _mm_unpackhi_epi16(new_ev, new_od));
+  }
+
+  for(; i < count; i++) {
     unsigned j = 2 * i;
     int16_t t = fqmul_scalar(z[i], r[j + 1]);
 

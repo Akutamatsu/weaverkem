@@ -7,8 +7,17 @@
 #include "indcpa.h"
 #include "verify.h"
 #include "symmetric.h"
-//#include "randombytes.h"
+
+#ifndef WEAVER_USE_SHAKE
+#include "drng.h"
+extern DRNG_ctx drng_algorithm;
+int randombytes(unsigned char *x, unsigned long long xlen)
+{
+  return get_random_number(&drng_algorithm, x, xlen * 8);
+}
+#else
 #include "rng.h"
+#endif
 
 #ifdef PK_COMPRESS
 #include "invq.h"

@@ -210,6 +210,9 @@ static WEAVER_UNUSED void cbd9(poly *r, const uint8_t buf[9*WEAVER_N/4])
 
 void cbd_eta1(poly *r, const uint8_t buf[WEAVER_ETA1*WEAVER_N/4])
 {
+#if defined(WEAVER_USE_AVX_CBD)
+  cbd_eta1_avx(r, buf);
+#else
 #if WEAVER_ETA1 == 1
   cbd1(r, buf);
 #elif WEAVER_ETA1 == 2
@@ -229,10 +232,14 @@ void cbd_eta1(poly *r, const uint8_t buf[WEAVER_ETA1*WEAVER_N/4])
 #else
 #error "This implementation requires eta1 in {1,2,3,4,5,6,7,9}"
 #endif
+#endif
 }
 
 void cbd_eta2(poly *r, const uint8_t buf[WEAVER_ETA2*WEAVER_N/4])
 {
+#if defined(WEAVER_USE_AVX_CBD)
+  cbd_eta2_avx(r, buf);
+#else
 #if WEAVER_ETA2 == 1
   cbd1(r, buf);
 #elif WEAVER_ETA2 == 2
@@ -251,5 +258,6 @@ void cbd_eta2(poly *r, const uint8_t buf[WEAVER_ETA2*WEAVER_N/4])
   cbd9(r, buf);
 #else
 #error "This implementation requires eta2 in {1,2,3,4,5,6,7,9}"
+#endif
 #endif
 }

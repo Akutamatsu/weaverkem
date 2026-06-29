@@ -18,14 +18,14 @@ run_weaver_bench() {
 }
 
 build_avx() {
-  make USE_AVX_NTT=1 USE_AVX_COMPRESS=1 \
-    USE_AVX_FQ_512=1 USE_AVX_GEN_MATRIX512=1 \
+  make USE_AVX_NTT128=1 USE_AVX_GEN_MATRIX128=1 USE_AVX_COMPRESS128=1 \
+    USE_AVX_NTT7681=1 USE_AVX_GEN_MATRIX7681=1 USE_AVX_COMPRESS7681=1 \
     bin/bench_components_512 bin/bench_components_1024 bin/bench_components_2048
 }
 
 build_ref() {
-  make USE_AVX_NTT=0 USE_AVX_COMPRESS=0 \
-    USE_AVX_FQ_512=0 USE_AVX_GEN_MATRIX512=0 \
+  make USE_AVX_NTT128=0 USE_AVX_GEN_MATRIX128=0 USE_AVX_COMPRESS128=0 \
+    USE_AVX_NTT7681=0 USE_AVX_GEN_MATRIX7681=0 USE_AVX_COMPRESS7681=0 \
     bin/bench_components_512 bin/bench_components_1024 bin/bench_components_2048
 }
 

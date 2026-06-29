@@ -69,41 +69,55 @@ We provide two ISO~C99 reference builds and one AVX2-optimized tree:
         pseudo-XOF block size (168~B for \textsc{WEAVER-640}, 136~B otherwise).
         This configuration is used for NIST-style KAT generation and specification
         conformance.
-  \item \textbf{SHAKE256 configuration} (\texttt{ref/}): a portable Keccak/FIPS~202
-        implementation (\texttt{symmetric-shake.c}) with SHA3-256 hashing,
-        SHAKE256 PRFs, and SHAKE128 (mode~1) or SHAKE256 (modes~3/5) matrix XOFs.
-  \item \textbf{AVX2 implementation} (\texttt{avx2\_weaver/}): same SHAKE256
-        symmetric layer as \texttt{ref/}; all performance numbers below are
-        measured on this tree so that comparisons with ML-KEM (also Keccak-based)
-        isolate algorithmic differences rather than hash/XOF choice.
+  \item \textbf{Keccak reference configuration} (\texttt{ref/}): a portable Keccak/FIPS~202
+        implementation (\texttt{symmetric-shake.c}) with SHA3-512 hashing (modes~3/5),
+        SHAKE256 PRFs, and \textbf{SHAKE128} matrix XOFs at all security levels (matching
+        ML-KEM's matrix-expansion primitive).
+  \item \textbf{AVX2 implementation} (\texttt{avx2\_weaver/}): same Keccak symmetric layer
+        as \texttt{ref/}; matrix expansion uses SHAKE128$\times$4 on all modes.
+        AVX2 centered binomial sampling (\texttt{USE\_AVX\_CBD=1}) vectorizes
+        $\eta\in\{2,3,7\}$ (Kyber-style paths for $\eta{=}2/3$; SWAR popcount for
+        $\eta{=}7$); $\eta{=}9$ (\textsc{WEAVER-2048}) remains scalar-equivalent until a
+        correct 18-bit cross-byte extract is in place.
+        All performance numbers below are measured on this tree so that comparisons with
+        ML-KEM (also Keccak-based, SHAKE128 matrix) isolate algorithmic differences rather
+        than hash/XOF choice.
 \end{itemize}
 
-The AVX2 build vectorizes polynomial arithmetic and parallel matrix sampling.
+The AVX2 build vectorizes polynomial arithmetic, parallel matrix sampling, and
+CBD at $\eta\le 7$.
 For \textsc{WEAVER-640} ($(n,k,q){=}(128,5,3329)$) it enables an AVX2 NTT at
 $n{=}128$, SHAKE128$\times$4 matrix generation, and fused 9-bit public-key
 compression.
 For \textsc{WEAVER-1024} ($(256,4,7681)$) and \textsc{WEAVER-2048}
-($(512,4,7681)$) it adds a dedicated $q{=}7681$ AVX2 NTT, SHAKE256$\times$4
+($(512,4,7681)$) it adds a dedicated $q{=}7681$ AVX2 NTT, SHAKE128$\times$4
 matrix generation, fused \texttt{polyvec\_basemul\_acc}, and AVX2 modular
 reduction in standard coefficient order.
-Portable \texttt{ref/} medians disable all \texttt{USE\_AVX\_*} optimization
-switches (portable C NTT, scalar \texttt{gen\_matrix}, scalar compression).
-ML-KEM baselines are from pq-crystals/kyber commit \texttt{4768bd3} (AVX2
-build), collected on the same x86 platform with the same methodology.
+ML-KEM baselines are from pq-crystals/kyber commit \texttt{4768bd3} (reference
+and AVX2 trees), collected on the same x86 platform with the same methodology.
+Portable \texttt{ref/} medians disable all \texttt{USE\_AVX\_*} switches; they
+use the same Keccak/SHAKE128 symmetric layer as the AVX2 tree so that
+reference-vs-reference comparisons with ML-KEM isolate lattice work rather than
+hash/XOF choice (the NGCC submission path uses SM3 via \texttt{auxfunc} and is
+not included in these tables).
 
 \subsubsection{Weaver: Reference vs.\ AVX2}
 
 Table~\ref{tab:x86_perf} reports the self-comparison on the current Table~2
-parameter sets (SHAKE256 configuration throughout).
+parameter sets (Keccak reference configuration throughout; SHAKE128 matrix XOF).
 AVX2 speedups range from \textbf{1.6$\times$--2.4$\times$}, with the largest
-absolute gains on \texttt{gen\_matrix} and $q{=}7681$ NTTs; fused base
+absolute gains on $q{=}7681$ NTTs and parallel \texttt{gen\_matrix}; fused base
 multiplication at $q{=}3329$, $n{=}128$ is already near scalar cost and therefore
 contributes less to the overall ratio.
+Unifying modes~3/5 on SHAKE128 (168-byte blocks vs.\ the previous 136-byte
+SHAKE256 matrix path) reduces \texttt{gen\_matrix} on \textsc{WEAVER-1024} by
+$\approx{}21\%$ and on \textsc{WEAVER-2048} by $\approx{}20\%$ relative to the
+prior AVX2 build.
 
 \begin{table}[t]
 \centering
 \caption{Weaver KEM performance: portable \texttt{ref/} vs.\ AVX2
-        (median CPU cycles, SHAKE256 config).}
+        (median CPU cycles, Keccak/SHAKE128-matrix config).}
 \label{tab:x86_perf}
 \renewcommand{\arraystretch}{1.15}
 \begin{tabular}{llrrr}
@@ -111,34 +125,197 @@ contributes less to the overall ratio.
 \textbf{Scheme} & \textbf{Impl.} & \textbf{KeyGen} & \textbf{Encaps} & \textbf{Decaps} \\
 \midrule
 \multirow{2}{*}{\shortstack[l]{\textsc{WEAVER-640}\\$(128,5,3329)$}}
-  & Ref (C99)  & 86{,}475  & 93{,}600  & 105{,}250 \\
-  & AVX2       & \textbf{36{,}115}  & \textbf{47{,}240}  & \textbf{51{,}715}  \\
+  & Ref (C99)  & 86{,}475 & 93{,}599 & 105{,}247 \\
+  & AVX2       & \textbf{36{,}113}  & \textbf{47{,}241}  & \textbf{51{,}713}  \\
 \midrule
 \multirow{2}{*}{\shortstack[l]{\textsc{WEAVER-1024}\\$(256,4,7681)$}}
-  & Ref (C99)  & 161{,}355 & 185{,}980 & 189{,}200 \\
-  & AVX2       & \textbf{85{,}410}  & \textbf{99{,}240}  & \textbf{87{,}800}  \\
+  & Ref (C99)  & 161{,}355 & 185{,}977 & 189{,}201 \\
+  & AVX2       & \textbf{85{,}409}  & \textbf{99{,}241}  & \textbf{87{,}801}  \\
 \midrule
 \multirow{2}{*}{\shortstack[l]{\textsc{WEAVER-2048}\\$(512,4,7681)$}}
-  & Ref (C99)  & 327{,}105 & 416{,}990 & 407{,}680 \\
-  & AVX2       & \textbf{177{,}010} & \textbf{255{,}920} & \textbf{219{,}780} \\
+  & Ref (C99)  & 327{,}105 & 416{,}987 & 407{,}679 \\
+  & AVX2       & \textbf{177{,}007} & \textbf{255{,}917} & \textbf{219{,}777} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\subsubsection{Comparison with ML-KEM}
+\subsubsection{Comparison with ML-KEM (reference and optimized)}
 
-Tables~\ref{tab:kem_avx}--\ref{tab:overhead_breakdown} compare Weaver against
-ML-KEM at the closest security level (128/256/512-bit classical targets).
+Tables~\ref{tab:kem_fourway}--\ref{tab:symmetric_strip} compare Weaver against
+ML-KEM at both security tiers and both implementation classes.
+All rows use the Keccak/SHAKE128 symmetric layer on the Weaver side and the
+standard pq-crystals Kyber reference/AVX2 trees on the ML-KEM side
+(commit \texttt{4768bd3}, same x86 platform and RDTSC methodology as
+\S\ref{sec:eval-methodology}).
 Because \textsc{WEAVER-640} uses $(n,k){=}(128,5)$ rather than ML-KEM-512's
-$(256,2)$, the 128-bit row is indicative rather than a matched-dimension
-comparison.
-At 256-bit security, \textsc{WEAVER-1024} matches ML-KEM-1024 on $(n,k)$ but
-employs $q{=}7681$, $\eta_1{=}7$, and tighter compression; it is
-\textbf{3.6$\times$} / \textbf{4.1$\times$} / \textbf{3.2$\times$} slower in
-KeyGen / Encaps / Decaps despite comparable \texttt{polyvec\_basemul\_acc} latency.
+$(256,2)$, the 128-bit block is indicative; the 256-bit block matches
+$(n,k){=}(256,4)$ and is the fairest end-to-end comparison.
+
+\paragraph{How to read the comparison (recommended narrative).}
+We report ML-KEM numbers for context, not as a like-for-like drop-in replacement:
+Weaver targets smaller on-the-wire objects via tighter compression, $\mathrm{Inv}_q$
+randomized lifting, and BCH coding (Table~\ref{tab:bandwidth}), and uses
+parameter sets $(q,\eta_1)$ that differ from Kyber's $(3329,2)$.
+Readers should interpret the data in three layers, from most to least apples-to-apples:
+\textbf{(i)~Portable reference parity.} On C99/Keccak builds at matched $(n,k){=}(256,4)$,
+full encapsulation differs by only \textbf{1.2$\times$}, and \emph{after removing one
+matrix-XOF call} the stripped medians agree within \textbf{2\%}
+(Table~\ref{tab:symmetric_strip})---the lattice-side budget is essentially the same
+before SIMD specialization.
+\textbf{(ii)~Where AVX2 diverges.} The end-to-end AVX2 gap (\textbf{4.1$\times$} on
+encaps at 256-bit) is not dominated by symmetric primitives once both sides vectorize
+\texttt{gen\_matrix}/\texttt{gen\_a}; it reflects \emph{parameter and design choices}
+($q{=}7681$ NTT, $\eta_1{=}7$ CBD/PRF, 9--11-bit compress, $\mathrm{Inv}_q$/BCH),
+as quantified in Table~\ref{tab:overhead_breakdown}.
+\textbf{(iii)~Bandwidth return.} At the 256-bit tier, \textsc{WEAVER-1024} trades
+$\approx{}4\times$ higher AVX2 encapsulation latency for \textbf{9\%} smaller total
+$|\mathsf{pk}|{+}|\mathsf{ct}|$ (2{,}848 vs.\ 3{,}136~B); \textsc{WEAVER-640} matches
+ML-KEM-512 on total wire size (1{,}568~B) while using a higher module rank ($k{=}5$).
+We do not claim CPU parity with pq-crystals' mature $q{=}3329$ AVX2 assembly; we claim
+that the \emph{reference} lattice work is competitive and that the AVX2 gap decomposes
+into identifiable, specification-driven terms rather than a generic implementation deficit.
+
+\paragraph{End-to-end gap.}
+At 256-bit security, full encapsulation on the AVX2 build is
+\textbf{4.1$\times$} slower than ML-KEM-1024
+($99{,}241$ vs.\ $24{,}387$ cycles), while the portable reference implementations
+differ by only \textbf{1.2$\times$}
+($185{,}977$ vs.\ $150{,}591$).
+The AVX2 slowdown is therefore \emph{not} explained by Keccak/XOF cost alone:
+ML-KEM's reference code vectorizes NTT, compression, and rejection sampling far
+more aggressively than Weaver's portable \texttt{ref/} path, whereas Weaver's
+AVX2 tree already closes much of that SIMD gap on matrix expansion
+(\texttt{gen\_matrix} within \textbf{1.2--1.5$\times$} of ML-KEM's \texttt{gen\_a}
+at $(256,4)$).
+
+\paragraph{Where the cycles go: symmetric vs.\ lattice.}
+We attribute \textbf{symmetric-primitive overhead} to (i)~matrix expansion
+(\texttt{gen\_matrix} / \texttt{gen\_a}), and (ii)~FO/CCA hashing and
+SHAKE256/PRF calls (\texttt{hash\_h}, \texttt{hash\_g}/\texttt{shake256},
+\texttt{prf}, \texttt{rkprf})---the same class of work that dominates portable
+ML-KEM and Weaver reference builds.
+Table~\ref{tab:symmetric_strip} reports encapsulation after subtracting one
+matrix-expansion call (the \texttt{gen\_matrix}$^T$ / \texttt{gen\_a} term
+present in every encaps path), with \textbf{portable Ref rows first} and
+\textbf{AVX2 rows second} at each security tier.
+On \textbf{reference} code at matched $(n,k){=}(256,4)$, the stripped medians
+are $117{,}208$ cycles (Weaver) vs.\ $114{,}816$ (ML-KEM), i.e.\ within
+\textbf{2\%}---essentially the same lattice-side budget once XOF matrix sampling
+is removed; at the \textbf{128-bit indicative} tier (different $(n,k)$), stripped
+Ref encapsulation is $50{,}856$ vs.\ $56{,}212$ cycles ($0.91\times$).
+On \textbf{AVX2}, the same stripping exercise yields $5.3\times$ at
+$(256,4)$ ($87{,}022$ vs.\ $16{,}328$) and $3.6\times$ at the 128-bit tier
+($34{,}606$ vs.\ $9{,}565$): matrix expansion is no longer the dominant term,
+and the residual gap is driven by parameterization ($q{=}7681$ NTT, $\eta{=}7$
+CBD/PRF at mode~3) and Weaver-only $\mathrm{Inv}_q$/BCH work, not by Keccak
+absorption in \texttt{gen\_matrix}.
+
+\paragraph{Reference vs.\ optimized speedups.}
+Table~\ref{tab:avx_speedup_both} shows that ML-KEM enjoys larger AVX2 speedups
+(\textbf{5.6--7.0$\times$} on decaps) than Weaver
+(\textbf{1.9--2.2$\times$}) on the same platform.
+The asymmetry is expected: Kyber's AVX2 NTT at $q{=}3329$ drops a single-polynomial
+transform to $\approx{}100$ cycles, while Weaver's $q{=}7681$ AVX2 NTT remains
+$\approx{}1{,}800$ cycles; ML-KEM also vectorizes 4-bit/10-bit compression and
+$\eta{=}2$ CBD to near-constant cost, whereas Weaver pays for 9--11-bit packing
+and $\eta{=}7$ noise at mode~3.
 In exchange, \textsc{WEAVER-1024} reduces $|\mathsf{pk}|$ by 16\% and total
 wire size by 9\% (Table~\ref{tab:bandwidth}); \textsc{WEAVER-640} matches
 ML-KEM-512 on total on-the-wire bytes (1{,}568~B).
+
+\begin{table}[t]
+\centering
+\caption{End-to-end KEM performance: Weaver vs.\ ML-KEM, reference and AVX2
+        (median CPU cycles, Keccak/SHAKE128 on Weaver).}
+\label{tab:kem_fourway}
+\renewcommand{\arraystretch}{1.12}
+\small
+\begin{tabular}{lllrrr}
+\toprule
+\textbf{Target} & \textbf{Scheme} & \textbf{Impl.} & \textbf{KeyGen} & \textbf{Encaps} & \textbf{Decaps} \\
+\midrule
+\multirow{4}{*}{128-bit}
+  & ML-KEM-512   & Ref  & 57{,}927 & 65{,}207 & 87{,}749 \\
+  & ML-KEM-512   & AVX2 & 10{,}841 & 11{,}595 & 12{,}687 \\
+  & \textsc{WEAVER-640} & Ref  & 86{,}475 & 93{,}599 & 105{,}247 \\
+  & \textsc{WEAVER-640} & AVX2 & 36{,}113 & 47{,}241 & 51{,}713 \\
+\midrule
+\multirow{4}{*}{256-bit}
+  & ML-KEM-1024  & Ref  & 150{,}071 & 150{,}591 & 188{,}967 \\
+  & ML-KEM-1024  & AVX2 & 23{,}555 & 24{,}387 & 27{,}117 \\
+  & \textsc{WEAVER-1024} & Ref  & 161{,}355 & 185{,}977 & 189{,}201 \\
+  & \textsc{WEAVER-1024} & AVX2 & 85{,}409 & 99{,}241 & 87{,}801 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{AVX2 speedup over portable C (median cycles, same codebase each row).}
+\label{tab:avx_speedup_both}
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Scheme} & \textbf{KeyGen} & \textbf{Encaps} & \textbf{Decaps} \\
+\midrule
+ML-KEM-512   & 5.3$\times$ & 5.6$\times$ & 6.9$\times$ \\
+ML-KEM-1024  & 6.4$\times$ & 6.2$\times$ & 7.0$\times$ \\
+\textsc{WEAVER-640}   & 2.4$\times$ & 2.0$\times$ & 2.0$\times$ \\
+\textsc{WEAVER-1024}  & 1.9$\times$ & 1.9$\times$ & 2.2$\times$ \\
+\textsc{WEAVER-2048}  & 1.8$\times$ & 1.6$\times$ & 1.9$\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{Encapsulation with one matrix-XOF call removed (median cycles).
+        Each ``$-$Matrix XOF'' entry is \texttt{kem\_encaps} minus one
+        \texttt{gen\_matrix}$^T$ (Weaver) or \texttt{gen\_a} (ML-KEM).
+        The table lists \textbf{portable Ref for both tiers, then AVX2 for both
+        tiers}; ratios compare Weaver to ML-KEM within the same block only.}
+\label{tab:symmetric_strip}
+\renewcommand{\arraystretch}{1.15}
+\small
+\begin{tabular}{llrrr}
+\toprule
+\textbf{Tier} & \textbf{Scheme} & \textbf{Full Encaps} &
+  \textbf{$-$Matrix XOF} & \textbf{Weaver/ML-KEM}$^\dagger$ \\
+\midrule
+\multicolumn{5}{c}{\textbf{Portable reference (C99)}} \\
+\midrule
+\multirow{2}{*}{\shortstack[l]{128-bit\\indicative\\$(256,2)$ vs.\ $(128,5)$}}
+  & ML-KEM-512   & 65{,}207 & 56{,}212 & \multirow{2}{*}{0.91$\times$} \\
+  & \textsc{WEAVER-640} & 93{,}599 & 50{,}856 & \\
+\addlinespace
+\multirow{2}{*}{\shortstack[l]{256-bit\\matched\\$(256,4)$}}
+  & ML-KEM-1024  & 150{,}591 & 114{,}816 & \multirow{2}{*}{1.02$\times$} \\
+  & \textsc{WEAVER-1024} & 185{,}977 & 117{,}208 & \\
+\midrule
+\multicolumn{5}{c}{\textbf{AVX2 optimized}} \\
+\midrule
+\multirow{2}{*}{\shortstack[l]{128-bit\\indicative\\$(256,2)$ vs.\ $(128,5)$}}
+  & ML-KEM-512   & 11{,}595 & 9{,}565 & \multirow{2}{*}{3.6$\times$} \\
+  & \textsc{WEAVER-640} & 47{,}241 & 34{,}606 & \\
+\addlinespace
+\multirow{2}{*}{\shortstack[l]{256-bit\\matched\\$(256,4)$}}
+  & ML-KEM-1024  & 24{,}387 & 16{,}328 & \multirow{2}{*}{5.3$\times$} \\
+  & \textsc{WEAVER-1024} & 99{,}241 & 87{,}022 & \\
+\bottomrule
+\end{tabular}
+\smallskip\\
+{\footnotesize $^\dagger$Ratio $=$ Weaver\,/\,ML-KEM in the ``$-$Matrix XOF'' column of the
+\emph{same block} ($<1$ means Weaver is faster after removing one matrix expansion).
+128-bit rows are \emph{indicative} only ($(n,k)$ differ); 256-bit rows are matched at
+$(n,k){=}(256,4)$.
+AVX2 stripped values use \texttt{gen\_a}/\texttt{gen\_matrix} segment medians from
+Table~\ref{tab:overhead_breakdown} ($11{,}595{-}2{,}030$, $47{,}241{-}12{,}635$,
+etc.).}
+\end{table}
+
+Table~\ref{tab:kem_avx} retains the AVX2-only snapshot used in
+Table~\ref{tab:overhead_breakdown}; bandwidth sizes are unchanged in
+Table~\ref{tab:bandwidth}.
 
 \begin{table}[t]
 \centering
@@ -149,14 +326,14 @@ ML-KEM-512 on total on-the-wire bytes (1{,}568~B).
 \toprule
 \textbf{Scheme} & $(n,k,q)$ & \textbf{Sec.} & \textbf{KeyGen} & \textbf{Encaps} & \textbf{Decaps} \\
 \midrule
-ML-KEM-512   & $(256,2,3329)$   & 128-bit & 10{,}840 & 11{,}595 & 12{,}690 \\
-\textsc{WEAVER-640} & $(128,5,3329)$   & 128-bit & 36{,}115 & 47{,}240 & 51{,}715 \\
+ML-KEM-512   & $(256,2,3329)$   & 128-bit & 10{,}841 & 11{,}595 & 12{,}687 \\
+\textsc{WEAVER-640} & $(128,5,3329)$   & 128-bit & 36{,}113 & 47{,}241 & 51{,}713 \\
 \midrule
 ML-KEM-768   & $(256,3,3329)$   & 192-bit & 18{,}330 & 18{,}280 & 19{,}915 \\
-ML-KEM-1024  & $(256,4,3329)$   & 256-bit & 23{,}555 & 24{,}390 & 27{,}120 \\
-\textsc{WEAVER-1024} & $(256,4,7681)$   & 256-bit & 85{,}410 & 99{,}240 & 87{,}800 \\
+ML-KEM-1024  & $(256,4,3329)$   & 256-bit & 23{,}555 & 24{,}387 & 27{,}117 \\
+\textsc{WEAVER-1024} & $(256,4,7681)$   & 256-bit & 85{,}409 & 99{,}241 & 87{,}801 \\
 \midrule
-\textsc{WEAVER-2048} & $(512,4,7681)$   & 512-bit & 177{,}010 & 255{,}920 & 219{,}780 \\
+\textsc{WEAVER-2048} & $(512,4,7681)$   & 512-bit & 177{,}007 & 255{,}917 & 219{,}777 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -181,35 +358,49 @@ ML-KEM-1024  & 1{,}568 & 1{,}568 & 3{,}136 \\
 
 \subsubsection{Overhead Decomposition}
 
-Table~\ref{tab:overhead_breakdown} attributes the encapsulation gap on the
-matched 256-bit row to three categories (component medians from the AVX2
-SHAKE256 build; ML-KEM rows from the same harness).
+Table~\ref{tab:overhead_breakdown} refines the AVX2 encapsulation gap beyond
+Table~\ref{tab:symmetric_strip}: component medians from the AVX2
+Keccak/SHAKE128-matrix build (\texttt{bin/profile\_encap\_*}) with ML-KEM rows
+from the Kyber AVX2 harness.
 %
 \emph{Design-intrinsic} components---randomized lifting $\mathrm{Inv}_q$ and BCH
 message encoding (\texttt{poly\_frommsg})---are absent from ML-KEM; together
-they account for $+5{,}460$ cycles at $(128,5)$ and $+5{,}430$ cycles at
-$(256,4)$ (segment medians from \texttt{bin/profile\_encap\_*});
-i.e.\ about 15\% and 7\% of the respective encapsulation gaps vs.\ ML-KEM.
+they account for $+5{,}430$ cycles at $(128,5)$ and $+5{,}480$ cycles at
+$(256,4)$;
+i.e.\ about 15\% and 7\% of the respective AVX2 encapsulation gaps vs.\ ML-KEM.
 %
 \emph{Parameter-induced} overhead is dominated on \textsc{WEAVER-1024} by
-$\eta_1{=}7$ CBD ($+19{,}100$ cycles vs.\ ML-KEM-1024's $\eta_1{=}2$ sampling)
-and by the $q{=}7681$ NTT ($\approx{}1{,}800$ cycles per polynomial vs.\
-$\approx{}100$ cycles at $q{=}3329$).
-At $(128,5)$ both ML-KEM-512 and \textsc{WEAVER-640} use $\eta_1{=}3$; CBD
-adds $+1{,}430$ cycles in the encaps path despite the larger module rank
-($k{=}5$).
+$\eta{=}7$ centered binomial sampling and by the $q{=}7681$ NTT.
+Each \texttt{poly\_getnoise} call is \texttt{prf}$+$CBD; at $(256,4)$ encaps
+draws $k{=}4$ noise polynomials, so Table~\ref{tab:overhead_breakdown} reports
+the \textbf{sum over four polys} ($21{,}241$ cycles on Weaver vs.\ $1{,}970$ on
+ML-KEM in the Kyber harness segment---\textbf{not} a per-polynomial ratio).
+Microbenchmarks on the same platform give $\approx{}3{,}350$ cycles per
+$\eta{=}7$ draw ($\approx{}3{,}000$ SHAKE256 PRF for 448~B output $+$
+$\approx{}350$ CBD) vs.\ $\approx{}987$ cycles per ML-KEM-1024 $\eta{=}2$ draw
+($\approx{}850$ PRF for 128~B $+$ negligible CBD); i.e.\ \textbf{$\approx{}3.4\times$
+per poly}, explained primarily by $7/2$ times more PRF output bytes rather than
+a missing AVX2 CBD kernel.
+The $q{=}7681$ NTT adds $\approx{}1{,}700$ cycles per polynomial on the AVX2
+Route-A path vs.\ $\approx{}100$ cycles for ML-KEM's $q{=}3329$ assembly NTT.
+At $(128,5)$, ML-KEM-512 and \textsc{WEAVER-640} both use $\eta_2{=}2$ in
+encaps; the smaller CBD delta ($+1{,}873$) is driven mainly by module rank
+($k{=}5$ vs.\ $k{=}2$), not by a larger $\eta$.
 %
-\emph{Implementation-aligned} \texttt{gen\_matrix} remains
-\textbf{1.5$\times$} ML-KEM's \texttt{gen\_a} at $(256,4)$ after recent
-SHAKE256$\times$4 and rejection-sampling optimizations ($\approx{}12.3$\,k vs.\
-$\approx{}8.1$\,k cycles); at $(128,5)$ the higher module rank drives a
-$\approx{}6.3$\,k vs.\ $\approx{}2.0$\,k cycle gap.
+\emph{Symmetric-primitive} \texttt{gen\_matrix} plus FO hashing/PRFs contribute
+only $\approx{}2{,}000$ cycles of the $(256,4)$ AVX2 gap
+(Table~\ref{tab:overhead_breakdown}); the reference implementations differ mainly
+because scalar \texttt{gen\_matrix} costs $\approx{}69$\,k cycles per call
+vs.\ $\approx{}36$\,k for ML-KEM's scalar \texttt{gen\_a} at the same $(n,k)$.
+After AVX2 optimization, \texttt{gen\_matrix} is within \textbf{1.5$\times$} of
+\texttt{gen\_a} ($\approx{}12.2$\,k vs.\ $\approx{}8.1$\,k cycles at $(256,4)$);
+at $(128,5)$ the higher module rank still drives a $\approx{}12.8$\,k vs.\
+$\approx{}2.0$\,k cycle gap.
 
 The same split explains key generation: $\mathrm{Inv}_q$ and BCH are not
 invoked, yet \textsc{WEAVER-1024} key generation exceeds ML-KEM-1024 by
 $\approx{}62{,}000$ cycles because of four $q{=}7681$ NTTs during public-key
-packing/unpacking and five \texttt{gen\_matrix} calls worth of SHAKE256 work
-per keypair.
+packing/unpacking and four \texttt{gen\_matrix} calls per keypair.
 On \textsc{WEAVER-640}, 9-bit compressed public-key packing
 ($\approx{}1{,}600$ cycles per \texttt{polyvec\_compress\_pk}) and five
 secret/noise polynomials account for most of the remaining KeyGen gap.
@@ -234,23 +425,23 @@ inside decapsulation omits the \texttt{randombytes} draw present in
 \cmidrule(lr){2-4}\cmidrule(lr){5-7}
 \textbf{Component} & ML-KEM & Weaver & $\Delta$ & ML-KEM & Weaver & $\Delta$ \\
 \midrule
-\texttt{gen\_matrix}              & 2{,}030 & 12{,}740 & +10{,}710
-                                  & 8{,}060 & 12{,}375 & +4{,}315 \\
-\texttt{poly\_getnoise} (CBD)     & 3{,}170 & 4{,}600  & +1{,}430
-                                  & 1{,}970 & 21{,}140 & +19{,}170 \\
-NTT + \texttt{basemul}            & 520     & 3{,}400  & +2{,}880
-                                  & 520     & 7{,}925  & +7{,}405 \\
-\textbf{Inv}$_q$ ($\dagger$)      & ---     & \textbf{5{,}095}  & \textbf{+5{,}095}$^\dagger$
-                                  & ---      & \textbf{4{,}757} & \textbf{+4{,}757}$^\dagger$ \\
+\texttt{gen\_matrix}              & 2{,}030 & 12{,}635 & +10{,}605
+                                  & 8{,}060 & 9{,}749  & +1{,}689 \\
+\texttt{poly\_getnoise} (CBD)     & 3{,}170 & 5{,}043  & +1{,}873
+                                  & 1{,}970 & 21{,}241 & +19{,}271 \\
+NTT + \texttt{basemul}            & 520     & 3{,}352  & +2{,}832
+                                  & 520     & 7{,}902  & +7{,}382 \\
+\textbf{Inv}$_q$ ($\dagger$)      & ---     & \textbf{5{,}069}  & \textbf{+5{,}069}$^\dagger$
+                                  & ---      & \textbf{4{,}809} & \textbf{+4{,}809}$^\dagger$ \\
 \textbf{BCH MsgEncode} ($\dagger$)& 25      & \textbf{363}  & \textbf{+338}$^\dagger$
                                   & 25       & \textbf{675}  & \textbf{+650}$^\dagger$ \\
 Compress + pack                   & 500     & 1{,}610  & +1{,}110
-                                  & 500      & 2{,}235  & +1{,}735 \\
+                                  & 500      & 2{,}260  & +1{,}760 \\
 \texttt{randombytes} + hash       & 3{,}350 & 3{,}900  & +550
                                   & 5{,}500  & 5{,}800  & +300 \\
 \midrule
-\textbf{Total (KEM Encaps)}       & \textbf{11{,}595} & \textbf{46{,}980} & \textbf{+35{,}385}
-                                  & \textbf{24{,}390} & \textbf{99{,}400} & \textbf{+75{,}010} \\
+\textbf{Total (KEM Encaps)}       & \textbf{11{,}595} & \textbf{47{,}241} & \textbf{+35{,}646}
+                                  & \textbf{24{,}387} & \textbf{99{,}241} & \textbf{+74{,}854} \\
 \bottomrule
 \end{tabular}
 \smallskip\\
@@ -259,25 +450,72 @@ Compress + pack                   & 500     & 1{,}610  & +1{,}110
 Weaver $\mathrm{Inv}_q$/BCH/\texttt{gen\_matrix}/CBD/compress rows are segment
 medians from \texttt{bin/profile\_encap\_512} and
 \texttt{bin/profile\_encap\_1024} (\texttt{tools/profile\_encap\_decaps.c});
-ML-KEM rows from the Kyber AVX2 harness.}
+ML-KEM rows from the Kyber AVX2 harness.
+Weaver \texttt{poly\_getnoise} sums $k$ polys ($k{=}4$ at $(256,4)$); ML-KEM
+segments use the Kyber harness definition (typically fewer calls or a partial
+sum---use per-poly microbenchmarks above for $\eta$-normalized comparison).}
 \end{table}
 
+\paragraph{Bandwidth--performance trade-off.}
+Table~\ref{tab:bandwidth_perfc} normalizes AVX2 encapsulation cost by total
+on-the-wire bytes ($|\mathsf{pk}|{+}|\mathsf{ct}|$).
+Weaver is \emph{not} CPU-competitive with ML-KEM at equal security framing, but
+the gap narrows when performance is stated per byte transmitted---reflecting the
+design goal of aggressive ciphertext/public-key compression rather than minimum
+cycle count on identical Kyber parameters.
+
+\begin{table}[t]
+\centering
+\caption{AVX2 encapsulation cost vs.\ bandwidth (256-bit tier).}
+\label{tab:bandwidth_perfc}
+\renewcommand{\arraystretch}{1.12}
+\small
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Scheme} & \textbf{Encaps (cycles)} & \textbf{$|\mathsf{pk}|{+}|\mathsf{ct}|$ (B)} &
+  \textbf{Cycles / byte} \\
+\midrule
+ML-KEM-1024 & 24{,}387 & 3{,}136 & 7.8 \\
+\textsc{WEAVER-1024} & 99{,}241 & 2{,}848 & 34.8 \\
+\midrule
+\multicolumn{4}{l}{\footnotesize Ratio Weaver/ML-KEM: $4.1\times$ cycles,
+$0.91\times$ bytes, $4.5\times$ cycles/byte.} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Implementation headroom (AVX2, KAT-safe).}
+The AVX2 speedup ceiling is lower than ML-KEM's because several dominant terms
+($q{=}7681$ NTT, $\eta{=}7$ PRF) are already partially optimized but cannot be
+replaced by alternate NTT conventions without breaking KAT match to the reference
+implementation.
+Documented headroom on the current parameter sets includes: enabling the existing
+$q{=}7681$ assembly NTT ($\approx{}20\%$ on \texttt{poly\_ntt}), invNTT tail
+SIMD, and batched SHAKE256$\times$4 PRF for the $k$ encaps noise polynomials
+(the latter targets the $\approx{}90\%$ PRF fraction of $\eta{=}7$ \texttt{poly\_getnoise}).
+These are incremental gains (order \textbf{10\%} end-to-end on encaps), not a path to
+ML-KEM-class $6\times$ ref-to-AVX ratios while $(q,\eta_1)$ remain unchanged.
+
 Excluding the two design-intrinsic components ($\mathrm{Inv}_q$ and BCH), the
-remaining encapsulation overhead is $+29{,}925$ and $+69{,}580$ cycles on
+remaining AVX2 encapsulation overhead is $+30{,}177$ and $+69{,}374$ cycles on
 \textsc{WEAVER-640} (128-bit row) and \textsc{WEAVER-1024} (256-bit row),
 respectively.
 On the matched $(256,4)$ row this corresponds to $93\%$ of the measured excess;
-CBD, $q{=}7681$ NTT, and \texttt{gen\_matrix} dominate, while $\mathrm{Inv}_q$
-and BCH together contribute under 8\%.
-The performance gap is therefore a combination of deliberate bandwidth--security
-trade-offs \emph{and} the heavier $q{=}7681$ / $\eta_1{=}7$ parameterization,
-not a shortfall in \texttt{polyvec\_basemul\_acc} (which matches ML-KEM-1024
-at $\approx{}155$ cycles on both sides).
+CBD, $q{=}7681$ NTT, and compression dominate, while $\mathrm{Inv}_q$
+and BCH together contribute under 7\%.
+Symmetric matrix expansion and FO hashing jointly account for under 3\% of the
+AVX2 gap at $(256,4)$, whereas on portable C they explain most of the
+1.2$\times$ full-encapsulation ratio (Table~\ref{tab:symmetric_strip}).
+The performance gap on optimized builds is therefore a combination of deliberate
+bandwidth--security trade-offs \emph{and} the heavier $q{=}7681$ / $\eta_1{=}7$
+parameterization, not a shortfall in \texttt{polyvec\_basemul\_acc} (which matches
+ML-KEM-1024 at $\approx{}155$ cycles on both sides).
 
-Component-level timings on the AVX2 SHAKE256 build show that
+Component-level timings on the AVX2 Keccak build show that
 \texttt{gen\_matrix} at $(256,4)$ is $\approx{}1.5\times$ ML-KEM's
-\texttt{gen\_a} ($\approx{}12.3$\,k vs.\ $\approx{}8.1$\,k cycles); Keccak
-$\times$4 absorption still accounts for the majority of that kernel.
+\texttt{gen\_a} ($\approx{}12.2$\,k vs.\ $\approx{}8.1$\,k cycles); Keccak
+$\times$4 absorption still accounts for the majority of that kernel, but it is
+no longer the dominant term in the end-to-end gap once both sides use AVX2.
 Single-polynomial NTT at $q{=}7681$ costs $\approx{}1{,}800$ cycles vs.\
 $\approx{}100$ cycles for ML-KEM's $q{=}3329$ AVX2 NTT.
 The \textsc{WEAVER-640} KeyGen gap vs.\ ML-KEM-512 is driven primarily by
@@ -286,6 +524,6 @@ and 9-bit public-key packing ($\approx{}1.6$\,k cycles per
 \texttt{polyvec\_compress\_pk}).
 
 On \textsc{WEAVER-2048}, end-to-end performance is dominated by matrix sampling
-and serialization; \texttt{gen\_matrix} costs $\approx{}21.7$\,k cycles per call
+and serialization; \texttt{gen\_matrix} costs $\approx{}17.4$\,k cycles per call
 in the AVX2 build, and fused \texttt{polyvec\_basemul\_acc} accounts for
 $\approx{}3.3$\,k cycles per dot product at $n{=}512$.

@@ -89,20 +89,6 @@
 #define WEAVER_SECRETKEYBYTES  (WEAVER_SK_Z_OFFSET + WEAVER_SYMBYTES)
 #define WEAVER_CIPHERTEXTBYTES  WEAVER_INDCPA_BYTES
 
-/* Kyber AVX2 NTT only valid for n=256, q=3329 (legacy path; NGCC modes use portable C). */
-#if !defined(WEAVER_AVX256_NTT) && (WEAVER_N == 256) && (WEAVER_Q == 3329) && defined(WEAVER_USE_AVX_NTT)
-#define WEAVER_AVX256_NTT 1
-#endif
-
-#if defined(WEAVER_AVX256_NTT)
-#define WEAVER_AVX_GEN_MATRIX 1
-#define WEAVER_USE_AVX_COMPRESS 1
-#endif
-
-#if (WEAVER_N == 512) && (WEAVER_Q == 3329) && defined(WEAVER_USE_AVX_FQ_512)
-#define WEAVER_USE_AVX_NTT512 1
-#endif
-
 #if (WEAVER_Q == 7681) && defined(WEAVER_USE_AVX_NTT7681) && \
     (WEAVER_N == 256 || WEAVER_N == 512)
 #define WEAVER_USE_AVX_NTT7681_ON 1

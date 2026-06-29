@@ -174,11 +174,7 @@ int main(void)
 
   printf("========== component benchmark: %s (N=%d K=%d, NTESTS=%d) ==========\n",
          CRYPTO_ALGNAME, WEAVER_N, WEAVER_K, NTESTS);
-#if WEAVER_MATRIX_NEEDS_NTTUNPACK
-  printf("layout: Kyber-AVX packed matrix + poly_nttunpack\n");
-#else
-  printf("layout: standard coefficient order (no nttunpack)\n");
-#endif
+  printf("layout: standard coefficient order\n");
 
   randombytes(seed, sizeof(seed));
   randombytes(msg, sizeof(msg));

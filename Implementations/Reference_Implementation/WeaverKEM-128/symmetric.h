@@ -11,11 +11,7 @@
  * ICCS symmetric layer.
  * Hash/XOF via auxfunc (sm3hash, pseudohash, pseudoXOF).
  */
-#if WEAVER_MODE == 1
 #define XOF_BLOCKBYTES 168
-#else
-#define XOF_BLOCKBYTES 136
-#endif
 #define SHAKE256_RATE 136
 
 typedef struct {
@@ -104,11 +100,7 @@ void weaver_shake256_prf(uint8_t *out, size_t outlen, const uint8_t key[WEAVER_S
 #define weaver_shake256_rkprf WEAVER_NAMESPACE(weaver_shake256_rkprf)
 void weaver_shake256_rkprf(uint8_t out[WEAVER_SSBYTES], const uint8_t key[WEAVER_SYMBYTES], const uint8_t input[WEAVER_CIPHERTEXTBYTES]);
 
-#if WEAVER_MODE == 1
 #define XOF_BLOCKBYTES SHAKE128_RATE
-#else
-#define XOF_BLOCKBYTES SHAKE256_RATE
-#endif
 
 #define hash_h(OUT, IN, INBYTES) weaver_hash_h((OUT), (IN), (INBYTES))
 #define hash_g(OUT, IN, INBYTES) weaver_hash_g((OUT), (IN), (INBYTES))

@@ -15,6 +15,7 @@ set(WEAVER_AVX2_CORE_SRC
   ${WEAVER_AVX2_SRC}/verify.c
   ${WEAVER_AVX2_SRC}/poly_invq.c
   ${WEAVER_AVX2_SRC}/cbd_avx2.c
+  ${WEAVER_AVX2_SRC}/rejsample.c
 )
 
 set(WEAVER_ICCS_LOCAL_SRC
@@ -60,6 +61,9 @@ function(weaver_add_optimized_kat exe_name kem_c_file mode)
   endif()
   if(UNIX)
     target_link_libraries(${exe_name} m)
+    # Check if OpenSSL is needed
+    find_package(OpenSSL REQUIRED)
+    target_link_libraries(${exe_name} OpenSSL::Crypto)
   endif()
   add_custom_target(generate_kat_${exe_name}
     COMMAND ${exe_name}

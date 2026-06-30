@@ -2,52 +2,103 @@
 
 ## Directory Structure
 
+提交包解压后，`Implementations/` 与 `Test_Vectors/` 为同级目录：
+
 ```
-Implementations/
-├── Reference_Implementation/          # Portable reference implementation (ISO C)
-│   ├── WeaverKEM-128/                # WEAVER_MODE=1, 128-bit classical security
-│   ├── WeaverKEM-256/                # WEAVER_MODE=3, 256-bit classical security
-│   ├── WeaverKEM-512/                # WEAVER_MODE=5, 512-bit classical security
-│   ├── CMakeLists.txt                # Build configuration for reference
-│   └── TESTING.md                    # Test instructions
-├── Optimized_Implementation/          # AVX2-optimized implementation
-│   ├── WeaverKEM-128/                # AVX2 optimized, 128-bit classical security
-│   ├── WeaverKEM-256/                # AVX2 optimized, 256-bit classical security
-│   ├── WeaverKEM-512/                # AVX2 optimized, 512-bit classical security
-│   ├── cmake/                        # Shared CMake utilities
-│   └── CMakeLists.txt                # Build configuration for optimized
-└── README.md                         # This file
+<submission-root>/
+├── Implementations/
+│   ├── Reference_Implementation/          # Portable reference implementation (ISO C)
+│   │   ├── WeaverKEM-128/                # WEAVER_MODE=1, 128-bit classical security
+│   │   ├── WeaverKEM-256/                # WEAVER_MODE=3, 256-bit classical security
+│   │   ├── WeaverKEM-512/                # WEAVER_MODE=5, 512-bit classical security
+│   │   ├── CMakeLists.txt
+│   │   └── TESTING.md                    # Detailed KAT testing guide
+│   ├── Optimized_Implementation/          # AVX2-optimized implementation
+│   │   ├── WeaverKEM-128/
+│   │   ├── WeaverKEM-256/
+│   │   ├── WeaverKEM-512/
+│   │   ├── cmake/
+│   │   └── CMakeLists.txt
+│   └── README.md                         # This file
+└── Test_Vectors/
+    ├── KAT_KEM_WeaverKEM-128.txt
+    ├── KAT_KEM_WeaverKEM-256.txt
+    └── KAT_KEM_WeaverKEM-512.txt
+```
+
+## Prerequisites
+
+### Reference Implementation
+
+- C compiler (gcc/clang), CMake ≥ 3.10, make or Ninja
+
+```bash
+# Ubuntu / Debian
+sudo apt update && sudo apt install -y gcc cmake make
+```
+
+### Optimized Implementation
+
+- C compiler with **AVX2** support, CMake ≥ 3.14, make or Ninja
+- **OpenSSL** development libraries
+
+```bash
+# Ubuntu / Debian
+sudo apt update && sudo apt install -y gcc cmake make libssl-dev
 ```
 
 ## Building the Implementations
 
+> **重要：** 请先进入项目根目录（包含 `Implementations/` 和 `Test_Vectors/` 的目录）。
+> 开发仓库中为 `~/weaverkem/`。**不要**在错误的 `build/` 子目录里执行下列命令。
+> 可先确认：`ls Implementations Test_Vectors` 应能列出两个目录。
+
+```bash
+cd ~/weaverkem    # 替换为你的 <submission-root> 实际路径
+```
+
 ### Reference Implementation (Portable, ISO C)
 
 ```bash
-cd Reference_Implementation
-mkdir build
-cd build
+cd ~/weaverkem/Implementations/Reference_Implementation
+mkdir -p build && cd build
 cmake ..
-make generate_kat
+cmake --build . --target generate_kat
 ```
 
-This generates KAT test vectors in `bin/output/KAT_KEM_*.txt`.
+生成文件位于 `Implementations/Reference_Implementation/build/bin/output/KAT_KEM_*.txt`。
 
 ### Optimized Implementation (AVX2)
 
 ```bash
-cd Optimized_Implementation
-mkdir build
-cd build
+cd ~/weaverkem/Implementations/Optimized_Implementation
+mkdir -p build && cd build
 cmake ..
-make generate_kat
+cmake --build . --target generate_kat
 ```
 
-This generates KAT test vectors using AVX2-optimized kernels.
+生成文件位于 `Implementations/Optimized_Implementation/build/bin/output/KAT_KEM_*.txt`。
 
-### Verify Test Vectors Match
+**Optional CMake flags** (for modes 3/5):
 
-From the project root:
+- `-DWEAVER_USE_AVX_NTT7681=OFF` — disable `ntt7681_avx.c` kernel (default: ON)
+- `-DWEAVER_USE_AVX_COMPRESS7681=OFF` — disable `poly_compress_avx.c` (default: ON)
+
+构建成功时，终端输出三行：
+
+```text
+Files have been saved in the 'output' folder within the working directory.
+```
+
+## Verify Test Vectors Match
+
+验证命令同样从项目根目录（`~/weaverkem/`）执行：
+
+```bash
+cd ~/weaverkem
+```
+
+### Reference Implementation
 
 ```bash
 for NAME in WeaverKEM-128 WeaverKEM-256 WeaverKEM-512; do
@@ -61,12 +112,40 @@ for NAME in WeaverKEM-128 WeaverKEM-256 WeaverKEM-512; do
 done
 ```
 
-Expected output:
+### Optimized Implementation
+
+**方式一** — CMake 内置目标：
+
+```bash
+cd ~/weaverkem/Implementations/Optimized_Implementation/build
+cmake --build . --target verify_kat
 ```
+
+无报错即表示与 `Test_Vectors/` 一致。
+
+**方式二** — 手动 diff（在 `<submission-root>/` 下）：
+
+```bash
+for NAME in WeaverKEM-128 WeaverKEM-256 WeaverKEM-512; do
+    FILE1="Implementations/Optimized_Implementation/build/bin/output/KAT_KEM_$NAME.txt"
+    FILE2="Test_Vectors/KAT_KEM_$NAME.txt"
+    if diff -q "$FILE1" "$FILE2" > /dev/null 2>&1; then
+        echo "$NAME: PASS (output == Test_Vectors)"
+    else
+        echo "$NAME: FAIL (files differ)"
+    fi
+done
+```
+
+预期输出（Reference 与 Optimized 均应 PASS）：
+
+```text
 WeaverKEM-128: PASS (output == Test_Vectors)
 WeaverKEM-256: PASS (output == Test_Vectors)
 WeaverKEM-512: PASS (output == Test_Vectors)
 ```
+
+更详细的测试说明见 [`Reference_Implementation/TESTING.md`](Reference_Implementation/TESTING.md)。
 
 ## File Descriptions
 
@@ -135,7 +214,7 @@ The actual WeaverKEM cryptographic operations are implemented in:
 - All randomness sourced from SM3-DRNG via `drng_algorithm`
 - Uses ICCS-provided `auxfunc` for SM3 hash and XOF
 
-**File count per instance:** ~45 files (full algorithm implementation + ICCS interface)
+**File count per instance:** ~47 files (full algorithm implementation + ICCS interface)
 
 ### Optimized Implementation (AVX2)
 
@@ -146,8 +225,7 @@ The actual WeaverKEM cryptographic operations are implemented in:
 - Same NGCC API as Reference (`kem_keygen` / `kem_enc` / `kem_dec`)
 - Same SM3-DRNG randomness source as Reference
 - Uses identical ICCS-provided interfaces (`drng.c`, `auxfunc.c`, `KAT_KEM.c`)
-- Core algorithm kernels linked from `../../avx2_weaver/src/`
-- Each instance folder contains only interface files (minimal ~12 files per instance)
+- Core algorithm kernels included locally in each instance folder (~55 files per instance)
 
 **AVX2 Kernels by Instance:**
 
@@ -157,21 +235,6 @@ The actual WeaverKEM cryptographic operations are implemented in:
 | WeaverKEM-256 | `ntt7681_avx.c` | `cbd_avx2.c` | `poly_compress_avx.c` (10/8-bit) |
 | WeaverKEM-512 | `ntt7681_avx.c` | `cbd_avx2.c` | `poly_compress_avx.c` (11/9-bit) |
 
-**Build Instructions:**
-
-```bash
-cd Optimized_Implementation
-mkdir build
-cd build
-cmake ..
-cmake --build . --target generate_kat
-```
-
-**Optional CMake Flags:**
-- `-DWEAVER_USE_AVX_NTT7681=OFF` - Disable ntt7681_avx kernel for modes 3/5 (default: ON)
-- `-DWEAVER_USE_AVX_COMPRESS7681=OFF` - Disable poly_compress_avx for modes 3/5 (default: ON)
-
-**Performance:**
 All three instances undergo identical test-vector generation using the same deterministic SM3-DRNG,
 ensuring bit-exact equivalence between Reference and Optimized outputs.
 
@@ -201,7 +264,6 @@ Both Reference and Optimized implementations use ICCS-provided cryptographic fun
 - **Pseudo-hash:** via `auxfunc.c` function `pseudohash()`
 
 These are integrated via `symmetric-iccs.c` which wraps the `auxfunc` interface.
-The build system uses `-include symmetric.h` to override any conflicting hash definitions.
 
 ## Test Vector Verification
 
@@ -213,7 +275,7 @@ Test_Vectors/
 └── KAT_KEM_WeaverKEM-512.txt
 ```
 
-Each KAT file contains 100 test vectors covering:
+Each KAT file contains **10** test cases covering:
 - Key generation (public key, secret key)
 - Encapsulation (ciphertext, shared secret)
 - Decapsulation (shared secret recovery)

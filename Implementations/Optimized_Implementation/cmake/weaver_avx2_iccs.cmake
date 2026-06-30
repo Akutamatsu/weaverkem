@@ -1,38 +1,34 @@
 # Shared sources/flags for Optimized_Implementation KAT executables.
-# ICCS symmetric (SM3) + scalar gen_matrix; AVX2 NTT/CBD/compress from avx2_weaver.
+# ICCS symmetric (SM3) + scalar gen_matrix; AVX2 NTT/CBD/compress kernels are local.
 
 set(WEAVER_AVX2_CORE_SRC
-  ${WEAVER_AVX2_SRC}/indcpa.c
-  ${WEAVER_AVX2_SRC}/kem_cca.c
-  ${WEAVER_AVX2_SRC}/msgenc.c
-  ${WEAVER_AVX2_SRC}/bch_high.c
-  ${WEAVER_AVX2_SRC}/bch_low.c
-  ${WEAVER_AVX2_SRC}/polyvec.c
-  ${WEAVER_AVX2_SRC}/poly.c
-  ${WEAVER_AVX2_SRC}/ntt.c
-  ${WEAVER_AVX2_SRC}/cbd.c
-  ${WEAVER_AVX2_SRC}/reduce.c
-  ${WEAVER_AVX2_SRC}/verify.c
-  ${WEAVER_AVX2_SRC}/poly_invq.c
-  ${WEAVER_AVX2_SRC}/cbd_avx2.c
-  ${WEAVER_AVX2_SRC}/rejsample.c
+  indcpa.c
+  kem_cca.c
+  msgenc.c
+  bch_high.c
+  bch_low.c
+  polyvec.c
+  poly.c
+  ntt.c
+  cbd.c
+  reduce.c
+  verify.c
+  poly_invq.c
+  cbd_avx2.c
+  rejsample.c
 )
 
 set(WEAVER_ICCS_LOCAL_SRC
   drng.c
   auxfunc.c
   KAT_KEM.c
-)
-
-set(WEAVER_AVX2_SYMMETRIC_ICCS
-  ${WEAVER_AVX2_SRC}/symmetric-iccs.c
+  symmetric-iccs.c
 )
 
 function(weaver_add_optimized_kat exe_name kem_c_file mode)
   set(extra_avx_src ${ARGN})
   set(sources
     ${WEAVER_ICCS_LOCAL_SRC}
-    ${WEAVER_AVX2_SYMMETRIC_ICCS}
     ${kem_c_file}
     ${WEAVER_AVX2_CORE_SRC}
     ${extra_avx_src}
@@ -40,7 +36,6 @@ function(weaver_add_optimized_kat exe_name kem_c_file mode)
   add_executable(${exe_name} ${sources})
   target_include_directories(${exe_name} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${WEAVER_AVX2_SRC}
   )
   target_compile_definitions(${exe_name} PRIVATE
     WEAVER_MODE=${mode}
@@ -61,7 +56,6 @@ function(weaver_add_optimized_kat exe_name kem_c_file mode)
   endif()
   if(UNIX)
     target_link_libraries(${exe_name} m)
-    # Check if OpenSSL is needed
     find_package(OpenSSL REQUIRED)
     target_link_libraries(${exe_name} OpenSSL::Crypto)
   endif()

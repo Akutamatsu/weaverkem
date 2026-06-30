@@ -1,6 +1,6 @@
-# WeaverKEM Reference Implementation — Testing Guide
+# WeaverKEM — KAT Testing Guide
 
-本文档说明如何在 **Unix/Linux** 和 **Windows (MSYS2 MINGW64)** 上编译并测试三个参考实现，并验证测试向量的正确性。
+本文档说明如何在 **Unix/Linux** 和 **Windows (MSYS2 MINGW64)** 上编译并测试 Reference 与 Optimized 实现，并验证测试向量的正确性。
 
 ---
 
@@ -9,115 +9,167 @@
 解压提交压缩包后，目录结构如下：
 
 ```text
-weaverkem-main/
-├── ref/src/                              # 算法核心源码（三个实例共享）
+<submission-root>/
 ├── Implementations/
-│   └── Reference_Implementation/
-│       ├── WeaverKEM-128/                # WEAVER_MODE=1，128-bit 经典安全
-│       ├── WeaverKEM-256/                # WEAVER_MODE=3，256-bit 经典安全
-│       └── WeaverKEM-512/                # WEAVER_MODE=5，512-bit 经典安全
+│   ├── Reference_Implementation/
+│   │   ├── WeaverKEM-128/                # WEAVER_MODE=1，128-bit 经典安全
+│   │   ├── WeaverKEM-256/                # WEAVER_MODE=3，256-bit 经典安全
+│   │   └── WeaverKEM-512/                # WEAVER_MODE=5，512-bit 经典安全
+│   └── Optimized_Implementation/         # AVX2 优化实现（需 OpenSSL）
+│       ├── WeaverKEM-128/
+│       ├── WeaverKEM-256/
+│       └── WeaverKEM-512/
 └── Test_Vectors/
     ├── KAT_KEM_WeaverKEM-128.txt
     ├── KAT_KEM_WeaverKEM-256.txt
     └── KAT_KEM_WeaverKEM-512.txt
 ```
 
-以下所有命令均以 **`weaverkem-main/` 为工作目录起点**。
+验证 diff 命令以 **`<submission-root>/`** 为工作目录；编译前请先确认当前目录正确：
+
+```bash
+cd ~/weaverkem    # 替换为你的项目根目录
+ls Implementations Test_Vectors   # 两个目录都应存在
+```
 
 ---
 
-## 方法一：Unix / Linux 测试（推荐，评审方使用此方式）
+## 方法一：Unix / Linux 测试（推荐）
 
 ### 前置条件
 
+**Reference Implementation：**
+
 ```bash
 # Ubuntu / Debian
-sudo apt update && sudo apt install -y gcc make cmake
+sudo apt update && sudo apt install -y gcc cmake make
 
 # CentOS / RHEL / Fedora
-sudo yum install -y gcc make cmake
+sudo yum install -y gcc cmake make
 ```
 
-验证工具链已就绪：
+**Optimized Implementation**（额外需要 OpenSSL）：
+
+```bash
+# Ubuntu / Debian
+sudo apt install -y libssl-dev
+```
+
+验证工具链：
 
 ```bash
 gcc --version
 cmake --version
 ```
 
-### 编译并生成测试向量
-
-进入 `weaverkem-main/Implementations/Reference_Implementation` 目录，执行以下命令：
+### Reference：编译并生成测试向量
 
 ```bash
-mkdir build
-cd build
+cd ~/weaverkem/Implementations/Reference_Implementation
+mkdir -p build && cd build
 cmake ..
-make generate_kat
+cmake --build . --target generate_kat
 ```
 
-如需从头重新配置构建目录，以如下命令删除构建目录后，再重新执行上述命令即可：
+如需从头重新配置：
 
 ```bash
 cd ..
 rm -rf build
 ```
 
-构建成功时，将在`build/bin` 目录下生成三个 KAT 输出程序，分别对应三个安全级别并自动执行，三个程序都运行成功将输出三行：
+构建成功时输出三行：
 
 ```text
 Files have been saved in the 'output' folder within the working directory.
-
-Files have been saved in the 'output' folder within the working directory.
-
-Files have been saved in the 'output' folder within the working directory.
 ```
 
-程序执行的产物 .txt 文件将输出到 `build/bin/output` 路径下。 
+生成的 `.txt` 文件位于 `Implementations/Reference_Implementation/build/bin/output/`。
+
+### Optimized：编译并生成测试向量
+
+```bash
+cd ~/weaverkem/Implementations/Optimized_Implementation
+mkdir -p build && cd build
+cmake ..
+cmake --build . --target generate_kat
+```
+
+生成的 `.txt` 文件位于 `Implementations/Optimized_Implementation/build/bin/output/`。
 
 ### 验证 output 与 Test_Vectors 完全一致
 
-在 `weaverkem-main/` 目录下执行：
+在 **`~/weaverkem/`**（项目根目录）下执行：
+
+```bash
+cd ~/weaverkem
+```
+
+**Reference：**
 
 ```bash
 for NAME in WeaverKEM-128 WeaverKEM-256 WeaverKEM-512; do
     FILE1="Implementations/Reference_Implementation/build/bin/output/KAT_KEM_$NAME.txt"
     FILE2="Test_Vectors/KAT_KEM_$NAME.txt"
     if diff -q "$FILE1" "$FILE2" > /dev/null 2>&1; then
-        echo "$NAME : PASS (output == Test_Vectors)"
+        echo "$NAME: PASS (output == Test_Vectors)"
     else
-        echo "$NAME : FAIL (files differ)"
+        echo "$NAME: FAIL (files differ)"
     fi
 done
 ```
 
-预期输出：
+**Optimized（手动 diff）：**
+
+```bash
+for NAME in WeaverKEM-128 WeaverKEM-256 WeaverKEM-512; do
+    FILE1="Implementations/Optimized_Implementation/build/bin/output/KAT_KEM_$NAME.txt"
+    FILE2="Test_Vectors/KAT_KEM_$NAME.txt"
+    if diff -q "$FILE1" "$FILE2" > /dev/null 2>&1; then
+        echo "$NAME: PASS (output == Test_Vectors)"
+    else
+        echo "$NAME: FAIL (files differ)"
+    fi
+done
+```
+
+**Optimized（CMake 一键验证）：**
+
+```bash
+cd ~/weaverkem/Implementations/Optimized_Implementation/build
+cmake --build . --target verify_kat
+```
+
+预期输出（三组均 PASS）：
 
 ```text
-WeaverKEM-128 : PASS (output == Test_Vectors)
-WeaverKEM-256 : PASS (output == Test_Vectors)
-WeaverKEM-512 : PASS (output == Test_Vectors)
+WeaverKEM-128: PASS (output == Test_Vectors)
+WeaverKEM-256: PASS (output == Test_Vectors)
+WeaverKEM-512: PASS (output == Test_Vectors)
 ```
+
+---
 
 ## 方法二：Windows MSYS2 MINGW64 测试
 
-> **重要**：必须使用 **MSYS2 MINGW64 终端**（从开始菜单打开，标题栏显示 `MINGW64`），
+> **重要**：必须使用 **MSYS2 MINGW64 终端**（标题栏显示 `MINGW64`），
 > 不能使用 PowerShell 或 cmd.exe。
->
 
 ### 前置条件
 
-在 MSYS2 MINGW64 终端中安装工具链：
-
 ```bash
 pacman -S mingw-w64-x86_64-gcc make cmake
+# Optimized 还需：
+pacman -S mingw-w64-x86_64-openssl
 ```
 
-### 请确保路径不含特殊字符、中文或空格，然后...
+### 编译与验证
 
-使用 cmake 的流程和前面基本一致（除了新建目录与删除目录等命令外），在此不做赘述。
+流程与 Linux 相同，使用 `cmake --build . --target generate_kat` 替代 `make generate_kat` 即可（两者在 MSYS2 中均可使用）。
 
+请确保路径不含特殊字符、中文或空格。
 
+---
 
 ## 测试结果解读
 

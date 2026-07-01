@@ -9,3 +9,4 @@ Implementations/Reference_Implementation/build
 *__pycache__*
 ref/speed_test/*.csv
 ref/src/*.o
+scripts/*.zip

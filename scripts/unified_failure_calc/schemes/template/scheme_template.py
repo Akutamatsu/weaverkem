@@ -40,6 +40,8 @@ class SchemeTemplate:
                  default_w: Optional[int] = None,
                  default_rep: int = 1,
                  default_size_dt: Optional[int] = None,
+                 default_pkseedlen: int = 32,
+                 default_cttaglen: int = 0,
                  default_c2_mode: str = "ring_embed",
                  default_skip_pk_rounding: bool = False,
                  default_codebits: Optional[int] = None,
@@ -53,6 +55,8 @@ class SchemeTemplate:
         self.thres_fn = thres_fn if thres_fn is not None else (lambda q, w: q / (2 ** (w + 1)))
         self.default_rep = default_rep
         self.default_size_dt = default_size_dt
+        self.default_pkseedlen = default_pkseedlen
+        self.default_cttaglen = default_cttaglen
         self.default_c2_mode = default_c2_mode
         self.default_skip_pk_rounding = default_skip_pk_rounding
         self.default_codebits = default_codebits
@@ -73,6 +77,8 @@ class SchemeTemplate:
                     default_w: Optional[int] = None,
                     default_rep: Optional[int] = None,
                     default_size_dt: Optional[int] = None,
+                    default_pkseedlen: Optional[int] = None,
+                    default_cttaglen: Optional[int] = None,
                     default_c2_mode: Optional[str] = None,
                     default_skip_pk_rounding: Optional[bool] = None,
                     default_codebits: Optional[int] = None,
@@ -98,6 +104,8 @@ class SchemeTemplate:
             default_w=(default_w if default_w is not None else self.default_w),
             default_rep=default_rep,
             default_size_dt=(default_size_dt if default_size_dt is not None else self.default_size_dt),
+            default_pkseedlen=(default_pkseedlen if default_pkseedlen is not None else self.default_pkseedlen),
+            default_cttaglen=(default_cttaglen if default_cttaglen is not None else self.default_cttaglen),
             default_c2_mode=(default_c2_mode if default_c2_mode is not None else self.default_c2_mode),
             default_skip_pk_rounding=(
                 default_skip_pk_rounding
@@ -129,6 +137,8 @@ class SchemeInstance:
                  default_w: Optional[int] = None,
                  default_rep: Optional[int] = None,
                  default_size_dt: Optional[int] = None,
+                 default_pkseedlen: Optional[int] = None,
+                 default_cttaglen: Optional[int] = None,
                  default_c2_mode: str = "ring_embed",
                  default_skip_pk_rounding: bool = False,
                  default_codebits: Optional[int] = None,
@@ -144,6 +154,8 @@ class SchemeInstance:
         self.default_w = default_w
         self.default_rep = default_rep if default_rep is not None else self.template.default_rep
         self.default_size_dt = default_size_dt if default_size_dt is not None else getattr(template, "default_size_dt", None)
+        self.default_pkseedlen = default_pkseedlen if default_pkseedlen is not None else getattr(template, "default_pkseedlen", 32)
+        self.default_cttaglen = default_cttaglen if default_cttaglen is not None else getattr(template, "default_cttaglen", 0)
         self.default_c2_mode = default_c2_mode if default_c2_mode is not None else getattr(template, "default_c2_mode", "ring_embed")
         self.default_skip_pk_rounding = (
             default_skip_pk_rounding
@@ -218,12 +230,12 @@ class SchemeInstance:
         return self.template.thres_fn(q, w)
 
     def calc_size(self,
-                  seedbytes: Optional[int] = 32,
                   mbar: Optional[int] = None,
                   nbar: Optional[int] = None):
         """
         计算输出参数对应的尺寸（字节）。
-        使用实例绑定的默认值：default_n、default_m、default_dt、default_du、default_dv。
+        使用实例绑定的默认值：default_n、default_m、default_dt、default_du、default_dv、
+        default_pkseedlen、default_cttaglen。
         mbar 和 nbar 为必需参数（不在实例上绑定）。
         返回 (pkBytes, ctBytes)
         """
@@ -240,15 +252,18 @@ class SchemeInstance:
         if size_dt_use is None or du_use is None or dv_use is None:
             raise ValueError("size_dt/du/dv must be bound on the instance to use calc_size")
 
+        pkseedlen_use = self.default_pkseedlen
+        cttaglen_use = self.default_cttaglen
+
         if self.default_k > 0: # m = n = k*NN.
             # 公钥尺寸必须使用“真实序列化位数”，不一定等于失败率分析中用于构造分布的 dt。
-            pkBytes = m_use * size_dt_use // 8 + seedbytes
-            ctBytes = (n_use * du_use + self.default_NN * dv_use) // 8
+            pkBytes = m_use * size_dt_use // 8 + pkseedlen_use
+            ctBytes = (n_use * du_use + self.default_NN * dv_use) // 8 + cttaglen_use
         else:
             if mbar is None or nbar is None:
                 raise ValueError("mbar and nbar must be provided to calc_size")
-            pkBytes = m_use * nbar * size_dt_use // 8 + seedbytes
-            ctBytes = (n_use * du_use + nbar * dv_use) * mbar // 8
+            pkBytes = m_use * nbar * size_dt_use // 8 + pkseedlen_use
+            ctBytes = (n_use * du_use + nbar * dv_use) * mbar // 8 + cttaglen_use
         
         return pkBytes, ctBytes
 

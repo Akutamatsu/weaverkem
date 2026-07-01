@@ -19,19 +19,21 @@ from binomial import est_after_correcting_k_bits
 # from schemes.sch_saber import LightSaber, Saber, FireSaber
 # from schemes.sch_lac import LAC128, LAC192, LAC256
 
-### 【当前在用参数】
-
-from schemes.sch_weaver_inv import Weaver128L1, Weaver256L2, Weaver512L2, Weaver256L1, Weaver512L1
-## for size:
-# from schemes.sch_weaver import Weaver128, Weaver256, Weaver512, Weaver256L1, Weaver512L1
+### 【提交版参数】
+from schemes.sch_weaver_inv import Weaver128L1, Weaver128L2, Weaver256L1, Weaver256L2, Weaver512L1, Weaver512L2
+from schemes.sch_loom import Loom128, Loom256, Loom512
 
 # 工厂字典便于 lookup
 _PRESETS = {
-    "Weaver128L1": Weaver128L1,
-    "Weaver256L1": Weaver256L1,
-    "Weaver256L2": Weaver256L2,
-    "Weaver512L1": Weaver512L1,
-    "Weaver512L2": Weaver512L2,
+    "Loom128": Loom128,
+    "Loom256": Loom256,
+    "Loom512": Loom512,
+    # "Weaver128L1": Weaver128L1,
+    # "Weaver128L2": Weaver128L2,
+    # "Weaver256L1": Weaver256L1,
+    # "Weaver256L2": Weaver256L2,
+    # "Weaver512L1": Weaver512L1,
+    # "Weaver512L2": Weaver512L2,
     # "LAC128": LAC128,
     # "LAC192": LAC192,
     # "LAC256": LAC256,
@@ -63,10 +65,6 @@ from math import log
 if __name__ == "__main__":
 
     testSchemes = get_preset_schemes()
-
-    # taglen = 32
-    taglen = 0
-
     # print (ceil(log2(15361//20)))
 
     '''for Ring/MLWE-based scheme:''' 
@@ -87,7 +85,7 @@ if __name__ == "__main__":
             est_after_correcting_k_bits(scheme.default_codebits, f, scheme.default_errtolerance) # print failure probability after error correction
         pkBytes, ctBytes = scheme.calc_size() # for Ring/MLWE-based scheme
         print(f"  Public key size: {pkBytes}")
-        print(f"  Ciphertext size: {ctBytes + taglen}")
+        print(f"  Ciphertext size: {ctBytes}")
         
 
     '''for LWE-based scheme:''' 

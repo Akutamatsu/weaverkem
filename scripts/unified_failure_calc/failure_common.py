@@ -227,8 +227,8 @@ def accumulate_errdistr(ds, n, m):
     #    按论文 Lemma 3.1 / 3.2，此时 c_v 应直接服从标准的 q -> 2^dv -> q
     #    canonical decompress 失真分布，因此应直接在模 q 下构造 rounding law。
     if ds.c2_mode == "compressed_embed":
-        # C = cond_combine_modswitch(ds.q, ds.logq, ds.dv, ds.Depp)  # (e'' + c_v) over R_q
-        C = build_asymmetric_error_law(ds.q, ds.dv) # directly build the canonical decompress error law for c_v, which is independent of Depp
+        C = cond_combine_modswitch(ds.q, ds.logq, ds.dv, ds.Depp)  # (e'' + c_v) over R_q
+        # C = build_asymmetric_error_law(ds.q, ds.dv) # directly build the canonical decompress error law for c_v, which is independent of Depp
 
     else:
         C0 = cond_combine_modswitch(ds.t, ds.dt, ds.dv, ds.Depp)  # legacy path

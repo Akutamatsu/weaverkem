@@ -342,13 +342,13 @@ void indcpa_enc(uint8_t c[WEAVER_INDCPA_BYTES],
   /*
    * WEAVER-Inv (Algorithm 2):
    *   1. 从 pk 中提取压缩后的桶编号（不做 Decompress）
-   *   2. 用 Inv_q 随机提升到 Z_q（消耗 nonce=0 的 PRF 输出）
+   *   2. 用 Inv_q 随机提升到 Z_q（经 *nonce 推进调用方计数器）
    *   3. NTT 变换
    */
   polyvec_fromcompressed_pk(&pkpv, pk);
   memcpy(seed, pk + WEAVER_PK_POLYVECBYTES, WEAVER_SYMBYTES);
 
-  polyvec_invq(&pkpv, coins, nonce++);
+  polyvec_invq(&pkpv, coins, &nonce);
   polyvec_ntt(&pkpv);
 #else
   unpack_pk(&pkpv, seed, pk);

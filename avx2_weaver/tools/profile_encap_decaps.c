@@ -198,7 +198,7 @@ static void profile_indcpa_enc(uint64_t overhead,
     if(run >= NWARM) t_parse[run - NWARM] = t1 - t0 - overhead;
 
     t0 = cpucycles();
-    polyvec_invq(&pkpv, coins, nonce++);
+    polyvec_invq(&pkpv, coins, &nonce);
     t1 = cpucycles();
     if(run >= NWARM) t_invq[run - NWARM] = t1 - t0 - overhead;
 

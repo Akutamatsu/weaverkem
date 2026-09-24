@@ -170,6 +170,7 @@ void poly_tomsg(uint8_t msg[WEAVER_INDCPA_MSGBYTES], const poly *a)
 
 #elif WEAVER_MODE == 3
   // all high bits and 4 of low bits
+  decode_bch_high_nibbles(mu_tilde, ELL_BAR_NIBBLES, mu_tilde + ELL_BAR_BYTES);
   memcpy(msg, mu_tilde, 27);
   msg[27] = (mu_tilde[27] & 0xF0) | ((mu_ddot_clean[4] >> 4) & 0xF);
   // low bits

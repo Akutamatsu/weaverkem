@@ -209,7 +209,7 @@ static int compute_error_locator_polynomial(const unsigned int *syn, struct gf_p
         {
             d = syn[2*i+2];
             
-            for (j = 1; j <=i+1 ; j++)
+            for (j = 1; j <= t && j <= 2*i+2; j++)
             {
                 mask_j=(j <= elp->deg)?0xffffffff:0x00;
                 tmp_d=gf_mul( elp->c[j], syn[2*i+2-j]);

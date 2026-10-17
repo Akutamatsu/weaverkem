@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include "params.h"
 
-#if defined(WEAVER_AVX256_NTT)
+#if (KYBER_N == 256)
 
 #define ntt_avx KYBER_NAMESPACE(_ntt_avx)
 void ntt_avx(int16_t *r, const int16_t *qdata);

@@ -4,13 +4,18 @@
 #include "params.h"
 #include "poly.h"
 
-#if defined(WEAVER_USE_AVX_COMPRESS) && (KYBER_N == 256)
 
+#if KYBER_N == 512
 #define poly_compress10_avx KYBER_NAMESPACE(_poly_compress10_avx)
 void poly_compress10_avx(uint8_t r[(KYBER_N * 10) / 8], const poly *a);
-
 #define poly_decompress10_avx KYBER_NAMESPACE(_poly_decompress10_avx)
 void poly_decompress10_avx(poly *r, const uint8_t a[(KYBER_N * 10) / 8]);
+
+#define poly_compress_d6_avx KYBER_NAMESPACE(_poly_compress_d6_avx)
+void poly_compress_d6_avx(uint8_t r[KYBER_POLYCOMPRESSEDBYTES], const poly *a);
+#define poly_decompress_d6_avx KYBER_NAMESPACE(_poly_decompress_d6_avx)
+void poly_decompress_d6_avx(poly *r, const uint8_t a[KYBER_POLYCOMPRESSEDBYTES]);
+#endif
 
 #if (KYBER_POLYCOMPRESSEDBYTES == (KYBER_N * 4 / 8))
 #define poly_compress_d4_avx KYBER_NAMESPACE(_poly_compress_d4_avx)
@@ -20,6 +25,5 @@ void poly_compress_d4_avx(uint8_t r[KYBER_POLYCOMPRESSEDBYTES], const poly *a);
 void poly_decompress_d4_avx(poly *r, const uint8_t a[KYBER_POLYCOMPRESSEDBYTES]);
 #endif
 
-#endif
 
 #endif

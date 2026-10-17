@@ -3,7 +3,7 @@
 #include <immintrin.h>
 #include "params.h"
 
-#if defined(WEAVER_AVX_GEN_MATRIX) && (KYBER_N == 256)
+#if (KYBER_N == 256) && (KYBER_N == 256)
 
 #include "indcpa.h"
 #include "polyvec.h"
@@ -302,4 +302,4 @@ void gen_matrix(polyvec *a, const uint8_t seed[KYBER_SYMBYTES], int transposed)
 }
 #endif
 
-#endif /* WEAVER_AVX_GEN_MATRIX && KYBER_N==256 */
+#endif

@@ -1,10 +1,10 @@
-/* Mode 5 (n=512): SHAKE128x4 parallel XOF + scalar rej_uniform (standard coefficient order).
+/* Mode 7 (n=512): SHAKE128x4 parallel XOF + scalar rej_uniform (standard coefficient order).
  * No Kyber packed layout and no poly_nttunpack. */
 #include <stdint.h>
 #include <immintrin.h>
 #include "params.h"
 
-#if defined(WEAVER_AVX_GEN_MATRIX512) && (KYBER_N == 512) && (KYBER_K == 4)
+#if (KYBER_N == 512) && (KYBER_K == 4)
 
 #include "indcpa.h"
 #include "polyvec.h"
@@ -13,7 +13,7 @@
 #include "fips202.h"
 #include "fips202x4.h"
 
-#if(XOF_BLOCKBYTES % 3)
+#if (XOF_BLOCKBYTES % 3)
 #error "gen_matrix assumes XOF_BLOCKBYTES is a multiple of 3"
 #endif
 
@@ -116,4 +116,4 @@ void gen_matrix(polyvec *a, const uint8_t seed[KYBER_SYMBYTES], int transposed)
     gen_matrix_row_x4(&a[i], seed, i, transposed, &state);
 }
 
-#endif /* WEAVER_AVX_GEN_MATRIX512 && KYBER_N==512 && KYBER_K==4 */
+#endif

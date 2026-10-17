@@ -4,6 +4,15 @@
 #include <stdint.h>
 #include "params.h"
 
+#if WEAVER_MODE == 7
+/* 448 high data bits + 63 ECC bits; 64 low data bits + 49 ECC bits.
+ * Byte padding occupies the unused final bits of each codeword. */
+#define ELL_BAR_BYTES 56
+#define ELL_DDOT_BYTES 8
+#define LOW_ECC_BYTES 7
+#define LOW_CODEWORD_BYTES 15
+#define D4_STEP_LEN 128
+#else
 #define ELL_BAR_BYTES        28 // ceil 220 bits = 28 bytes
 #define ELL_BAR_NIBBLES      55 // ceil 220 bits = 55 NIBBLES
 #define ELL_DDOT_BYTES       5  // ceil 33 bits = 5 bytes
@@ -14,6 +23,8 @@
 #define D4_STEP_LEN 64
 
 
+
+#endif
 
 #define poly_frommsg KYBER_NAMESPACE(_poly_frommsg)
 void poly_frommsg(poly *r, const uint8_t msg[KYBER_INDCPA_MSGBYTES]);

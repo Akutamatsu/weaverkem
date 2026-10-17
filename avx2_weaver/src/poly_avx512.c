@@ -1,10 +1,10 @@
-/* AVX2 NTT for Weaver n=512 (WEAVER-1024). Standard coefficient order (not Kyber shuffle).
+/* AVX2 NTT for Weaver n=512 (WEAVER-2048, mode 7). Standard coefficient order (not Kyber shuffle).
  * All loops are secret-independent (fixed bounds, no branches on secret data). */
 #include <stdint.h>
 #include <immintrin.h>
 #include "params.h"
 
-#if defined(WEAVER_USE_AVX_NTT512) && (KYBER_N == 512)
+#if (KYBER_N == 512)
 #include "ntt.h"
 #include "reduce.h"
 #include "ntt_avx512.h"
@@ -151,10 +151,10 @@ static inline void scatter_degree4_x4(int16_t *r,
 {
   int16_t o0[16], o1[16], o2[16], o3[16];
 
-  _mm256_store_si256((__m256i *)o0, r0);
-  _mm256_store_si256((__m256i *)o1, r1);
-  _mm256_store_si256((__m256i *)o2, r2);
-  _mm256_store_si256((__m256i *)o3, r3);
+  _mm256_storeu_si256((__m256i *)o0, r0);
+  _mm256_storeu_si256((__m256i *)o1, r1);
+  _mm256_storeu_si256((__m256i *)o2, r2);
+  _mm256_storeu_si256((__m256i *)o3, r3);
   r[0] = o0[0];
   r[4] = o0[1];
   r[8] = o0[2];
@@ -261,27 +261,13 @@ static void butterfly_block(int16_t *r, unsigned start, unsigned len, int16_t ze
 {
   unsigned int j;
 
-  if(len >= 16) {
-    for(j = start; j < start + len; j += 16) {
-      __m256i u = _mm256_load_si256((__m256i *)&r[j]);
-      __m256i v = _mm256_load_si256((__m256i *)&r[j + len]);
-      __m256i t = fqmul_zeta_ct(v, zeta);
-      _mm256_store_si256((__m256i *)&r[j], _mm256_add_epi16(u, t));
-      _mm256_store_si256((__m256i *)&r[j + len], _mm256_sub_epi16(u, t));
-    }
-    for(; j < start + len; j++) {
-      int16_t t = montgomery_reduce((int32_t)zeta * r[j + len]);
-      int16_t u = r[j];
-      r[j] = u + t;
-      r[j + len] = u - t;
-    }
-  } else {
-    for(j = start; j < start + len; j++) {
-      int16_t t = montgomery_reduce((int32_t)zeta * r[j + len]);
-      int16_t u = r[j];
-      r[j] = u + t;
-      r[j + len] = u - t;
-    }
+  /* Called only for power-of-two lengths 16..256; no scalar tail. */
+  for(j = start; j < start + len; j += 16) {
+    __m256i u = _mm256_load_si256((__m256i *)&r[j]);
+    __m256i v = _mm256_load_si256((__m256i *)&r[j + len]);
+    __m256i t = fqmul_zeta_ct(v, zeta);
+    _mm256_store_si256((__m256i *)&r[j], _mm256_add_epi16(u, t));
+    _mm256_store_si256((__m256i *)&r[j + len], _mm256_sub_epi16(u, t));
   }
 }
 
@@ -290,28 +276,14 @@ static void inv_butterfly_block(int16_t *r, unsigned start, unsigned len, int16_
 {
   unsigned int j;
 
-  if(len >= 16) {
-    for(j = start; j < start + len; j += 16) {
-      __m256i u = _mm256_load_si256((__m256i *)&r[j]);
-      __m256i v = _mm256_load_si256((__m256i *)&r[j + len]);
-      __m256i sum = _mm256_add_epi16(u, v);
-      __m256i diff = _mm256_sub_epi16(u, v);
-      _mm256_store_si256((__m256i *)&r[j], barrett_ct(sum));
-      _mm256_store_si256((__m256i *)&r[j + len], fqmul_zeta_ct(diff, zeta));
-    }
-    for(; j < start + len; j++) {
-      int16_t u = r[j];
-      int16_t v = r[j + len];
-      r[j] = barrett_reduce(u + v);
-      r[j + len] = montgomery_reduce((int32_t)zeta * (u - v));
-    }
-  } else {
-    for(j = start; j < start + len; j++) {
-      int16_t u = r[j];
-      int16_t v = r[j + len];
-      r[j] = barrett_reduce(u + v);
-      r[j + len] = montgomery_reduce((int32_t)zeta * (u - v));
-    }
+  /* Called only for power-of-two lengths 16..256; no scalar tail. */
+  for(j = start; j < start + len; j += 16) {
+    __m256i u = _mm256_load_si256((__m256i *)&r[j]);
+    __m256i v = _mm256_load_si256((__m256i *)&r[j + len]);
+    __m256i sum = _mm256_add_epi16(u, v);
+    __m256i diff = _mm256_sub_epi16(u, v);
+    _mm256_store_si256((__m256i *)&r[j], barrett_ct(sum));
+    _mm256_store_si256((__m256i *)&r[j + len], fqmul_zeta_ct(diff, zeta));
   }
 }
 
@@ -358,6 +330,23 @@ void basemul512_avx(int16_t *r, const int16_t *a, const int16_t *b)
   }
 }
 
+void poly_reduce512_avx(int16_t *r)
+{
+  for(unsigned int i = 0; i < KYBER_N; i += 16) {
+    __m256i x = _mm256_load_si256((const __m256i *)(r + i));
+    _mm256_store_si256((__m256i *)(r + i), barrett_avx2(x));
+  }
+}
+
+void poly_tomont512_avx(int16_t *r)
+{
+  const int16_t f = (1ULL << 32) % KYBER_Q;
+  for(unsigned int i = 0; i < KYBER_N; i += 16) {
+    __m256i x = _mm256_load_si256((const __m256i *)(r + i));
+    _mm256_store_si256((__m256i *)(r + i), fqmul_zeta_ct(x, f));
+  }
+}
+
 void poly_add512_avx(int16_t *r, const int16_t *a, const int16_t *b)
 {
   unsigned int i;
@@ -378,4 +367,4 @@ void poly_sub512_avx(int16_t *r, const int16_t *a, const int16_t *b)
   }
 }
 
-#endif /* WEAVER_USE_AVX_NTT512 */
+#endif

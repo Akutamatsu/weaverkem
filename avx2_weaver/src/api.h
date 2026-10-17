@@ -14,8 +14,10 @@
   #define CRYPTO_ALGNAME "WEAVER-768"
 #elif (WEAVER_MODE == 5)
   #define CRYPTO_ALGNAME "WEAVER-1024"
+#elif (WEAVER_MODE == 7)
+  #define CRYPTO_ALGNAME "WEAVER-2048"
 #else
-  #define CRYPTO_ALGNAME "WEAVER-UNKNOWN"
+  #error "Unsupported WEAVER_MODE"
 #endif
 
 #define crypto_kem_keypair KYBER_NAMESPACE(_keypair)

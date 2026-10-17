@@ -7,8 +7,7 @@
 #include "indcpa.h"
 #include "verify.h"
 #include "symmetric.h"
-//#include "randombytes.h"
-#include "rng.h"
+#include "randombytes.h"
 
 #ifdef PK_COMPRESS
 #include "invq.h"

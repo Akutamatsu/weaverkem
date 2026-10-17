@@ -2,7 +2,7 @@
 #define PARAMS_H
 
 #ifndef WEAVER_MODE
-#define WEAVER_MODE 3  /* 1: 512, 3: 768, 5: 1024 */
+#define WEAVER_MODE 3  /* 1: 512, 3: 768, 5: 1024, 7: 2048 */
 #endif
 
 #define PK_COMPRESS
@@ -10,7 +10,7 @@
 #if   (WEAVER_MODE == 1)
   #define KYBER_N 256
   #define KYBER_INDCPA_MSGBYTES       (KYBER_N / 8)
-  #define KYBER_NAMESPACE(s) pqcrystals_weaver512_avx2##s
+  #define KYBER_NAMESPACE(s) pqspin_weaver512_avx2##s
   #define KYBER_ETA1 5
   #define KYBER_ETA2 KYBER_ETA1
   #define KYBER_K 2
@@ -21,7 +21,7 @@
 #elif (WEAVER_MODE == 3)
   #define KYBER_N 256
   #define KYBER_INDCPA_MSGBYTES       (KYBER_N / 8)
-  #define KYBER_NAMESPACE(s) pqcrystals_weaver768_avx2##s
+  #define KYBER_NAMESPACE(s) pqspin_weaver768_avx2##s
   #define KYBER_ETA1 2
   #define KYBER_ETA2 KYBER_ETA1
   #define KYBER_K 3
@@ -32,7 +32,7 @@
 #elif (WEAVER_MODE == 5)
   #define KYBER_N 256
   #define KYBER_INDCPA_MSGBYTES       (KYBER_N / 8)
-  #define KYBER_NAMESPACE(s) pqcrystals_weaver1024_avx2##s
+  #define KYBER_NAMESPACE(s) pqspin_weaver1024_avx2##s
   #define KYBER_ETA1 2
   #define KYBER_ETA2 KYBER_ETA1
   #define KYBER_K 4
@@ -40,18 +40,19 @@
   #define KYBER_POLYVECCOMPRESSEDBYTES (KYBER_K * ((KYBER_N * 9) / 8))
   #define KYBER_POLYCOMPRESSEDBYTES    ((KYBER_N * 5) / 8)
 
+#elif (WEAVER_MODE == 7)
+  #define KYBER_N 512
+  #define KYBER_INDCPA_MSGBYTES       (KYBER_N / 8)
+  #define KYBER_NAMESPACE(s) pqspin_weaver2048_avx2##s
+  #define KYBER_ETA1 2
+  #define KYBER_ETA2 KYBER_ETA1
+  #define KYBER_K 4
+  #define KYBER_PK_POLYVECBYTES        (KYBER_K * ((KYBER_N * 10) / 8))
+  #define KYBER_POLYVECCOMPRESSEDBYTES (KYBER_K * ((KYBER_N * 10) / 8))
+  #define KYBER_POLYCOMPRESSEDBYTES    ((KYBER_N * 6) / 8)
+
 #else
-  #error "WEAVER_MODE must be in {1,3,5}"
-#endif
-
-/* Optional AVX2 NTT/basemul for n=256 (all modes). Enable with -DWEAVER_USE_AVX_NTT. */
-#if !defined(WEAVER_AVX256_NTT) && (KYBER_N == 256) && defined(WEAVER_USE_AVX_NTT)
-#define WEAVER_AVX256_NTT 1
-#endif
-
-#if defined(WEAVER_AVX256_NTT)
-#define WEAVER_AVX_GEN_MATRIX 1
-#define WEAVER_USE_AVX_COMPRESS 1
+  #error "WEAVER_MODE must be in {1,3,5,7}"
 #endif
 
 #define KYBER_Q     3329

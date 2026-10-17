@@ -3,7 +3,6 @@
 #include "ntt.h"
 #include "reduce.h"
 
-#if !defined(WEAVER_AVX256_NTT)
 
 /* Code to generate zetas and zetas_inv used in the number-theoretic transform:
 
@@ -113,10 +112,7 @@ void ntt(int16_t r[KYBER_N]) {
 
   k = 1;
   
-#if KYBER_N == 128
-  // 128 维：7层，底度为 1 (len 从 64 到 1)
-  for(len = 64; len >= 1; len >>= 1) {
-#elif KYBER_N == 256
+#if KYBER_N == 256
   // 256 维：7层，底度为 2 (len 从 128 到 2)
   for(len = 128; len >= 2; len >>= 1) {
 #elif KYBER_N == 512
@@ -174,9 +170,7 @@ void invntt(int16_t r[KYBER_N]) {
 
   k = 0;
 
-#if KYBER_N == 128
-  for(len = 1; len <= 64; len <<= 1) {
-#elif KYBER_N == 256
+#if KYBER_N == 256
   for(len = 2; len <= 128; len <<= 1) {
 #elif KYBER_N == 512
   for(len = 4; len <= 256; len <<= 1) {
@@ -276,5 +270,3 @@ void basemul_degree4(int16_t r[4],
   r[3] += fqmul(a[2], b[1]);
   r[3] += fqmul(a[3], b[0]);
 }
-
-#endif /* !WEAVER_AVX256_NTT */

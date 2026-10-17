@@ -4,7 +4,7 @@
 #include "params.h"
 #include "cpucycles.h"
 #include "speed_print.h"
-#include "rng.h"
+#include "randombytes.h"
 
 #include "kem.h"
 

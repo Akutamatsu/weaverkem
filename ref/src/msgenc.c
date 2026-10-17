@@ -47,10 +47,15 @@ void poly_frommsg(poly *r, const uint8_t msg[KYBER_INDCPA_MSGBYTES])
   // ==========================================================
   // Step 1: Encode to Higher bits (MSB-first)
   // ==========================================================
+#if WEAVER_MODE == 7
+  memcpy(mu_tilde, msg, ELL_BAR_BYTES);
+  encode_bch_high(msg, ELL_BAR_BYTES, mu_tilde + ELL_BAR_BYTES);
+#else
   /* mu_tilde = msg[0] || msg[1] || ... ||(msg[27] = 1111xxxx) */
   memcpy(mu_tilde, msg, ELL_BAR_BYTES);
   mu_tilde[ELL_BAR_BYTES - 1] &= 0xF0; // leave 4 bits empty (0) for padding
   encode_bch_high_nibbles(mu_tilde, ELL_BAR_NIBBLES, mu_tilde + ELL_BAR_BYTES); 
+#endif
 
   for(i = 0; i < KYBER_N/8; i++) {
     for(j = 0; j < 8; j++) {
@@ -62,10 +67,15 @@ void poly_frommsg(poly *r, const uint8_t msg[KYBER_INDCPA_MSGBYTES])
   // ==========================================================
   // Step 2: Encode to Lower bits
   // ==========================================================
+#if WEAVER_MODE == 7
+  memcpy(mu_ddot_buf, msg + ELL_BAR_BYTES, ELL_DDOT_BYTES);
+  encode_bch_low(mu_ddot_buf, ELL_DDOT_BYTES, mu_ddot_buf + ELL_DDOT_BYTES);
+#else
   /* mu_ddot_buf = msg[28:31] || (msg[27] = xxxx1111 << 4) */
   memcpy(mu_ddot_buf, msg + ELL_BAR_BYTES, KYBER_INDCPA_MSGBYTES - ELL_BAR_BYTES);
   mu_ddot_buf[KYBER_INDCPA_MSGBYTES - ELL_BAR_BYTES] = (msg[ELL_BAR_BYTES - 1] << 4);
   encode_bch_low_nibbles(mu_ddot_buf, ELL_DDOT_NIBBLES, mu_ddot_buf + ELL_DDOT_BYTES);
+#endif
 
   // D4 encoding
   for (i = 0; i < LOW_CODEWORD_BYTES; i++) {
@@ -112,9 +122,15 @@ void poly_tomsg(uint8_t msg[KYBER_INDCPA_MSGBYTES], const poly *a)
   // ==========================================================
   // Phase 2: Cancel Interference from Lower bits
   // ==========================================================
+#if WEAVER_MODE == 7
+  decode_bch_low(mu_ddot_noisy, ELL_DDOT_BYTES, mu_ddot_noisy + ELL_DDOT_BYTES);
+  memcpy(mu_ddot_clean, mu_ddot_noisy, ELL_DDOT_BYTES);
+  encode_bch_low(mu_ddot_clean, ELL_DDOT_BYTES, mu_ddot_clean + ELL_DDOT_BYTES);
+#else
   decode_bch_low_nibbles(mu_ddot_noisy, ELL_DDOT_NIBBLES, mu_ddot_noisy + ELL_DDOT_BYTES);
   memcpy(mu_ddot_clean, mu_ddot_noisy, ELL_DDOT_BYTES);
   encode_bch_low_nibbles(mu_ddot_clean, ELL_DDOT_NIBBLES, mu_ddot_clean + ELL_DDOT_BYTES);
+#endif
 
   for(i = 0; i < LOW_CODEWORD_BYTES; i++) { // 不保证为正
     for(j = 0; j < 8; j++) {
@@ -138,13 +154,17 @@ void poly_tomsg(uint8_t msg[KYBER_INDCPA_MSGBYTES], const poly *a)
     }
   }
 
+#if WEAVER_MODE == 7
+  decode_bch_high(mu_tilde, ELL_BAR_BYTES, mu_tilde + ELL_BAR_BYTES);
+  memcpy(msg, mu_tilde, ELL_BAR_BYTES);
+  memcpy(msg + ELL_BAR_BYTES, mu_ddot_clean, ELL_DDOT_BYTES);
+#else
   decode_bch_high_nibbles(mu_tilde, ELL_BAR_NIBBLES, mu_tilde + ELL_BAR_BYTES);
-  
   // Merge all high bits and 4 of low bits back into the 32-byte message
   memcpy(msg, mu_tilde, ELL_BAR_BYTES - 1); 
   msg[ELL_BAR_BYTES - 1] = (mu_tilde[ELL_BAR_BYTES - 1] & 0xF0) | ((mu_ddot_clean[KYBER_INDCPA_MSGBYTES - ELL_BAR_BYTES] >> 4) & 0xF);
-  
   // Copy remaining low bits
   memcpy(msg + ELL_BAR_BYTES, mu_ddot_clean, KYBER_INDCPA_MSGBYTES - ELL_BAR_BYTES); 
+#endif
 }
 

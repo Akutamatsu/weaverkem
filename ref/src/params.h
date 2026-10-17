@@ -52,7 +52,7 @@
   #define KYBER_N 512
   #define KYBER_INDCPA_MSGBYTES       (KYBER_N / 8)
   #define KYBER_NAMESPACE(s) pqcrystals_weaver1024_ref##s
-  #define KYBER_ETA1 2
+  #define KYBER_ETA1 3
   // #define KYBER_ETA2 4  /* legacy setting */
   #define KYBER_ETA2 KYBER_ETA1
   #define KYBER_K 4

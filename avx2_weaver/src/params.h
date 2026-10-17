@@ -44,7 +44,7 @@
   #define KYBER_N 512
   #define KYBER_INDCPA_MSGBYTES       (KYBER_N / 8)
   #define KYBER_NAMESPACE(s) pqspin_weaver2048_avx2##s
-  #define KYBER_ETA1 2
+  #define KYBER_ETA1 3
   #define KYBER_ETA2 KYBER_ETA1
   #define KYBER_K 4
   #define KYBER_PK_POLYVECBYTES        (KYBER_K * ((KYBER_N * 10) / 8))

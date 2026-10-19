@@ -87,19 +87,19 @@ static unsigned int rej_uniform(int16_t *r,
 
 void polyvec_invq(polyvec *v,
                   const uint8_t seed[WEAVER_SYMBYTES],
-                  uint8_t nonce)
+                  uint8_t *nonce)
 {
     unsigned int ctr, i;
     unsigned int buflen;
     uint8_t buf[GEN_INVQ_RAND_BYTES];
 
     for(i = 0; i < WEAVER_K; i++) {
-        prf(buf, GEN_INVQ_RAND_BYTES, seed, nonce++);
+        prf(buf, GEN_INVQ_RAND_BYTES, seed, (*nonce)++);
         buflen = GEN_INVQ_RAND_BYTES;
         ctr = rej_uniform(v->vec[i].coeffs, WEAVER_N, buf, buflen);
 
         while(ctr < WEAVER_N) {
-            prf(buf, GEN_INVQ_RAND_BYTES, seed, nonce++);
+            prf(buf, GEN_INVQ_RAND_BYTES, seed, (*nonce)++);
             buflen = GEN_INVQ_RAND_BYTES;
             ctr += rej_uniform(v->vec[i].coeffs + ctr, WEAVER_N - ctr, buf, buflen);
         }

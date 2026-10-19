@@ -152,8 +152,9 @@ static void unpack_ciphertext(polyvec *b,
 #define REJ_UNIFORM_MASK 0xFFF
 #define GEN_MATRIX_NBLOCKS ((REJ_UNIFORM_BITS*WEAVER_N/8*(1 << REJ_UNIFORM_BITS)/WEAVER_Q + XOF_BLOCKBYTES)/XOF_BLOCKBYTES)
 #elif WEAVER_Q == 7681
-#define LEMIRE_REJ_THRESHOLD ((uint32_t)((1ULL << 16) % WEAVER_Q))
-#define GEN_MATRIX_NBLOCKS ((((uint32_t)2 * WEAVER_N * 65536u + (65536u - LEMIRE_REJ_THRESHOLD - 1)) / (65536u - LEMIRE_REJ_THRESHOLD) + XOF_BLOCKBYTES - 1) / XOF_BLOCKBYTES)
+#define REJ_UNIFORM_BITS 13
+#define REJ_UNIFORM_MASK 0x1FFF
+#define GEN_MATRIX_NBLOCKS ((REJ_UNIFORM_BITS*WEAVER_N/8*(1 << REJ_UNIFORM_BITS)/WEAVER_Q + XOF_BLOCKBYTES)/XOF_BLOCKBYTES)
 #else
 #error "Unsupported WEAVER_Q for gen_matrix rejection sampling"
 #endif
@@ -169,8 +170,8 @@ static unsigned int rej_uniform(int16_t *r,
 
   ctr = pos = 0;
   while(ctr < len && pos + 3 <= buflen) {
-    val0 = ((buf[pos+0] >> 0) | ((uint16_t)buf[pos+1] << 8)) & 0xFFF;
-    val1 = ((buf[pos+1] >> 4) | ((uint16_t)buf[pos+2] << 4)) & 0xFFF;
+    val0 = ((buf[pos+0] >> 0) | ((uint16_t)buf[pos+1] << 8)) & REJ_UNIFORM_MASK;
+    val1 = ((buf[pos+1] >> 4) | ((uint16_t)buf[pos+2] << 4)) & REJ_UNIFORM_MASK;
     pos += 3;
 
     if(val0 < WEAVER_Q)
@@ -182,29 +183,28 @@ static unsigned int rej_uniform(int16_t *r,
   return ctr;
 }
 #elif WEAVER_Q == 7681
-// Lemire's method for rejection sampling
 static unsigned int rej_uniform(int16_t *r,
-                                unsigned int len,
-                                const uint8_t *buf,
-                                unsigned int buflen)
+    unsigned int len,
+    const uint8_t *buf,
+    unsigned int buflen)
 {
-  const uint32_t threshold = LEMIRE_REJ_THRESHOLD;
-  unsigned int ctr = 0;
-  unsigned int pos = 0;
+    unsigned int ctr, pos, i;
+    uint16_t val[4];
 
-  while (ctr < len && pos + 1 < buflen) {
-    uint32_t val = (uint32_t)buf[pos] | ((uint32_t)buf[pos + 1] << 8);
-    pos += 2;
-    uint32_t prod = val * (uint32_t)WEAVER_Q;
-    uint16_t low = (uint16_t)prod;
+    ctr = pos = 0;
+    while (ctr < len && pos + 3 <= buflen) { /* 13 bits truncated from 14 bits blocks */
+        val[0] = ((buf[pos + 0] >> 0) | ((uint16_t)buf[pos + 1] << 8)) & REJ_UNIFORM_MASK;
+        val[1] = ((buf[pos + 1] >> 6) | ((uint16_t)buf[pos + 2] << 2) | ((uint16_t)buf[pos + 3] << 10)) & REJ_UNIFORM_MASK;
+        val[2] = ((buf[pos + 3] >> 4) | ((uint16_t)buf[pos + 4] << 4) | ((uint16_t)buf[pos + 5] << 12)) & REJ_UNIFORM_MASK;
+        val[3] = ((buf[pos + 5] >> 2) | ((uint16_t)buf[pos + 6] << 6)) & REJ_UNIFORM_MASK;
+        pos += 7;
+        for (i = 0; ctr < len && i < 4; i++) {
+            if (val[i] < WEAVER_Q)
+                r[ctr++] = val[i];
+        }
+    }
 
-    if (low < threshold)
-      continue;
-
-    r[ctr++] = (int16_t)(prod >> 16);
-  }
-
-  return ctr;
+    return ctr;
 }
 #endif
 

@@ -82,7 +82,7 @@
 /* ====================================================================
  * Global Parameters: DO NOT modify.
  * ==================================================================== */
-#define WEAVER_HALFQ ((WEAVER_Q + 1) / 2)
+#define WEAVER_HALFQ ((WEAVER_Q - 1) / 2)
 
 /* size in bytes of shared key */
 #define WEAVER_SSBYTES  WEAVER_INDCPA_MSGBYTES

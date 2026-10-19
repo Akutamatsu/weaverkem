@@ -5,6 +5,7 @@
 #define WEAVER_MODE 5  /* 1: 512, 3: 1024, 5: 2048 */
 #endif
 
+//#define WEAVER_USE_SHAKE
 #define PK_COMPRESS
 
 // For Debug:
@@ -82,7 +83,7 @@
 /* ====================================================================
  * Global Parameters: DO NOT modify.
  * ==================================================================== */
-#define WEAVER_HALFQ ((WEAVER_Q + 1) / 2)
+#define WEAVER_HALFQ ((WEAVER_Q - 1) / 2)
 
 /* size in bytes of shared key */
 #define WEAVER_SSBYTES  WEAVER_INDCPA_MSGBYTES

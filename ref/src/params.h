@@ -7,6 +7,7 @@
 
 //#define WEAVER_USE_SHAKE
 #define PK_COMPRESS
+#define CONST_TIME
 
 // For Debug:
 //#define NO_INV_Q_LIFTING

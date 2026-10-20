@@ -16,8 +16,32 @@
     #error "Invalid WEAVER_MODE for BCH configuration"
 #endif
 
+#ifdef CONST_TIME
+#include "bch_ct_impl.h"
 
+void encode_bch_low(const uint8_t *data, unsigned int len, uint8_t *ecc)
+{
+    ct_encode(data, len, 8, ecc);
+}
 
+int decode_bch_low(uint8_t *data, unsigned int len, const uint8_t *recv_ecc)
+{
+    return ct_decode(data, len, 8, recv_ecc);
+}
+
+#if WEAVER_MODE == 3
+void encode_bch_low_nibbles(const uint8_t *data, unsigned int nibbles, uint8_t *ecc)
+{
+    ct_encode(data, nibbles, 4, ecc);
+}
+
+int decode_bch_low_nibbles(uint8_t *data, unsigned int nibbles, const uint8_t *recv_ecc)
+{
+    return ct_decode(data, nibbles, 4, recv_ecc);
+}
+#endif
+
+#else
 // convert 32-bit ecc words to ecc bytes
 static void store_ecc8(uint8_t *dst, const uint32_t *src)
 {
@@ -442,3 +466,4 @@ int decode_bch_low_nibbles(uint8_t *data, unsigned int nibbles, const uint8_t *r
 }
 #endif
 
+#endif

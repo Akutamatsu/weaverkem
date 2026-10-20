@@ -2,8 +2,9 @@
 # include <stdlib.h>
 # include <string.h>
 # include <stdint.h>
-# include "params.h"  // <--- 引入我们自己架构的参数
+# include "params.h"  
 # include "bch.h"
+
 
 #if WEAVER_MODE == 1
     #include "bch127_112_2.h"
@@ -15,6 +16,32 @@
     #error "Invalid WEAVER_MODE for BCH configuration"
 #endif
 
+#ifdef CONST_TIME
+#include "bch_ct_impl.h"
+
+void encode_bch_high(const uint8_t *data, unsigned int len, uint8_t *ecc)
+{
+    ct_encode(data, len, 8, ecc);
+}
+
+int decode_bch_high(uint8_t *data, unsigned int len, const uint8_t *recv_ecc)
+{
+    return ct_decode(data, len, 8, recv_ecc);
+}
+
+#if WEAVER_MODE == 3
+void encode_bch_high_nibbles(const uint8_t *data, unsigned int nibbles, uint8_t *ecc)
+{
+    ct_encode(data, nibbles, 4, ecc);
+}
+
+int decode_bch_high_nibbles(uint8_t *data, unsigned int nibbles, const uint8_t *recv_ecc)
+{
+    return ct_decode(data, nibbles, 4, recv_ecc);
+}
+#endif
+
+#else
 // convert 32-bit ecc words to ecc bytes
 static void store_ecc8(uint8_t *dst, const uint32_t *src)
 {
@@ -281,8 +308,8 @@ int decode_bch_high(uint8_t *data, unsigned int len, const uint8_t *recv_ecc)
     unsigned int syn[2*BCH_T+1];
     unsigned int errloc[BCH_T];
 
-    // sanity check: make sure data length can be handled 
-    if (8*len > (bch.n-bch.ecc_bits))
+    // sanity check: make sure data length can be handled
+    if (8 * len > (bch.n - bch.ecc_bits))
         return -1;
         
     //check data and ecc pointer
@@ -426,7 +453,6 @@ int decode_bch_high_nibbles(uint8_t *data, unsigned int nibbles, const uint8_t *
     
     unsigned char mask_err;
     
-    // 定位与翻转错误的逻辑天然是 bit 级的，完美向下兼容
     for (i = 0; i < bch.t; i++) 
     {
         mask_err  = (unsigned char)(((int)(i - err) >> 31));
@@ -438,4 +464,6 @@ int decode_bch_high_nibbles(uint8_t *data, unsigned int nibbles, const uint8_t *
     
     return err;
 }
+#endif
+
 #endif

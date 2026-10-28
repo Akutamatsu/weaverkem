@@ -178,13 +178,12 @@ static void cbd7_avx(poly *r, const uint8_t buf[7 * WEAVER_N / 4])
 
 static unsigned int popcount_u32_scalar(uint32_t x)
 {
-  unsigned int r = 0;
-
-  while(x) {
-    r += x & 1u;
-    x >>= 1;
-  }
-  return r;
+  x = x - ((x >> 1) & 0x55555555u);
+  x = (x & 0x33333333u) + ((x >> 2) & 0x33333333u);
+  x = (x + (x >> 4)) & 0x0F0F0F0Fu;
+  x = x + (x >> 8);
+  x = x + (x >> 16);
+  return x & 0x3Fu;
 }
 
 static void cbd9_avx(poly *r, const uint8_t buf[9 * WEAVER_N / 4])

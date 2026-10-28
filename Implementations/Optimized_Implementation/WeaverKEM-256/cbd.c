@@ -23,12 +23,12 @@ static uint32_t load24_littleendian(const uint8_t x[3])
 
 static unsigned int popcount_u32(uint32_t x)
 {
-  unsigned int r = 0;
-  while(x) {
-    r += x & 1u;
-    x >>= 1;
-  }
-  return r;
+  x = x - ((x >> 1) & 0x55555555u);
+  x = (x & 0x33333333u) + ((x >> 2) & 0x33333333u);
+  x = (x + (x >> 4)) & 0x0F0F0F0Fu;
+  x = x + (x >> 8);
+  x = x + (x >> 16);
+  return x & 0x3Fu;
 }
 
 #if defined(__GNUC__)
